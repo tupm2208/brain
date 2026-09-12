@@ -144,11 +144,19 @@ test("bo nao hoi duoc ton that qua cong cua server khach", { ...boQua }, async (
   assert.equal(ton.data.rows[0].price, 2890000);
 });
 
-test("TEN KHO khong duoc gui sang bo nao", { ...boQua }, async (t) => {
+test("TEN KHO va MA KHO khong duoc gui sang bo nao", { ...boQua }, async (t) => {
   const { boNao } = await dungCaHai();
   const ton = await boNao.shop.get(SHOP).cong.tools.call("stock.lookup", { code: "DV1234" });
   const chu = JSON.stringify(ton.data.rows);
   assert.ok(!/Yên/.test(chu), `ten kho lot sang bo nao: ${chu}`);
+  // Ma kho that cung mang ten nguoi ("wh_yen") va ten doi tac ("supersports_..."), nen no
+  // duoc bam di. Bo nao chi dem so nguon hang, khong doc noi dung ma nay.
+  assert.ok(!/wh_yen/.test(chu), `ma kho that lot sang bo nao: ${chu}`);
+  for (const d of ton.data.rows) assert.match(d.warehouseId, /^kho_[0-9a-f]{8}$/);
+
+  // Bam di nhung van DEM dung: kho that chi co mot, nen ma mu cung chi mot — bo nao noi
+  // "tai 1 kho" la dung. (Hai kho khac nhau ra hai ma khac nhau: bai o server khach giu.)
+  assert.equal(new Set(ton.data.rows.map((d) => d.warehouseId)).size, 1);
 });
 
 test("khach hoi con hang khong — bot tra loi va tin di ra dung duong hop thu", { ...boQua }, async (t) => {
