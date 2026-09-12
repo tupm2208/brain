@@ -1,0 +1,9 @@
+{
+  // Tep giai phap o goc: `tsc --build` khong tham so se doc tep nay.
+  // Khong co no thi `npm run build` chet TS5083 tren may vua clone ve.
+  "files": [],
+  "references": [
+    { "path": "packages/contract" },
+    { "path": "packages/brain" }
+  ]
+}

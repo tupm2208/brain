@@ -1,0 +1,13 @@
+{
+  "name": "@sp/contract",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Ban giao keo giua ba khoi: OMI, Brain, Storefront. Sua o day la ca ba khoi cung biet.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --build",
+    "check": "tsc --noEmit"
+  }
+}

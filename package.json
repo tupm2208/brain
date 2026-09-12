@@ -1,0 +1,22 @@
+{
+  "name": "toprun-bo-nao",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Bo nao chatbot chay tren Xeon — copy tu seller-platform 12/09/2026, dang noi vao server cua khach",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "check": "tsc --build --dry",
+    "clean": "tsc --build --clean",
+    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

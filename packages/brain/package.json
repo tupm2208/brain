@@ -1,0 +1,16 @@
+{
+  "name": "@sp/brain",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Bo nao chatbot: bo may trung lap + cac bo luat nganh. Chay tren Xeon, phuc vu moi khach.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --build",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sp/contract": "0.0.1"
+  }
+}
