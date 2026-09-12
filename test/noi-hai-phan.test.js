@@ -6,7 +6,7 @@
 
 "use strict";
 
-const test = require("node:test");
+const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
@@ -14,7 +14,8 @@ const path = require("path");
 
 const GOC = path.join(__dirname, "..", "..", "server-khach");
 const { taoKhung } = require(path.join(GOC, "loi/khung"));
-const { taoKhoTep } = require(path.join(GOC, "loi/cong/kho-tep"));
+const { taoKhoMysql } = require(path.join(GOC, "loi/cong/kho-mysql"));
+const { taoBoDemGoi } = require(path.join(GOC, "loi/cong/han-goi"));
 const { taoNhatKyGia, taoGioGia, taoHttpNgoaiGia } = require(path.join(GOC, "loi/cong/co-ban"));
 const { taoCongQuyen } = require(path.join(GOC, "loi/cong/quyen"));
 const mHangKho = require(path.join(GOC, "modules/hang-kho/module"));
@@ -29,6 +30,12 @@ const MA_QT = "ma-quan-tri";
 const MA_BO_NAO = "ma-bo-nao";
 const SHOP = "toprun";
 
+// Tu dot 2b, hang hoa nam tren bang MySQL — nen bo bai nay can MySQL that.
+//   TOPRUN_MYSQL_URL=mysql://root:...@127.0.0.1:3307/toprun_modules_test npm run test:mysql
+const DUONG = String(process.env.TOPRUN_MYSQL_URL || "").trim();
+const boQua = DUONG ? {} : { skip: "chua dat TOPRUN_MYSQL_URL — bo qua bai noi hai phan" };
+if (DUONG && /:3306\//.test(DUONG)) throw new Error("Cong 3306 la du lieu that cua landing. Dung 3307.");
+
 const MON = {
   code: "DV1234", name: "Giày chạy Nike Pegasus 40", brand: "Nike", listPrice: 3500000,
   sizes: [
@@ -38,14 +45,30 @@ const MON = {
 };
 
 /** Dung ca hai phan, noi mang gia giua chung. */
+// Mot ket noi dung chung cho ca bo bai — mo moi bai mot ket noi thi cuoi bo treo vi con
+// ket noi chua dong.
+let khoChung = null;
+async function khoDungChung(nhatKy) {
+  if (!khoChung) {
+    khoChung = await taoKhoMysql({ duongKetNoi: DUONG, nhatKy });
+    await khoChung.chayLuocDo("hang-kho", mHangKho.luocDo);
+  }
+  return khoChung;
+}
+after(async () => { if (khoChung) await khoChung.dong(); });
+
 async function dungCaHai({ mon = [MON] } = {}) {
   const nhatKy = taoNhatKyGia();
-  const kho = taoKhoTep({ thuMuc: fs.mkdtempSync(path.join(os.tmpdir(), "noi-hai-phan-")), nhatKy });
+  const gio = taoGioGia();
+  const kho = await khoDungChung(nhatKy);
+  for (const b of ["hang_kho_giu_cho", "hang_kho_bien_the", "hang_kho_mon", "hang_kho_ma_chan"]) {
+    await kho.cauLenh(`DELETE FROM \`${b}\``, []);
+  }
   const daGui = [];
 
   const khung = taoKhung({
     cong: {
-      kho, nhatKy, gio: taoGioGia(),
+      kho, nhatKy, gio,
       // Graph API gia: ghi lai tin da gui cho khach.
       httpNgoai: {
         async goi(url, tuyChon = {}) {
@@ -53,7 +76,8 @@ async function dungCaHai({ mon = [MON] } = {}) {
           return { ok: true, status: 200, json: async () => ({ message_id: "m.1" }), text: async () => "" };
         }
       },
-      quyen: taoCongQuyen({ maQuanTri: MA_QT, maDichVu: MA_BO_NAO })
+      quyen: taoCongQuyen({ maQuanTri: MA_QT, maDichVu: MA_BO_NAO }),
+      hanGoi: taoBoDemGoi({ gio })
     },
     nhatKy,
     toKhais: [mHangKho, mVanChuyen, mHopThu, mCongBoNao],
@@ -66,10 +90,9 @@ async function dungCaHai({ mon = [MON] } = {}) {
   });
 
   await khung.xuLy({
-    method: "POST", duong: "/api/products", truyVan: {},
+    method: "POST", duong: "/api/products", truyVan: {}, ip: "1.1.1.1",
     tieuDe: { authorization: `Bearer ${MA_QT}` }, doc: async () => mon
   });
-  await kho.choXong();
 
   // "Mang" gia: bien mot loi goi HTTP thanh mot loi goi thang vao khung cua server khach.
   const goi = async (url, tuyChon = {}) => {
@@ -79,6 +102,7 @@ async function dungCaHai({ mon = [MON] } = {}) {
       duong: u.pathname,
       truyVan: Object.fromEntries(u.searchParams),
       tieuDe: Object.fromEntries(Object.entries(tuyChon.headers || {}).map(([k, v]) => [k.toLowerCase(), v])),
+      ip: "1.1.1.1",
       doc: async () => JSON.parse(String(tuyChon.body || "{}")),
       tho: async () => Buffer.from(String(tuyChon.body || ""), "utf8")
     });
@@ -104,7 +128,7 @@ async function dungCaHai({ mon = [MON] } = {}) {
   return { khung, kho, nhatKy, daGui, boNao, nhan };
 }
 
-test("bo nao hoi duoc ton that qua cong cua server khach", async () => {
+test("bo nao hoi duoc ton that qua cong cua server khach", { ...boQua }, async (t) => {
   const { boNao } = await dungCaHai();
   const cong = boNao.shop.get(SHOP).cong;
 
@@ -120,14 +144,14 @@ test("bo nao hoi duoc ton that qua cong cua server khach", async () => {
   assert.equal(ton.data.rows[0].price, 2890000);
 });
 
-test("TEN KHO khong duoc gui sang bo nao", async () => {
+test("TEN KHO khong duoc gui sang bo nao", { ...boQua }, async (t) => {
   const { boNao } = await dungCaHai();
   const ton = await boNao.shop.get(SHOP).cong.tools.call("stock.lookup", { code: "DV1234" });
   const chu = JSON.stringify(ton.data.rows);
   assert.ok(!/Yên/.test(chu), `ten kho lot sang bo nao: ${chu}`);
 });
 
-test("khach hoi con hang khong — bot tra loi va tin di ra dung duong hop thu", async () => {
+test("khach hoi con hang khong — bot tra loi va tin di ra dung duong hop thu", { ...boQua }, async (t) => {
   const { nhan, daGui } = await dungCaHai();
   const kq = await nhan("shop còn Pegasus 40 size 42 không");
 
@@ -138,7 +162,7 @@ test("khach hoi con hang khong — bot tra loi va tin di ra dung duong hop thu",
   assert.ok(String(daGui[0].than.message.text).length > 0);
 });
 
-test("size da het thi bot KHONG noi la con", async () => {
+test("size da het thi bot KHONG noi la con", { ...boQua }, async (t) => {
   const { nhan, daGui } = await dungCaHai();
   await nhan("còn Pegasus 40 size 43 không");
   const traLoi = String(daGui[0]?.than?.message?.text ?? "");
@@ -146,14 +170,14 @@ test("size da het thi bot KHONG noi la con", async () => {
   assert.ok(!/còn hàng size 43|còn size 43/i.test(traLoi), `bot noi con hang khi da het: ${traLoi}`);
 });
 
-test("cong cu goi ten la thi bi tu choi, va noi ro cai gi dang mo", async () => {
+test("cong cu goi ten la thi bi tu choi, va noi ro cai gi dang mo", { ...boQua }, async (t) => {
   const { boNao } = await dungCaHai();
   const kq = await boNao.shop.get(SHOP).cong.tools.call("chay_cau_lenh", {});
   assert.equal(kq.ok, false);
   assert.equal(kq.error.code, "tool_failed");
 });
 
-test("khong co ma dich vu thi khong goi duoc cong cu nao", async () => {
+test("khong co ma dich vu thi khong goi duoc cong cu nao", { ...boQua }, async (t) => {
   const { khung } = await dungCaHai();
   const ra = await khung.xuLy({
     method: "POST", duong: "/api/bo-nao/cong-cu", truyVan: {}, tieuDe: {},
@@ -162,7 +186,7 @@ test("khong co ma dich vu thi khong goi duoc cong cu nao", async () => {
   assert.equal(ra.ma, 401);
 });
 
-test("chua bat manh Don hang thi cong cu tra don KHONG mo, bot van tra loi duoc ton kho", async () => {
+test("chua bat manh Don hang thi cong cu tra don KHONG mo, bot van tra loi duoc ton kho", { ...boQua }, async (t) => {
   const { boNao, khung } = await dungCaHai();
   const cong = boNao.shop.get(SHOP).cong;
 
@@ -181,7 +205,7 @@ test("chua bat manh Don hang thi cong cu tra don KHONG mo, bot van tra loi duoc 
   assert.equal(ton.ok, true);
 });
 
-test("co manh Don hang: tra don CHI khop so khach TU GO trong hoi thoai", async () => {
+test("co manh Don hang: tra don CHI khop so khach TU GO trong hoi thoai", { ...boQua }, async (t) => {
   // Module gia dong vai Don hang — du de thu LUAT, khong can MySQL.
   const daHoi = [];
   const donGia = {
@@ -196,16 +220,20 @@ test("co manh Don hang: tra don CHI khop so khach TU GO trong hoi thoai", async 
   };
 
   const nhatKy = taoNhatKyGia();
-  const kho = taoKhoTep({ thuMuc: fs.mkdtempSync(path.join(os.tmpdir(), "tra-don-")), nhatKy });
+  const gio = taoGioGia();
+  const kho = await khoDungChung(nhatKy);
   const khung = taoKhung({
-    cong: { kho, nhatKy, gio: taoGioGia(), httpNgoai: taoHttpNgoaiGia(), quyen: taoCongQuyen({ maDichVu: MA_BO_NAO }) },
+    cong: {
+      kho, nhatKy, gio, httpNgoai: taoHttpNgoaiGia(),
+      quyen: taoCongQuyen({ maDichVu: MA_BO_NAO }), hanGoi: taoBoDemGoi({ gio })
+    },
     nhatKy, toKhais: [mHangKho, donGia, mCongBoNao],
     cauHinh: { "hang-kho": {}, "cong-bo-nao": { diaChiWeb: "https://toprun.site" } }
   });
 
   const goiCongCu = (input) => khung.xuLy({
     method: "POST", duong: "/api/bo-nao/cong-cu", truyVan: {},
-    tieuDe: { authorization: `Bearer ${MA_BO_NAO}` },
+    tieuDe: { authorization: `Bearer ${MA_BO_NAO}` }, ip: "1.1.1.1",
     doc: async () => ({ ten: "order.lookup", input })
   });
 
@@ -219,7 +247,7 @@ test("co manh Don hang: tra don CHI khop so khach TU GO trong hoi thoai", async 
   assert.equal(daHoi[0].dienThoai, "0911111111", "phai loc dung theo so khach tu go");
 });
 
-test("mat mang: bo nao biet la mat, khong khang dinh con hang", async () => {
+test("mat mang: bo nao biet la mat, khong khang dinh con hang", { ...boQua }, async (t) => {
   const { boNao } = await dungCaHai();
   const cong = boNao.shop.get(SHOP).cong;
   assert.equal(cong.tools.online(), true);
@@ -267,7 +295,7 @@ test("may chu bo nao: thieu ma thi tu choi, du ma thi nhan tin", async () => {
   assert.equal(thieu.ma, 400);
 });
 
-test("tin cua shop khong quen thi bo qua, khong tra loi bua", async () => {
+test("tin cua shop khong quen thi bo qua, khong tra loi bua", { ...boQua }, async (t) => {
   const { boNao, daGui } = await dungCaHai();
   const kq = await boNao.xuLyTin({ tenant: "shop-la", kenh: "facebook", nguoi: "x", chu: "còn hàng không" });
   assert.equal(kq.daTraLoi, false);
