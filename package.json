@@ -10,7 +10,7 @@
     "build": "tsc --build",
     "check": "tsc --build --dry",
     "clean": "tsc --build --clean",
-    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js"
+    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js test/noi-hai-phan.test.js"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
