@@ -307,7 +307,7 @@ test("tin cua shop khong quen thi bo qua, khong tra loi bua", { ...boQua }, asyn
   const { boNao, daGui } = await dungCaHai();
   const kq = await boNao.xuLyTin({ tenant: "shop-la", kenh: "facebook", nguoi: "x", chu: "còn hàng không" });
   assert.equal(kq.daTraLoi, false);
-  assert.equal(kq.viSao, "khong_biet_shop");
+  assert.equal(kq.viSao, "khong_phuc_vu_shop");
   assert.equal(daGui.length, 0);
 });
 

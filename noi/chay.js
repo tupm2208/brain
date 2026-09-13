@@ -52,7 +52,7 @@ function dungBoNao({ license = null, cacShop = {}, triNho = triNhoTrongBoNho(), 
     for (const [tenant, c] of Object.entries(cacShop)) {
       if (!c?.diaChi) throw new Error(`Shop "${tenant}" thiếu địa chỉ server.`);
       shop.set(tenant, {
-        cong: taoCongServerKhach({ diaChi: c.diaChi, ma: c.ma, goi, nhatKy: ky }),
+        cong: taoCongServerKhach({ diaChi: c.diaChi, ma: c.ma, goi, nhatKy: ky, gio }),
         pack: loadPack(c.nganh || "giay-chay")
       });
     }
@@ -69,23 +69,40 @@ function dungBoNao({ license = null, cacShop = {}, triNho = triNhoTrongBoNho(), 
     const daCo = shop.get(tenant);
     if (daCo && daCo.diaChi === pv.diaChi && daCo.nganh === pv.nganh) return daCo;
     const cai = {
-      diaChi: pv.diaChi, nganh: pv.nganh,
-      cong: taoCongServerKhach({ diaChi: pv.diaChi, ma: maTuVeDichVu(license, tenant, gio), goi, nhatKy: ky }),
+      diaChi: pv.diaChi, nganh: pv.nganh, daSoiCongCu: false,
+      cong: taoCongServerKhach({ diaChi: pv.diaChi, ma: maTuVeDichVu(license, tenant, gio), goi, nhatKy: ky, gio }),
       pack: loadPack(pv.nganh || "giay-chay")
     };
     shop.set(tenant, cai);
     return cai;
   }
 
+  /**
+   * Danh sach cong cu doc tu landing, lam moi moi 5 phut. Lan dau con soi: bo luat nganh can
+   * cong cu nao ma landing khong mo thi noi ro — truoc day lech nay im lang, va moi cau hoi
+   * doi tra roi xuong "hoi lai".
+   */
+  async function lamMoiCongCu(tenant, cai) {
+    if (!cai.cong.congCuCu?.()) return;
+    const dangMo = await cai.cong.lamMoiCongCu();
+    if (!cai.daSoiCongCu) {
+      cai.daSoiCongCu = true;
+      const thieu = (cai.pack.allowedTools ?? []).filter((t) => !dangMo.includes(t));
+      if (thieu.length > 0) ky.canhBao(`[bo-nao] shop "${tenant}": bo luat "${cai.pack.id}" muon dung ${thieu.join(", ")} nhung landing khong mo — phan do bot se khong tra loi`);
+    }
+  }
+
   async function xuLyTin(tin) {
     const tenant = String(tin.tenant || "");
     const cai = caiCuaShop(tenant);
     if (!cai) return { daTraLoi: false, viSao: "khong_phuc_vu_shop" };
+    if (cai.cong.lamMoiCongCu) await lamMoiCongCu(tenant, cai);
 
     const kq = await handleTurn(cai.pack, {
       tools: cai.cong.tools,
       catalog: cai.cong.catalog,
-      memory: triNho,
+      // Tri nho o landing cua chinh shop (ban license); ban chay thu cu dung tri nho RAM.
+      memory: license && cai.cong.triNho ? cai.cong.triNho : triNho,
       clock: gio
     }, {
       tenant,
@@ -100,6 +117,16 @@ function dungBoNao({ license = null, cacShop = {}, triNho = triNhoTrongBoNho(), 
     // noi sai. Van ghi nhat ky de nguoi ban hang biet co viec dang cho.
     if (kq.action === "handoff") {
       ky.tin(`[bo-nao] chuyen nguoi that: ${tenant} / ${tin.nguoi}`);
+      // Bao cho shop biet co hoi thoai dang cho nguoi — truoc day chi in ra stdout cua Xeon.
+      if (cai.cong.baoCanNguoi) {
+        await cai.cong.baoCanNguoi({
+          kenh: tin.kenh, nguoi: tin.nguoi,
+          maHoiThoai: String(tin.maHoiThoai || `${tin.kenh || "facebook"}:${tin.nguoi}`),
+          // Ly do lay tu cong da chan (gates[].reason); khong co thi noi chung.
+          lyDo: String((kq.gates ?? []).find((g) => g.action === "handoff" || g.action === "block")?.reason || "bot khong chac, chuyen nguoi that"),
+          tinCuoi: redactPII(String(tin.chu || ""))
+        });
+      }
       return { daTraLoi: false, viSao: "chuyen_nguoi_that", traLoi: kq.reply };
     }
 
