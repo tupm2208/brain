@@ -66,6 +66,12 @@ test("/health song; cua license: khoa cong, kiem, truc, landing dang ky", async 
     const truc = await goi("/license/truc", { method: "POST", than: { key, maMay: MAY.maMay } });
     assert.deepEqual(truc.than, { ok: true, truc: true });
 
+    const roi = await goi("/license/roi", { method: "POST", than: { key, maMay: MAY.maMay } });
+    assert.equal(roi.ma, 200);
+    assert.equal(roi.than.conLai, 0);
+    assert.equal((await goi("/license/roi", { method: "POST", than: { key, maMay: MAY.maMay } })).ma, 403);
+    assert.equal((await goi("/license/kiem", { method: "POST", than: { key, ...MAY } })).ma, 200, "roi roi vao lai duoc");
+
     const dk = await goi("/license/landing-dang-ky", { method: "POST", than: { key, diaChi: "https://toprun.site" } });
     assert.equal(dk.ma, 200);
     assert.equal(dk.than.khoaCongPem, khoaKy.khoaCongPem);

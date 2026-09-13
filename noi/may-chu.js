@@ -140,6 +140,10 @@ function tayNghe({ xuLyTin, license = null, maNhan = "", nhatKy, gio, tinProxy =
           const kq = license.coTruc({ key: than.key, maMay: than.maMay });
           return traLoi(res, kq.ok ? 200 : 403, kq);
         }
+        if (duong === "/license/roi") {
+          const kq = await license.roiMay({ key: than.key, maMay: than.maMay });
+          return traLoi(res, kq.ok ? 200 : 403, kq);
+        }
         if (duong === "/license/landing-dang-ky") {
           const kq = await license.landingDangKy({ key: than.key, diaChi: than.diaChi });
           return traLoi(res, kq.ok ? 200 : 403, kq);

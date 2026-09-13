@@ -277,6 +277,21 @@ function taoDichVuLicense({ so, khoaKy, gio, nhatKy, diaChiXeon = "", manhHopLe 
       });
     },
 
+    /** May tu roi key (nut "Roi may nay" trong OMI): bo chinh no khoi so, tra cho cho may khac. */
+    async roiMay({ key, maMay } = {}) {
+      return so.capNhat((st) => {
+        const d = st.cacKey[chuanKey(key)];
+        if (!d) return { ok: false, viSao: "key_khong_co" };
+        const ma = String(maMay || "").trim();
+        const i = d.may.findIndex((m) => m.maMay === ma);
+        if (i < 0) return { ok: false, viSao: "may_khong_co" };
+        const [bo] = d.may.splice(i, 1);
+        if (d.mayTruc === bo.maMay) d.mayTruc = d.may[0]?.maMay || "";
+        ky.tin(`[license] shop "${d.shop}": may "${bo.tenMay}" tu roi key`);
+        return { ok: true, conLai: d.may.length };
+      });
+    },
+
     async chonMayTruc({ key, mayId } = {}) {
       return so.capNhat((st) => {
         const d = st.cacKey[chuanKey(key)];

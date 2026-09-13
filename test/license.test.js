@@ -265,3 +265,16 @@ test("khoa ky: ky roi kiem duoc; khoa khac kiem la sai; chu ky hong khong nem", 
   assert.equal(kiemChuKy(k.khoaCongPem, "xin chao", "@@@"), false);
   assert.match(k.keyId, /^ky-[A-Za-z0-9_-]{16}$/);
 });
+
+test("may tu roi key: bo chinh no, tra cho; may truc roi thi truc chuyen; roi lan hai la may_khong_co", async () => {
+  const { license } = await dungDichVu();
+  const { key } = await license.capKey({ shop: "toprun", tenShop: "TopRun", hetHan: "2027-01-01T00:00:00.000Z" });
+  for (const n of [1, 2, 3]) await license.kiemMay({ key, ...MAY(n) });
+  assert.equal((await license.kiemMay({ key, ...MAY(4) })).viSao, "da_day");
+  const roi = await license.roiMay({ key, maMay: MAY(1).maMay });
+  assert.deepEqual(roi, { ok: true, conLai: 2 });
+  assert.equal(license.xemKey(key).may.find((m) => m.truc).tenMay, "Máy 2", "may truc roi thi may ke tiep truc");
+  assert.equal((await license.kiemMay({ key, ...MAY(4) })).ok, true, "co cho cho may 4");
+  assert.equal((await license.roiMay({ key, maMay: MAY(1).maMay })).viSao, "may_khong_co");
+  assert.equal((await license.roiMay({ key: "TR-AAAA-AAAA-AAAA-AAAA", maMay: MAY(1).maMay })).viSao, "key_khong_co");
+});
