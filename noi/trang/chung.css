@@ -1,0 +1,37 @@
+:root { --nen: #f6f7f9; --giay: #fff; --chu: #1b1f24; --mo: #6b7280; --vien: #d9dde3; --chinh: #0b5cad; --do: #b42318; --xanh: #067647; --vang: #b54708; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--nen); color: var(--chu); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 17px; margin: 24px 0 8px; }
+.mo { color: var(--mo); }
+.the { background: var(--giay); border: 1px solid var(--vien); border-radius: 10px; padding: 16px; margin: 12px 0; }
+label { display: block; font-size: 13px; color: var(--mo); margin: 8px 0 2px; }
+input[type=text], input[type=password], input[type=date], input[type=number], select { width: 100%; max-width: 420px; padding: 8px 10px; border: 1px solid var(--vien); border-radius: 6px; font: inherit; }
+button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--vien); background: #fff; cursor: pointer; }
+button.chinh { background: var(--chinh); border-color: var(--chinh); color: #fff; }
+button.nguy { color: var(--do); border-color: var(--do); }
+button:disabled { opacity: .5; cursor: default; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--vien); vertical-align: top; }
+th { font-weight: 600; color: var(--mo); font-size: 12px; text-transform: uppercase; letter-spacing: .02em; }
+.nhan { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--vien); }
+.nhan.xanh { color: var(--xanh); border-color: var(--xanh); }
+.nhan.do { color: var(--do); border-color: var(--do); }
+.nhan.vang { color: var(--vang); border-color: var(--vang); }
+.key-to { font: 600 26px/1.3 ui-monospace, Consolas, monospace; letter-spacing: .06em; word-break: break-all; }
+.hang { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bao { padding: 10px 12px; border-radius: 8px; margin: 10px 0; }
+.bao.loi { background: #fef3f2; color: var(--do); }
+.bao.ok { background: #ecfdf3; color: var(--xanh); }
+.o-manh { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; }
+.o-manh label { display: flex; gap: 6px; align-items: center; color: var(--chu); font-size: 14px; margin: 2px 0; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+[hidden] { display: none !important; }
+.hang.giua { justify-content: space-between; }
+.cach-tren { margin-top: 10px; }
+.khong-cach { margin: 0; }
+h2.khong-cach { margin: 0; }
+input.hep { max-width: 200px; }
+input.vua { max-width: 260px; }
+.cuon-ngang { overflow-x: auto; }

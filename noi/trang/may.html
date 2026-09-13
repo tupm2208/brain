@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OMI · Máy đang dùng key</title>
+<link rel="stylesheet" href="/may/chung.css">
+</head>
+<body>
+<main>
+  <h1>Máy đang dùng key OMI</h1>
+  <p class="mo">Mỗi key được tối đa 3 máy. Máy thứ tư muốn vào thì bỏ một máy ở đây. Máy trực là máy chạy Zalo và Facebook cá nhân.</p>
+
+  <section class="the">
+    <label for="key">License key</label>
+    <input id="key" type="text" placeholder="TR-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+    <div class="hang cach-tren"><button id="nut-xem" class="chinh">Xem máy</button></div>
+    <div id="bao"></div>
+  </section>
+
+  <section id="khu-may" class="the" hidden>
+    <div class="hang giua">
+      <h2 id="ten-shop" class="khong-cach"></h2>
+      <span id="dem" class="mo"></span>
+    </div>
+    <table>
+      <thead><tr><th>Tên máy</th><th>Mã</th><th>Ghép lúc</th><th>Kiểm gần nhất</th><th>Trực</th><th></th></tr></thead>
+      <tbody id="bang-may"></tbody>
+    </table>
+    <p class="mo">Bỏ một máy: máy đó mất quyền ở lần kiểm kế tiếp (tối đa 6 giờ). Muốn máy khác vào ngay thì mở OMI ở máy đó và nhập key.</p>
+  </section>
+</main>
+<script src="/may/app.js"></script>
+</body>
+</html>

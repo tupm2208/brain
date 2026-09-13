@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xeon · Quản trị license</title>
+<link rel="stylesheet" href="/quan-tri/chung.css">
+</head>
+<body>
+<main>
+  <h1>Quản trị license</h1>
+  <p class="mo">Máy chủ Xeon · mỗi key tối đa 3 máy · vé máy sống 7 giờ · OMI kiểm lại mỗi 6 giờ</p>
+
+  <section id="khu-tat" class="the" hidden>
+    <b>Trang quản trị đang tắt.</b> Đặt biến môi trường <code>XEON_ADMIN_MAT_KHAU</code> (từ 12 ký tự) rồi khởi động lại Xeon.
+  </section>
+
+  <section id="khu-dang-nhap" class="the" hidden>
+    <h2>Đăng nhập</h2>
+    <label for="mat-khau">Mật khẩu admin</label>
+    <input id="mat-khau" type="password" autocomplete="current-password">
+    <div class="hang cach-tren"><button id="nut-dang-nhap" class="chinh">Đăng nhập</button></div>
+    <div id="bao-dang-nhap"></div>
+  </section>
+
+  <section id="khu-chinh" hidden>
+    <div class="hang giua">
+      <span id="tom-tat" class="mo"></span>
+      <button id="nut-dang-xuat">Đăng xuất</button>
+    </div>
+
+    <div class="the">
+      <h2 class="khong-cach">Cấp key mới</h2>
+      <div class="hang">
+        <div><label for="cap-shop">Mã shop (chữ thường, gạch nối)</label><input id="cap-shop" type="text" placeholder="toprun"></div>
+        <div><label for="cap-ten">Tên shop</label><input id="cap-ten" type="text" placeholder="TopRun"></div>
+        <div><label for="cap-nganh">Ngành</label>
+          <select id="cap-nganh"><option value="giay-chay">Giày chạy</option><option value="nha-thuoc">Nhà thuốc</option></select></div>
+        <div><label for="cap-het-han">Hết hạn</label><input id="cap-het-han" type="date"></div>
+        <div><label for="cap-so-may">Số máy</label><input id="cap-so-may" type="number" value="3" min="1" max="20"></div>
+      </div>
+      <label>Mảnh bán kèm (ba mảnh lõi luôn bật)</label>
+      <div id="cap-manh" class="o-manh"></div>
+      <div class="hang cach-tren"><button id="nut-cap" class="chinh">Cấp key</button></div>
+      <div id="bao-cap"></div>
+      <div id="key-moi" class="the" hidden>
+        <div class="mo">Key vừa cấp — đọc cho khách, chỉ hiện một lần ở đây:</div>
+        <div id="key-moi-chu" class="key-to"></div>
+        <div class="hang cach-tren"><button id="nut-chep-key">Chép</button></div>
+      </div>
+    </div>
+
+    <div class="the">
+      <div class="hang giua">
+        <h2 class="khong-cach">Các key</h2>
+        <button id="nut-tai">Tải lại</button>
+      </div>
+      <div id="bao-key"></div>
+      <div class="cuon-ngang">
+      <table>
+        <thead><tr><th>Shop</th><th>Key</th><th>Mảnh</th><th>Hết hạn</th><th>Trạng thái</th><th>Máy</th><th>Landing</th><th></th></tr></thead>
+        <tbody id="bang-key"></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div id="chi-tiet" class="the" hidden>
+      <div class="hang giua">
+        <h2 id="ct-tieu-de" class="khong-cach"></h2>
+        <button id="nut-dong-ct">Đóng</button>
+      </div>
+      <div id="bao-ct"></div>
+      <h2>Máy đang dùng key</h2>
+      <table>
+        <thead><tr><th>Tên máy</th><th>Mã</th><th>Ghép lúc</th><th>Kiểm gần nhất</th><th>Trực</th><th></th></tr></thead>
+        <tbody id="bang-may"></tbody>
+      </table>
+      <h2>Mảnh</h2>
+      <div id="ct-manh" class="o-manh"></div>
+      <div class="hang cach-tren"><button id="nut-luu-manh">Lưu mảnh</button></div>
+      <h2>Hạn và khoá</h2>
+      <div class="hang">
+        <input id="ct-het-han" type="date" class="hep">
+        <button id="nut-gia-han">Gia hạn</button>
+        <input id="ct-ly-do" type="text" placeholder="lý do khoá" class="vua">
+        <button id="nut-khoa" class="nguy">Khoá key</button>
+        <button id="nut-mo">Mở khoá</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="/quan-tri/app.js"></script>
+</body>
+</html>

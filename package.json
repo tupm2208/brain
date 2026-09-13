@@ -10,7 +10,7 @@
     "build": "tsc --build",
     "check": "tsc --build --dry",
     "clean": "tsc --build --clean",
-    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js",
+    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js test/license.test.js test/may-chu.test.js test/quan-tri.test.js",
     "test:mysql": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 --test-force-exit test/noi-hai-phan.test.js"
   },
   "devDependencies": {

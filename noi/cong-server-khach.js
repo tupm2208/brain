@@ -19,13 +19,14 @@ const TEN_CONG_CU = [
 
 /**
  * @param diaChi  goc cua server khach, vi du "https://toprun.site"
- * @param ma      ma dich vu rieng cua bo nao (BO_NAO_TOKEN) — khong dung chung ma quan tri
+ * @param ma      ve dich vu ky tu Xeon — mot chuoi, hoac mot HAM tra chuoi (de xin ve moi khi gan het)
  * @param goi     ham goi mang; de thay duoc trong bai kiem tra
  */
 function taoCongServerKhach({ diaChi, ma, goi = globalThis.fetch, hanMs = 10000, nhatKy } = {}) {
   if (!diaChi) throw new Error("Cổng server khách cần `diaChi`.");
   const goc = String(diaChi).replace(/\/+$/, "");
   const ky = nhatKy ?? { tin: () => {}, canhBao: () => {} };
+  const layMa = () => (typeof ma === "function" ? ma() : ma);
   let dangSong = true;
 
   async function goiCongCu(ten, vao) {
@@ -35,7 +36,7 @@ function taoCongServerKhach({ diaChi, ma, goi = globalThis.fetch, hanMs = 10000,
       const tl = await goi(`${goc}/api/bo-nao/cong-cu`, {
         method: "POST",
         signal: bo.signal,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${ma}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${layMa()}` },
         body: JSON.stringify({ ten, input: vao })
       });
       const than = await tl.json().catch(() => ({}));
@@ -88,7 +89,7 @@ function taoCongServerKhach({ diaChi, ma, goi = globalThis.fetch, hanMs = 10000,
       const tl = await goi(`${goc}/api/hop-thu/gui`, {
         method: "POST",
         signal: bo.signal,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${ma}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${layMa()}` },
         body: JSON.stringify({ kenh, nguoi, chu })
       });
       const than = await tl.json().catch(() => ({}));
