@@ -13,11 +13,6 @@ export * from "./engine/memory";
 export * from "./engine/muc-luc";
 export * from "./engine/gates";
 export * from "./engine/turn";
-export * from "./link/goi-qua-day";
-export * from "./link/may-chu";
-export * from "./link/kho-khoa";
-export * from "./link/kho-kich-hoat";
-export * from "./link/chung-chi-xeon";
 export { giayChayPack } from "./packs/giay-chay/index";
 export { nhaThuocPack } from "./packs/nha-thuoc/index";
 

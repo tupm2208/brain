@@ -41,7 +41,7 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 | `noi/` | `chay.js` điểm khởi động · `may-chu.js` HTTP · `quan-tri.js` hai trang web · `cong-server-khach.js` cổng gọi landing · `tri-nho.js` |
 | `noi/trang/` | HTML/JS/CSS của `/quan-tri` (anh) và `/may` (chủ key). CSP chặt, không inline |
 | `packages/contract` | Giao kèo: kiểu dữ liệu, mã mảnh, công cụ bot |
-| `packages/brain` | Bộ máy trả lời trung lập + hai bộ luật ngành (giày chạy, nhà thuốc). `src/link/*` là thiết kế cũ, chỉ `omi/` còn dùng cho test |
+| `packages/brain` | Bộ máy trả lời trung lập + hai bộ luật ngành (giày chạy, nhà thuốc). Thiết kế `link/*` cũ (TLS, kích hoạt) đã xoá 14/09/2026 — Xeon quản license ở `license/` |
 | `test/` | `license`, `may-chu`, `quan-tri`, và `noi-hai-phan` (cần MySQL 3307, `npm run test:mysql`) |
 
 ## Các cửa HTTP
