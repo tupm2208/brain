@@ -1,39 +1,47 @@
-// Cac ma dinh danh dung chung ba khoi.
-// Dung kieu "gan nhan" (branded) de khong lo truyen nham ma nay sang cho ma kia —
-// day chinh la thu ma JavaScript tran khong bat duoc, va la mot ly do chon TypeScript.
+/**
+ * @file Branded identifier types shared by every part of the platform.
+ *
+ * Plain strings are easy to mix up: an `ItemId` passed where a `VariantId` is expected is a
+ * bug plain JavaScript cannot catch. Branding the types makes such a mix-up a compile error,
+ * which is one of the main reasons the contract is written in TypeScript.
+ */
 
 declare const brand: unique symbol;
+
+/** Attaches a compile-time tag `B` to a base type `T` without changing its runtime shape. */
 type Brand<T, B extends string> = T & { readonly [brand]: B };
 
-/** Mot nha ban hang (mot khach mua nen tang). */
+/** One merchant (one customer of the platform). Also called "shop" on the wire. */
 export type TenantId = Brand<string, "TenantId">;
-/** Mot may cu the cua nha ban hang do — ma kich hoat gan voi may nay. */
+/** One specific machine of that merchant; licences are bound to machines. */
 export type MachineId = Brand<string, "MachineId">;
-/** Mot hoi thoai tren kenh (Messenger, Zalo...). */
+/** One conversation on a channel (Messenger, Zalo, ...). */
 export type ConversationId = Brand<string, "ConversationId">;
-/** Mot mon hang trong muc luc. */
+/** One item in the catalog. */
 export type ItemId = Brand<string, "ItemId">;
-/** Mot bien the cua mon hang: size giay, ham luong thuoc, khung gio spa... */
+/** One variant of an item: shoe size, drug strength, spa time slot, ... */
 export type VariantId = Brand<string, "VariantId">;
-/** Mot kho hang. */
+/** One warehouse. */
 export type WarehouseId = Brand<string, "WarehouseId">;
-/** Mot don hang. */
+/** One order. */
 export type OrderId = Brand<string, "OrderId">;
-/** Mot tai khoan nguoi dung trong OMI (nhan vien, chu shop, hoac chinh con bot). */
+/** One user account in the operating console (staff, owner, or the bot itself). */
 export type ActorId = Brand<string, "ActorId">;
 
-export const asTenantId = (v: string): TenantId => v as TenantId;
-export const asMachineId = (v: string): MachineId => v as MachineId;
-export const asConversationId = (v: string): ConversationId => v as ConversationId;
-export const asItemId = (v: string): ItemId => v as ItemId;
-export const asVariantId = (v: string): VariantId => v as VariantId;
-export const asWarehouseId = (v: string): WarehouseId => v as WarehouseId;
-export const asOrderId = (v: string): OrderId => v as OrderId;
-export const asActorId = (v: string): ActorId => v as ActorId;
+export const asTenantId = (value: string): TenantId => value as TenantId;
+export const asMachineId = (value: string): MachineId => value as MachineId;
+export const asConversationId = (value: string): ConversationId => value as ConversationId;
+export const asItemId = (value: string): ItemId => value as ItemId;
+export const asVariantId = (value: string): VariantId => value as VariantId;
+export const asWarehouseId = (value: string): WarehouseId => value as WarehouseId;
+export const asOrderId = (value: string): OrderId => value as OrderId;
+export const asActorId = (value: string): ActorId => value as ActorId;
 
 /**
- * Danh tinh cua chinh con bot khi no goi cong cu sang OMI.
- * Bot la MOT TAI KHOAN nhu nhan vien, quyen han che: doc ton, tra don, tao don nhap;
- * khong chi tien, khong sua gia, khong xoa. Nhat ky phan biet duoc bot voi nguoi.
+ * Identity of the bot itself when it calls tools on the merchant's server.
+ *
+ * The bot is an ordinary account with limited rights: it can read stock, look up orders and
+ * draft orders; it can never move money, change prices or delete anything. Audit logs must be
+ * able to tell the bot apart from humans, hence a dedicated actor id.
  */
 export const BOT_ACTOR: ActorId = "bot" as ActorId;

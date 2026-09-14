@@ -1,14 +1,24 @@
-// CHUAN HOA CHU TIENG VIET — nam trong ban giao keo vi CA BA KHOI phai lam GIONG HET.
-//
-// Vi sao khong de rieng o Bo nao: OMI ghi cot chu da chuan hoa de tim kiem, Bo nao
-// chuan hoa cau khach go de so khop. Hai ben lech nhau mot ly la nhan kho khong bao
-// gio gap duoc cau khach — dung kieu loi "bao het hang trong khi kho con hang".
-//
-// Bai hoc that tu he TopRun: kho tin nhan co khoang 0,6% ban ghi luu o dang NFD
-// (chu va dau tach roi). Ham chuan hoa cu chi chon MOT trong hai dang nen 1.224 tin
-// that kieu "doi nay con 42 ko" lot het qua cong nhan dien.
+/**
+ * @file Vietnamese text normalisation, shared by every part of the platform.
+ *
+ * Why this lives in the contract instead of inside the brain: the merchant server stores a
+ * normalised copy of product names for searching, and the brain normalises what customers
+ * type in order to match against it. If the two sides normalised differently by even one
+ * character, a warehouse label would never meet a customer sentence, and the bot would
+ * report "out of stock" while the shelf is full.
+ *
+ * A real lesson from the TopRun message archive: about 0.6% of stored messages were in NFD
+ * form (base letters and combining marks stored separately). The old normaliser handled only
+ * one of the two forms, so 1,224 real messages such as "doi nay con 42 ko" slipped past intent
+ * detection unnoticed.
+ */
 
-/** Bo dau, ha chu thuong, gom khoang trang. Dung de SO KHOP, khong dung de hien thi. */
+/**
+ * Strips diacritics, lower-cases, collapses whitespace. Use for MATCHING, never for display.
+ *
+ * Commas are kept on purpose: "3,19 trieu" split into "3" and "19 trieu" would make the
+ * number scanner read a completely different amount and block a correct sentence.
+ */
 export function normalize(value: unknown): string {
   return String(value ?? "")
     .normalize("NFC")
@@ -17,27 +27,25 @@ export function normalize(value: unknown): string {
     .replace(/đ/g, "d")
     .replace(/Đ/g, "D")
     .toLowerCase()
-    // Giu dau phay: "3,19 trieu" bi cat thanh "3" va "19 trieu" thi cong so doc ra
-    // mot con so hoan toan khac, roi chan nham cau viet dung.
     .replace(/[^a-z0-9\s.,/+-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * Ha chu thuong nhung GIU DAU. Dung cho cac cong soi CAU CUA BOT.
+ * Lower-cases but KEEPS diacritics. Used by the gates that inspect the bot's own sentences.
  *
- * Ly do phai co ham nay ben canh `normalize`: bo dau xong thi "đôi" (don vi dem giay)
- * va "đổi" (doi tra) thanh mot chu. Cau ban hang binh thuong "còn 7 đôi size 42"
- * se bi cong chinh sach doc thanh loi hua doi tra va chan mat.
+ * This must exist next to `normalize`: once diacritics are stripped, "đôi" (the counter word
+ * for a pair of shoes) and "đổi" (to exchange) become the same string. An ordinary sales
+ * sentence like "còn 7 đôi size 42" would then be read as an exchange promise and blocked.
  */
 export function soft(value: unknown): string {
   return String(value ?? "").normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 /**
- * Chi bo DAU, giu nguyen moi ky tu khac (ke ca ky tu regex).
- * Dung de doi chieu mot mau regex viet co dau voi cau viet khong dau.
+ * Removes ONLY diacritics; every other character (including regex metacharacters) is kept.
+ * Used to compare a diacritic-aware regex pattern against text typed without diacritics.
  */
 export function stripDiacritics(value: unknown): string {
   return String(value ?? "")
@@ -48,28 +56,29 @@ export function stripDiacritics(value: unknown): string {
 }
 
 /**
- * Ep phang: chi giu chu va so, GIU DAU. Dung de doi chieu cum bi cam khi cau bot
- * co dau cau chen vao giua — "rẻ nhất - thị trường" van phai bi bat.
+ * Flattens to letters and digits only, keeping diacritics. Used to match forbidden phrases
+ * even when punctuation is inserted between the words: "rẻ nhất - thị trường" must still hit.
  */
 export function squash(value: unknown): string {
   return String(value ?? "").normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
-/** Tach thanh tu, bo tu qua ngan. */
+/** Splits into normalised words, dropping single-character tokens. */
 export function tokens(value: unknown): string[] {
   return normalize(value).split(" ").filter((t) => t.length > 1);
 }
 
-/** Bo khoang trang han toan — de "NewBalance" khop "new balance". */
+/** Removes all whitespace, dots and dashes so that "NewBalance" matches "new balance". */
 export function tight(value: unknown): string {
   return normalize(value).replace(/[\s.-]/g, "");
 }
 
+/** Escapes a string for literal use inside a `RegExp`. */
 export function escapeRe(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Chuoi co chua tu nay khong, tinh ca ranh gioi tu. */
+/** Whether `haystack` contains `word` as a whole word (normalised on both sides). */
 export function hasWord(haystack: string, word: string): boolean {
   const h = normalize(haystack);
   const w = normalize(word);
@@ -77,7 +86,7 @@ export function hasWord(haystack: string, word: string): boolean {
   return new RegExp(`(^|[^a-z0-9])${escapeRe(w)}([^a-z0-9]|$)`).test(h);
 }
 
-/** Do trung tu giua hai chuoi, 0..1. Chia cho ben dai hon. */
+/** Token overlap between two strings in 0..1, divided by the longer side. */
 export function overlap(a: string, b: string): number {
   const left = new Set(tokens(a));
   const right = tokens(b);
@@ -88,11 +97,11 @@ export function overlap(a: string, b: string): number {
 }
 
 /**
- * Cau khach go co phu duoc bao nhieu phan TEN SAN PHAM, 0..1.
+ * How much of a PRODUCT NAME the customer's sentence covers, in 0..1.
  *
- * Khac `overlap` o cho khong chia cho do dai cau khach. Ly do: `overlap` phat nguoi
- * noi dai — "cho em hoi doi adizero boston 13 nay con size 42 khong shop oi" ra diem
- * thap hon "boston 13 con 42 khong", trong khi ca hai cung chi dung mot mon.
+ * Unlike `overlap` this does not divide by the length of the query. `overlap` punishes
+ * talkative customers: "cho em hoi doi adizero boston 13 nay con size 42 khong shop oi" would
+ * score lower than "boston 13 con 42 khong" although both name exactly one product.
  */
 export function coverage(query: string, target: string): number {
   const q = new Set(tokens(query));
@@ -104,10 +113,11 @@ export function coverage(query: string, target: string): number {
 }
 
 /**
- * Chuoi co nhac ten hang nay khong.
+ * Whether the text mentions a brand.
  *
- * Phai xet ranh gioi tu chu khong duoc dung "chuoi con": hang "On" dai hai chu cai,
- * neu so kieu chuoi con thi "con hang khong" cung bi coi la nhac hang On.
+ * Word boundaries are required rather than substring search: the brand "On" is two letters,
+ * and a substring test would flag "con hang khong" as mentioning it. Brands of five letters or
+ * more are additionally matched with whitespace removed ("newbalance").
  */
 export function mentionsBrand(text: string, brand: string): boolean {
   const b = normalize(brand);

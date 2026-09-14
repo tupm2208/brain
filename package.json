@@ -1,17 +1,18 @@
 {
   "name": "toprun-bo-nao",
   "private": true,
-  "version": "0.0.1",
-  "description": "Bo nao chatbot chay tren Xeon — copy tu seller-platform 12/09/2026, dang noi vao server cua khach",
+  "version": "0.1.0",
+  "description": "The brain (chatbot engine) and licence server running on Xeon. Three packages: contract, brain, xeon.",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "build": "tsc --build",
-    "check": "tsc --build --dry",
+    "check": "tsc --build --dry && tsc -p tsconfig.test.json",
     "clean": "tsc --build --clean",
-    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit packages/contract/test/contract.test.js packages/brain/test/brain.test.js test/license.test.js test/may-chu.test.js test/quan-tri.test.js test/cong-server-khach.test.js",
-    "test:mysql": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 --test-force-exit test/noi-hai-phan.test.js"
+    "start": "node packages/xeon/dist/main.js",
+    "test": "npm run build && node --test --test-timeout=60000 --test-force-exit \"packages/*/test/*.test.mts\"",
+    "test:mysql": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 --test-force-exit packages/xeon/test-mysql/integration.test.mts"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",

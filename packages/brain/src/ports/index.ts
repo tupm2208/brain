@@ -1,8 +1,10 @@
-// CUA NGO RA NGOAI cua bo may.
-//
-// Bo may khong tu mo ket noi, khong tu doc gio he thong, khong tu goi mo hinh AI.
-// Tat ca di qua cac cua nay. Nho vay chay thu duoc tron ven bang cua gia — khong can
-// mang, khong can may khach bat, khong ton tien goi mo hinh.
+/**
+ * @file Ports: the engine's only doors to the outside world.
+ *
+ * The engine never opens a connection, never reads the system clock, never calls an AI model.
+ * Everything goes through these interfaces, which is what makes the engine fully testable with
+ * fakes: no network, no merchant machine, no model costs.
+ */
 
 import type {
   CatalogItemLite, ConversationId, LinkError, TenantId, ToolInput, ToolName, ToolOutput
@@ -13,34 +15,34 @@ export type ToolResult<K extends ToolName> =
   | { ok: false; tool: K; error: LinkError };
 
 /**
- * Ngu canh cua MOT luot goi cong cu. Hai truong nay khong phai tuy chon ve mat y nghia:
+ * Context of ONE tool call. Neither field is optional in meaning:
  *
- * - `conversationId`: OMI dung no lam CONG. Bot khong mang theo hoi thoai thi khong mo
- *   duoc don nao — day la cho luat "moi luot goi phai gan voi mot hoi thoai that" duoc
- *   cuong che, chu khong phai mot loi hua trong tai lieu.
- * - `idempotencyKey`: duong day gui lai khi rot mang. Thieu no la khach nhan HAI ma don
- *   cho mot don.
+ * - `conversationId`: the merchant server uses it as a GATE. A call that does not carry the
+ *   conversation cannot open any order; this is where "every call belongs to a real
+ *   conversation" is enforced, rather than promised in documentation.
+ * - `idempotencyKey`: the link retries after a network drop. Without the key the customer
+ *   receives TWO draft orders for one purchase.
  */
 export interface CallCtx {
   conversationId: ConversationId;
   idempotencyKey?: string | undefined;
 }
 
-/** Goi cong cu sang OMI qua duong noi. */
+/** Calls tools on the merchant server. */
 export interface ToolPort {
-  /** Cong cu nao dang thuc su goi duoc (giao cua giay phep va bo luat nganh). */
+  /** Tools that can really be called right now (licence intersected with the pack). */
   available(): ToolName[];
   call<K extends ToolName>(
-    tool: K, input: ToolInput<K>, nguCanh?: CallCtx | undefined
+    tool: K, input: ToolInput<K>, ctx?: CallCtx | undefined
   ): Promise<ToolResult<K>>;
-  /** May shop co dang noi duoc khong. Mat ket noi thi bot chuyen sang che do han che. */
+  /** Whether the merchant server is reachable. Offline puts the bot in restricted mode. */
   online(): boolean;
 }
 
-/** Muc luc hang hoa Bo nao giu — chi ten, ma, thuoc tinh. Khong co du lieu khach. */
+/** The catalog the brain may consult: names, codes, attributes. No customer data. */
 export interface CatalogPort {
   search(tenant: TenantId, query: string, limit: number): Promise<CatalogItemLite[]>;
-  /** Tong so mon trong muc luc. Cong "khong kinh doanh hang X" can con so nay. */
+  /** Total number of items. The "we do not carry brand X" gate needs this number. */
   size(tenant: TenantId): Promise<number>;
 }
 
@@ -50,47 +52,46 @@ export interface Clock {
 
 export const systemClock: Clock = { now: () => new Date() };
 
-/** Mot dong trong hoi thoai. */
+/** One line of a conversation. */
 export interface Turn {
   role: "customer" | "shop";
   text: string;
   at: string;
-  /** So anh khach gui trong luot do — cong "da co anh" doc con so nay. */
+  /** Number of images the customer sent in that turn; the "already sent a photo" check reads it. */
   imageCount?: number | undefined;
 }
 
-/** Trang thai hoi thoai luu giua cac luot. */
+/** Conversation state persisted between turns. */
 export interface ConversationState {
   conversationId: ConversationId;
   tenant: TenantId;
   turns: Turn[];
-  /** Mon hang dang la tam diem cua phien mua hien tai. */
+  /** Item in focus for the current shopping episode. */
   focusItemCode?: string | undefined;
-  /** Ma noi bo cua mon do — cong cu nao doi `ItemId` thi phai dung cai nay, khong dung ma shop. */
+  /** Internal id of that item; tools that take an `ItemId` must use this, never the merchant code. */
   focusItemId?: string | undefined;
-  /** Gia tri da biet cua tung truc bien the: { size: "42" }, { thoiluong: "60 phut" }. */
+  /** Known values per variant axis: { size: "42" }, { thoiluong: "60 phut" }. */
   focusSlots?: Record<string, string> | undefined;
-  /** Y dinh cua luot truoc — de doc duoc tin cut ("42", "ok") nhu cau tra loi tiep. */
+  /** Intent of the previous turn, so that a terse reply ("42", "ok") reads as a continuation. */
   lastIntentId?: string | undefined;
-  /** O thong tin bot vua hoi. Tin cut ngay sau do duoc hieu la dang tra loi o nay. */
+  /** Slot the bot just asked for. A terse next message is understood as answering it. */
   lastAskedSlot?: string | undefined;
-  /** Moc bat dau phien mua hien tai (ISO). */
+  /** Start of the current shopping episode (ISO). */
   episodeStartedAt?: string | undefined;
-  /** Lan gan nhat bot hoi nguoc khach (ISO) — cong `ask_back_once` doc moc nay. */
+  /** Last time the bot asked the customer back (ISO); the `ask_back_once` gate reads it. */
   lastAskBackAt?: string | undefined;
   /**
-   * Da hoi nguoc khach may lan trong phien nay.
-   * Chi co moc thoi gian thi khong du: khach tra loi cham hon cua so 30 phut —
-   * chuyen rat thuong tren Fanpage — la bot hoi mai ma khong bao gio goi nguoi that.
+   * How many times the bot asked back in this episode.
+   * A timestamp alone is not enough: customers on Fanpage often answer after the 30-minute
+   * window, and the bot would keep asking forever without ever calling a human.
    */
   askBackCount?: number | undefined;
   /**
-   * So luot lien tiep bot chi biet chao lai vi khong ra y dinh nao.
-   * Khong dem thi khach go "alo", "ok", "co ai khong" la bot lap loi chao vo han
-   * va khong bao gio goi nguoi that.
+   * Consecutive turns in which the bot could only greet because no intent was found.
+   * Without the counter, "alo", "ok", "co ai khong" makes the bot loop greetings forever.
    */
   idleCount?: number | undefined;
-  /** So dien thoai khach TU GO trong hoi thoai nay. Khong lay tu bat ky nguon nao khac. */
+  /** Phone number the customer TYPED in this conversation. Never taken from any other source. */
   phoneGivenInConversation?: string | undefined;
   handedOff?: boolean | undefined;
 }
@@ -101,11 +102,11 @@ export interface MemoryPort {
 }
 
 /**
- * Cua goi mo hinh AI. CO Y de tuy chon: bo may chay tron ven khong can no.
- * Luat chay truoc, AI chay sau — va AI chi duoc dien dat trong pham vi bo may dua ra.
+ * Door to an AI model. INTENTIONALLY optional: the engine runs completely without it.
+ * Rules run first, the model second, and the model may only rephrase within what the engine allows.
  */
 export interface AdvisorPort {
-  /** Viet lai cau cho tu nhien hon, KHONG duoc them so lieu hay cam ket moi. */
+  /** Rewrites a sentence more naturally WITHOUT adding numbers or new commitments. */
   rephrase(input: { draft: string; tone: string[]; facts: string[] }): Promise<string>;
 }
 

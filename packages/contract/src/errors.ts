@@ -1,36 +1,41 @@
-// Ma loi dung chung. Nhanh theo `code`, KHONG bao gio so khop chuoi `message` —
-// day la bai hoc tu ai_fallback_gate ben he cu.
+/**
+ * @file Shared error codes.
+ *
+ * Callers branch on `code` and NEVER on the text of `message`. That rule is a lesson from the
+ * legacy fallback gate, which matched error strings and broke whenever a message was reworded.
+ */
 
 export const ERROR_CODES = [
-  /** Duong noi OMI toi day chua san sang (may shop tat, rot mang). */
+  /** The link to the merchant server is down (machine off, network dropped). */
   "omi_offline",
-  /** Mang le hoac may khong duoc bat trong ma kich hoat. */
+  /** The module is not enabled by the licence. */
   "module_disabled",
-  /** Cong cu khong ton tai, hoac khong thuoc mang le dang bat. */
+  /** The tool does not exist, or belongs to a module that is switched off. */
   "tool_unknown",
-  /** Du lieu vao sai hinh dang. */
+  /** The input has the wrong shape. */
   "bad_input",
-  /** Nguoi goi khong du quyen (nhan vien, hoac chinh con bot). */
+  /** The caller (staff, or the bot itself) lacks the right. */
   "forbidden",
-  /** Khong tim thay ban ghi. */
+  /** The record was not found. */
   "not_found",
-  /** Ma kich hoat het han hoac bi thu hoi. */
+  /** The licence expired or was revoked. */
   "license_invalid",
-  /** Ban OMI qua cu so voi Bo nao — tu choi phuc vu con hon tra loi sai. */
+  /** The client build is too old for the brain; refusing is safer than answering wrongly. */
   "version_too_old",
-  /** Vuot han muc goi trong mot khoang thoi gian. */
+  /** Too many calls within the window. */
   "rate_limited",
-  /** Loi khong doan truoc duoc. */
+  /** Unexpected failure. */
   "internal"
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
+/** Error shape carried across the wire between the brain and the merchant server. */
 export interface LinkError {
   code: ErrorCode;
-  /** Cau doc duoc cho nguoi van hanh. KHONG dua thang cho khach hang cuoi. */
+  /** Readable for operators. Never forwarded verbatim to end customers. */
   message: string;
-  /** Du lieu phu de dua vao nhat ky. Khong duoc chua thong tin ca nhan cua khach. */
+  /** Extra data for logs. Must not contain customer personal data. */
   detail?: Record<string, string | number | boolean>;
 }
 
@@ -42,6 +47,6 @@ export function linkError(
   return detail === undefined ? { code, message } : { code, message, detail };
 }
 
-export function isErrorCode(v: unknown): v is ErrorCode {
-  return typeof v === "string" && (ERROR_CODES as readonly string[]).includes(v);
+export function isErrorCode(value: unknown): value is ErrorCode {
+  return typeof value === "string" && (ERROR_CODES as readonly string[]).includes(value);
 }

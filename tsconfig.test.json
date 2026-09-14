@@ -1,0 +1,15 @@
+{
+  // Type-checks the test files without emitting. Tests run directly on Node (type stripping).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "rootDir": ".",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": false
+  },
+  "include": ["packages/*/test/**/*.mts"]
+}

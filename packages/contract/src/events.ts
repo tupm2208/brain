@@ -1,31 +1,33 @@
-// BANG TIN SU KIEN.
-//
-// Luat kien truc (Phan 9 ban dac ta): cac manh KHONG goi thang nhau. Manh nao co viec
-// thi thong bao len bang tin; ai quan tam thi tu nghe. Manh chua bat thi loi thong bao
-// roi vao im lang — khong loi, khong sap. Nho vay khach goi Khoi dong va khach goi
-// Van hanh day du chay chung mot bo ma.
+/**
+ * @file The event board.
+ *
+ * Architectural rule (specification, part 9): modules do not call each other directly. A module
+ * that has something to say publishes an event; whoever cares subscribes. If the interested
+ * module is switched off the event simply lands in silence: no error, no crash. That is what
+ * lets a "starter" customer and a "full operations" customer run the same code base.
+ */
 
 import type { OrderId, ItemId, VariantId, WarehouseId, TenantId, ActorId, ConversationId } from "./ids";
 import type { Money } from "./money";
 
 export interface EventMap {
-  /** Don vua duoc tao (tu chat, tu gian hang, hoac nhap tay). */
+  /** An order was created (from chat, from the storefront, or by hand). */
   "order.created": { orderId: OrderId; source: "chat" | "storefront" | "manual" };
-  /** Khach da tra tien — su kien dat nhat trong he, nhieu manh cung nghe. */
+  /** The customer paid. The most valuable event in the system; several modules listen. */
   "order.paid": { orderId: OrderId; amount: Money; method: "bank" | "cod" | "other" };
-  /** Trang thai don doi. */
+  /** Order status changed. */
   "order.status_changed": { orderId: OrderId; from: string; to: string };
-  /** Don bi huy. */
+  /** Order cancelled. */
   "order.cancelled": { orderId: OrderId; reason: string };
-  /** Ton kho doi — bo nap du lieu cua Bo nao nghe de cap nhat muc luc. */
+  /** Stock changed. The brain's catalog loader listens to refresh its index. */
   "stock.changed": { itemId: ItemId; variantId: VariantId; warehouseId: WarehouseId; qty: number };
-  /** Da tao van don. */
+  /** A shipment was created. */
   "shipment.created": { orderId: OrderId; carrier: string; tracking: string };
-  /** Doi tac bao het hang — chuoi xu ly hoan tien bat dau tu day, manh `tien` nghe. */
+  /** A partner reported out of stock; the refund chain starts here and the `tien` module listens. */
   "partner.out_of_stock": { orderId: OrderId; lineIndex: number; warehouseId: WarehouseId };
-  /** Mot phien dang nhap nen tang bi dut — man Lien ket tai khoan bao do. */
+  /** A platform login session expired; the account-link screen turns red. */
   "link.session_expired": { platform: string; since: string };
-  /** Bot da chuyen cho nguoi that. */
+  /** The bot handed the conversation to a human. */
   "bot.handoff": { conversationId: ConversationId; reason: string };
 }
 
@@ -35,16 +37,16 @@ export type EventPayload<K extends EventName> = EventMap[K];
 export interface EventEnvelope<K extends EventName = EventName> {
   name: K;
   payload: EventMap[K];
-  /** Ai gay ra viec nay: mot nhan vien, hoac chinh con bot. Bat buoc — nhat ky vo dung neu thieu. */
+  /** Who caused it: a staff member or the bot. Mandatory; an audit log without it is useless. */
   actor: ActorId;
   tenant: TenantId;
-  /** Thoi diem, dang ISO. */
+  /** ISO timestamp. */
   at: string;
 }
 
 /**
- * Bang khai kieu anh xa: them mot su kien vao EventMap ma quen o day la GAY LUC BIEN DICH.
- * (Ban cu dung `readonly EventName[]` nen quen thi im lang — agent phan bien bat duoc.)
+ * Mapped-type registry: adding an event to `EventMap` and forgetting it here is a COMPILE error.
+ * (An earlier `readonly EventName[]` version failed silently; review caught it.)
  */
 const EVENT_NAME_SET: { readonly [K in EventName]: true } = {
   "order.created": true,
@@ -60,20 +62,20 @@ const EVENT_NAME_SET: { readonly [K in EventName]: true } = {
 
 export const EVENT_NAMES = Object.keys(EVENT_NAME_SET) as EventName[];
 
-export function isEventName(v: unknown): v is EventName {
-  return typeof v === "string" && Object.prototype.hasOwnProperty.call(EVENT_NAME_SET, v);
+export function isEventName(value: unknown): value is EventName {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(EVENT_NAME_SET, value);
 }
 
 /**
- * Su kien duoc tieu thu BEN NGOAI tien trinh OMI — Bo nao nghe qua duong noi,
- * hoac giao dien nghe de bao do. Khai o day de `assertModuleGraph` khong bao nham
- * la "su kien mo coi", nhung van bat duoc su kien that su khong ai dung.
+ * Events consumed OUTSIDE the merchant server process: the brain listens over the link, or
+ * the UI listens to show a warning. Declared here so that `assertModuleGraph` does not flag
+ * them as orphans while still catching events that truly nobody uses.
  */
 export const EXTERNALLY_CONSUMED_EVENTS: { readonly [K in EventName]?: string } = {
-  "stock.changed": "Bo nao cap nhat muc luc hang hoa",
-  "order.paid": "Bo nao nhan khach xac nhan da nhan tien",
-  "order.created": "Bo nao va bao cao",
-  "shipment.created": "Bo nao tra loi 'don em toi dau roi'",
-  "link.session_expired": "Man Lien ket tai khoan bao do, va bao Telegram",
-  "bot.handoff": "Thong bao cho nguoi truc"
+  "stock.changed": "The brain refreshes its catalog index",
+  "order.paid": "The brain acknowledges payment to the customer",
+  "order.created": "The brain and reporting",
+  "shipment.created": "The brain answers 'where is my order'",
+  "link.session_expired": "The account-link screen turns red and Telegram is notified",
+  "bot.handoff": "The person on duty is notified"
 };

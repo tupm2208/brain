@@ -1,5 +1,9 @@
-// Ban giao keo giua ba khoi. Sua o day la ca ba khoi cung biet — het canh chep tay
-// mot cong thuc ra ba noi nhu he TopRun hien nay.
+/**
+ * @file The contract between the three parts of the platform: merchant server, brain, console.
+ *
+ * Changing anything here changes all three parts at once. That is the point: the legacy TopRun
+ * system copied one formula into three places by hand, and this package ends that.
+ */
 
 export * from "./ids";
 export * from "./text";
@@ -10,24 +14,17 @@ export * from "./catalog";
 export * from "./pii";
 export * from "./tools";
 export * from "./modules";
-export * from "./license";
-export * from "./link";
-export * from "./khoa-may";
-export * from "./khung-dong";
-export * from "./chung-chi";
-export * from "./ma-kich-hoat";
-export * from "./pheu-dang-ky";
+export * from "./entitlements";
 
 import { assertModuleGraph } from "./modules";
 import { assertToolsSafeForBot } from "./tools";
 
-/** Phien ban ban giao keo. Bo nao dung so nay de tu choi ban OMI qua cu. */
-export const CONTRACT_VERSION = "0.3.0";
+/** Contract version. The brain uses it to refuse console builds that are too old. */
+export const CONTRACT_VERSION = "0.4.0";
 
 /**
- * Kiem tra cac luat kien truc tu chinh minh. Goi luc khoi dong Bo nao va OMI,
- * va goi trong bai kiem tra — de mot thay doi sai nguyen tac gay ngay,
- * khong cho toi luc phat hien bang tien that.
+ * Runs the architectural self-checks. Called at brain start-up and in the tests, so that a
+ * change violating a principle fails immediately instead of being discovered with real money.
  */
 export function selfCheck(): void {
   assertModuleGraph();

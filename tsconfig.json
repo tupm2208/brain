@@ -1,9 +1,10 @@
 {
-  // Tep giai phap o goc: `tsc --build` khong tham so se doc tep nay.
-  // Khong co no thi `npm run build` chet TS5083 tren may vua clone ve.
+  // Solution file at the root: `tsc --build` with no arguments reads this.
+  // Without it `npm run build` fails with TS5083 on a freshly cloned machine.
   "files": [],
   "references": [
     { "path": "packages/contract" },
-    { "path": "packages/brain" }
+    { "path": "packages/brain" },
+    { "path": "packages/xeon" }
   ]
 }

@@ -2,16 +2,22 @@
 
 Một máy chủ duy nhất phục vụ tất cả nhà bán hàng. **Đây là phần anh bán, và là phần khó sao
 chép nhất** — nên nó không bao giờ được gửi xuống máy khách. Từ 14/09/2026 nó còn là **nơi
-quản lý license** (anh Dũng chốt): cấp key, đếm máy, ký vé cho OMI và cho chính bộ não.
+quản lý license**: cấp key, đếm máy, ký vé cho OMI và cho chính bộ não.
+
+Từ 14/09/2026 toàn bộ mã viết lại bằng **TypeScript, hướng đối tượng, tên tiếng Anh**, chia ba
+gói. Giao thức với landing và OMI (đường HTTP, tên trường JSON, biến môi trường, tệp
+`license.json`, vé máy) **giữ nguyên**. Chuẩn thiết kế: `DESIGN.md`.
 
 ## Chạy
 
 ```bash
 cd D:\projects\toprunvn_modules\bo-nao
 npm install
-npm test          # 227 bài: giao kèo + bộ máy trả lời + license + máy chủ + trang quản trị
+npm test          # dịch rồi chạy 222 bài: giao kèo + bộ máy + license + máy chủ + trang quản trị
+npm run check     # kiểm kiểu cả mã lẫn test, không dịch
 
-XEON_ADMIN_MAT_KHAU=<từ 12 ký tự> XEON_DIA_CHI=https://xeon.toprun.vn PORT=4200 node noi/chay.js
+XEON_ADMIN_MAT_KHAU=<từ 12 ký tự> XEON_DIA_CHI=https://xeon.toprun.vn PORT=4200 npm start
+# npm start = node packages/xeon/dist/main.js (phải npm run build trước; npm test đã build sẵn)
 ```
 
 Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (0600) và sổ `du-lieu/license.json`.
@@ -31,18 +37,21 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 
 - Giữ: luật trả lời, kiến thức ngành, cổng an toàn, **sổ license và khoá ký**.
 - **Không giữ**: tồn kho, đơn hàng, số điện thoại, địa chỉ, lịch sử mua của khách hàng.
-  Cần số liệu thì hỏi server của shop, dùng xong bỏ.
+  Cần số liệu thì hỏi server của shop, dùng xong bỏ. Trí nhớ hội thoại nằm ở landing của shop.
 
-## Cấu trúc
+## Cấu trúc: ba gói
 
-| Thư mục | Nội dung |
-|---|---|
-| `license/` | `khoa-ky.js` khoá ký Ed25519 · `ve-may.js` ký/soi vé · `so-license.js` sổ JSON ghi nguyên tử · `dich-vu.js` luật license |
-| `noi/` | `chay.js` điểm khởi động · `may-chu.js` HTTP · `quan-tri.js` hai trang web · `cong-server-khach.js` cổng gọi landing · `tri-nho.js` |
-| `noi/trang/` | HTML/JS/CSS của `/quan-tri` (anh) và `/may` (chủ key). CSP chặt, không inline |
-| `packages/contract` | Giao kèo: kiểu dữ liệu, mã mảnh, công cụ bot |
-| `packages/brain` | Bộ máy trả lời trung lập + hai bộ luật ngành (giày chạy, nhà thuốc). Thiết kế `link/*` cũ (TLS, kích hoạt) đã xoá 14/09/2026 — Xeon quản license ở `license/` |
-| `test/` | `license`, `may-chu`, `quan-tri`, và `noi-hai-phan` (cần MySQL 3307, `npm run test:mysql`) |
+| Gói | Vai trò | Thư mục chính |
+|---|---|---|
+| `@sp/contract` | Giao kèo cho cả ba phần: kiểu định danh, chuẩn hoá chữ, tiền, sự kiện, mục lục và cổng chặn PII, bảng công cụ, bảng mảnh, quyền theo license | `packages/contract/src` |
+| `@sp/brain` | Bộ máy trả lời thuần, không mạng: `TurnEngine` và các cộng sự (`IntentDetector`, `ItemResolver`, `VariantNumberScanner`, `ToolDispatcher`, `GateChain`, `TemplateRenderer`), hồ sơ ngành và bộ soi (`PackValidator`), mục lục trong bộ nhớ | `packages/brain/src` |
+| `@sp/xeon` | Ứng dụng máy chủ: license (`LicenseService`, `LicenseLedger`, `SigningKeyStore`), cổng sang landing (`LandingGateway`), `BrainService`, lớp HTTP (chuỗi controller, `RateLimiter`, `AdminSessionManager`), hai trang web, điểm khởi động `main.ts` | `packages/xeon/src`, `packages/xeon/pages` |
+
+Kit vé máy (ký + soi) nằm ở `../chung/ve-may.js`, dùng chung với landing; gói xeon bọc kiểu
+TypeScript lên nó ở `support/ticket-kit.ts`.
+
+Test: `packages/*/test/*.test.mts` (TypeScript, Node 24 chạy thẳng, không cần dịch);
+`packages/xeon/test-mysql/integration.test.mts` cần MySQL 3307 (`npm run test:mysql`).
 
 ## Các cửa HTTP
 
@@ -50,6 +59,7 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 |---|---|---|
 | `POST /license/kiem` | OMI lúc mở, mỗi 6 giờ | `{ key, maMay, tenMay }` → vé máy 7 giờ + địa chỉ landing + cờ trực |
 | `POST /license/truc` | OMI mỗi 5 phút | `{ key, maMay }` → `{ truc }` |
+| `POST /license/roi` | OMI "rời máy này" | `{ key, maMay }` → `{ conLai }` |
 | `POST /license/landing-dang-ky` | bộ cài landing, một lần | `{ key, diaChi }` → khoá công Xeon + mã nhận tin riêng |
 | `GET /license/khoa-cong` | ai cũng được | khoá công ký |
 | `POST /tin-den` | landing, bằng mã nhận tin riêng | tin khách → bộ não trả lời qua `POST <landing>/api/hop-thu/gui` |
@@ -66,10 +76,9 @@ Mọi POST của hai trang web phải kèm tiêu đề `X-Yeu-Cau: xeon` (chốn
 ký Ed25519 bằng khoá của Xeon. Landing soi bằng khoá công, không gọi Xeon. Vai `quan-tri` cho
 OMI (7 giờ), vai `dich-vu` cho bộ não gọi landing (1 giờ). Chi tiết: `../KE-HOACH-BAN-RA.md`.
 
-## Còn nợ (xem `KE-HOACH-BAN-RA.md`, đợt L5)
+## Còn nợ
 
-- Danh sách công cụ vẫn khai cứng ở `cong-server-khach.js`, chưa đọc từ landing; thiếu `policy.get`,
-  `variant.chart`, `purchase.eta`, `customer.recognize`.
-- `catalog.size()` luôn trả tối đa 1.
-- Trí nhớ hội thoại còn trong RAM; sẽ chuyển về landing qua API.
 - Không có hàng đợi: Xeon tắt lúc tin đến là tin đó bot không trả lời.
+- Landing tìm hàng bằng cả câu (LIKE), bộ não gửi nguyên câu khách → bot không nhận ra món khi
+  câu có thêm chữ ("KE0696 còn size nào"). Sửa ở landing (`hang-kho/kho-bang.js`, tách từ khoá).
+- Kênh Facebook khi landing chưa có token trang: Xeon trả 500 chung chung thay vì nói rõ.

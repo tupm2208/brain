@@ -1,69 +1,70 @@
-// TIEN TREN DON — MOT GOC DUY NHAT.
-//
-// Ben he TopRun, cong thuc tien phai chep y het o BA repo va co han mot bai kiem tra
-// so tung byte de canh chung. Day la vet seo dat nhat cua he cu.
-// O nen tang nay tien chi co MOT hinh dang va MOT bo ham, nam trong ban giao keo.
-// Moi noi khac (OMI, Brain, Storefront) doc ket qua, KHONG duoc tu suy dien lai.
+/**
+ * @file Money on an order: ONE shape and ONE set of functions, owned by the contract.
+ *
+ * In the legacy TopRun system the money formula had to be copied verbatim into three
+ * repositories, guarded by a byte-for-byte comparison test. That was the most expensive scar
+ * of the old design. Here money has a single shape and a single origin; every other part
+ * (server, brain, console) reads the result and never re-derives it.
+ */
 
-/** Tien Viet, don vi dong, luon la so nguyen. Khong dung so thap phan cho tien. */
+/** Vietnamese dong, always an integer. Never use fractions for money. */
 export type Money = number;
 
 export interface MoneyOnOrder {
-  /** Tong tien khach phai tra cho don. */
+  /** Total the customer has to pay for the order. */
   total: Money;
-  /** Da tra bao nhieu (chuyen khoan + coc). */
+  /** Amount already paid (bank transfer plus deposit). */
   paid: Money;
-  /** Con phai tra. Luon = max(0, total - paid). Khong ai duoc tu tinh lai. */
+  /** Still owed. Always `max(0, total - paid)`; nobody is allowed to recompute it. */
   remaining: Money;
-  /** Phan thu ho khi giao (COD). Bang remaining neu don giao COD, nguoc lai 0. */
+  /** Cash collected on delivery. Equals `remaining` for COD orders, otherwise 0. */
   cod: Money;
 }
 
-function toInt(v: unknown): Money {
-  const n = typeof v === "number" ? v : Number(v);
+function toInt(value: unknown): Money {
+  const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
 /**
- * Chuan hoa tien cua mot don. Server phai goi ham nay TRUOC khi tra don ra ngoai;
- * client chi doc, cam tu suy dien tu trang thai thanh toan.
+ * Normalises the money of one order. The server must call this BEFORE returning an order;
+ * clients only read the result and must not infer anything from payment status themselves.
  */
-export function moneyOnOrder(input: {
-  total: unknown;
-  paid?: unknown;
-  isCod?: boolean;
-}): MoneyOnOrder {
+export function moneyOnOrder(input: { total: unknown; paid?: unknown; isCod?: boolean }): MoneyOnOrder {
   const total = Math.max(0, toInt(input.total));
   const paid = Math.max(0, toInt(input.paid ?? 0));
   const remaining = Math.max(0, total - paid);
   return { total, paid, remaining, cod: input.isCod === true ? remaining : 0 };
 }
 
-/** Da tra du chua. Dung ham nay thay vi so `paid === total` — tranh lech vi lam tron. */
-export function isSettled(m: MoneyOnOrder): boolean {
-  return m.remaining <= 0;
+/** Whether the order is fully paid. Use this instead of `paid === total` to avoid rounding drift. */
+export function isSettled(money: MoneyOnOrder): boolean {
+  return money.remaining <= 0;
 }
 
-/** Hien cho nguoi doc: "3.190.000 d". Khong dung cho tinh toan. */
-export function formatMoney(v: Money): string {
-  return `${Math.round(v).toLocaleString("vi-VN")} đ`;
+/** Human-readable amount for operators: "3.190.000 đ". Not for calculations. */
+export function formatMoney(value: Money): string {
+  return `${Math.round(value).toLocaleString("vi-VN")} đ`;
 }
 
 /**
- * Tien viet cho KHACH DOC: `3190000` -> `"3.190.000đ"`.
+ * Money written for the CUSTOMER: `3190000` becomes `"3.190.000đ"`.
  *
- * Mot goc duy nhat, y nhu `moneyOnOrder`: cho nao doc so tien cho khach cung phai di
- * qua day. Hai cho tu dinh dang lay la hai cach viet khac nhau trong cung mot cau.
+ * A single origin, like `moneyOnOrder`: every sentence that quotes a price to a customer must
+ * go through here. Two places formatting independently means two spellings in one reply.
  *
- * KHONG dung `Intl.NumberFormat`: no phu thuoc vao bo ngon ngu cai tren may khach, va
- * cung mot ban OMI se hien hai kieu tren hai may. Dau nghin la dau CHAM, dung tap quan
- * Viet Nam — va dung dang ma `scanNumbers` doc lai duoc thanh dung con so cu.
+ * `Intl.NumberFormat` is deliberately avoided: it depends on the locale data installed on the
+ * machine, so the same build would print two different formats on two machines. The thousands
+ * separator is a DOT, as is customary in Vietnam, and it is the exact form the brain's number
+ * scanner can read back into the original amount.
+ *
+ * A non-finite value yields an EMPTY string so that the "empty placeholder" guard catches it.
+ * Printing "NaNđ" would produce a sentence without digits, invisible to the number gate, while
+ * the placeholder would look filled.
  */
-export function dinhDangTien(v: Money): string {
-  // Khong phai so thi tra ve RONG de cong "o rong" bat lai. In ra "NaNđ" la mot cau
-  // khong co con so nao de cong chong bia so soi, ma o thay the lai khong rong.
-  if (!Number.isFinite(v)) return "";
-  const so = Math.trunc(Math.abs(v));
-  const nhom = String(so).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${v < 0 ? "-" : ""}${nhom}đ`;
+export function formatCustomerMoney(value: Money): string {
+  if (!Number.isFinite(value)) return "";
+  const magnitude = Math.trunc(Math.abs(value));
+  const grouped = String(magnitude).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${value < 0 ? "-" : ""}${grouped}đ`;
 }
