@@ -16,6 +16,9 @@
     "test": "npm run build && node --test --test-timeout=60000 --test-force-exit \"packages/*/test/*.test.mts\"",
     "test:mysql": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 --test-force-exit packages/xeon/test-mysql/integration.test.mts"
   },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0"
+  },
   "devDependencies": {
     "@types/node": "^24.3.0",
     "typescript": "^5.9.2"

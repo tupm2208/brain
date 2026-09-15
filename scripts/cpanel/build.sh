@@ -25,6 +25,10 @@ source "$ROOT/scripts/cpanel/node-env.sh"
 cpanel_node_env "$ROOT"
 echo "[build] node $(node -v), npm $(npm -v)"
 
+# Where npm will install — on cPanel `node_modules` is a symlink into the nodevenv; printed so a failed
+# deploy log already says it.
+echo "[build] node_modules -> $(readlink node_modules || echo 'thư mục thật'), npm prefix: $(npm prefix)"
+
 # Application mode "Production" đặt NODE_ENV=production: npm sẽ bỏ devDependencies và thiếu typescript.
 npm install --include=dev --no-audit --no-fund
 
@@ -38,6 +42,20 @@ for pkg in "$ROOT"/packages/*/; do
   ln -s "${pkg%/}" "node_modules/$name"
   echo "[build] nối $name -> ${pkg%/}"
 done
+
+# Every third-party dependency must be on disk before tsc runs — otherwise say WHICH one is missing
+# here, instead of fifty type errors. (15/09/2026 on cPanel: npm there did not see the workspaces and
+# installed only the root's three packages; @anthropic-ai/sdk is now a root dependency as well.)
+for dep in @anthropic-ai/sdk typescript @types/node; do
+  if [ ! -e "node_modules/$dep/package.json" ] && [ ! -e "packages/xeon/node_modules/$dep/package.json" ]; then
+    echo "[build] THIẾU $dep sau npm install — node_modules: $(readlink node_modules || echo 'thư mục thật'), npm prefix: $(npm prefix)"
+    exit 1
+  fi
+done
+
+# A build-info file from another machine (git tracked two until 15/09/2026) makes `tsc --build` think a
+# package is already built and skip its .d.ts — every import of it then becomes `any`. Build from scratch.
+rm -f packages/*/tsconfig.tsbuildinfo
 
 npm run build
 test -f packages/xeon/dist/main.js
