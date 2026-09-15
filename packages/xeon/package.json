@@ -5,12 +5,16 @@
   "description": "Xeon server application: licence management, the HTTP surface, and the gateway between the brain and each merchant's landing server.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "pages"],
+  "files": [
+    "dist",
+    "pages"
+  ],
   "scripts": {
     "build": "tsc --build",
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
     "@sp/brain": "0.0.1",
     "@sp/contract": "0.0.1"
   }

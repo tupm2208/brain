@@ -11,7 +11,10 @@ import { BrainService } from "./brain/brain-service";
 import type { XeonConfig } from "./config";
 import { AdminController, type ModuleChoice } from "./http/admin-controller";
 import { HealthController } from "./http/health-controller";
+import { AnthropicTextModel } from "./content/anthropic-text-model";
+import { noTextModel } from "./content/text-model";
 import { InboundController } from "./http/inbound-controller";
+import { WriteController } from "./http/write-controller";
 import { LicenseController } from "./http/license-controller";
 import { createXeonServer } from "./http/server";
 import { StaticPageStore } from "./http/static-pages";
@@ -84,7 +87,13 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
         adminPassword: config.adminPassword, sessionSecret: config.sessionSecret, https: config.https,
         moduleChoices: moduleChoices(), clock, logger
       }),
-      new InboundController({ brain, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger })
+      new InboundController({ brain, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger }),
+      // The post writer. Without a key the door still exists and refuses with a sentence the shop
+      // can act on — better than a screen where the button silently does nothing.
+      new WriteController({
+        model: config.writerApiKey === "" ? noTextModel : new AnthropicTextModel({ apiKey: config.writerApiKey, model: config.writerModel, logger }),
+        license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger
+      })
     ]
   });
   return { server, license, brain };

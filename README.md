@@ -16,22 +16,43 @@ npm install
 npm test          # dịch rồi chạy 222 bài: giao kèo + bộ máy + license + máy chủ + trang quản trị
 npm run check     # kiểm kiểu cả mã lẫn test, không dịch
 
-XEON_ADMIN_MAT_KHAU=<từ 12 ký tự> XEON_DIA_CHI=https://xeon.toprun.vn PORT=4200 npm start
+cp .env.example .env   # rồi điền XEON_ADMIN_MAT_KHAU, XEON_DIA_CHI, ANTHROPIC_API_KEY...
+npm start
 # npm start = node packages/xeon/dist/main.js (phải npm run build trước; npm test đã build sẵn)
 ```
+
+Biến đọc từ **`.env` ở gốc repo này** (`bo-nao/.env`, mẫu `.env.example`) — repo chạy độc lập nên
+giữ tệp riêng. `.env` không vào git. Biến đặt sẵn trong môi trường đè lên tệp.
 
 Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (0600) và sổ `du-lieu/license.json`.
 **Sao lưu hai tệp đó.** Mất khoá ký thì mọi landing phải đăng ký lại để nhận khoá công mới.
 
 | Biến | Việc | Không khai thì |
 |---|---|---|
+| `PORT` | cổng nghe | 4200 |
 | `XEON_ADMIN_MAT_KHAU` | mật khẩu trang `/quan-tri`, từ 12 ký tự | trang quản trị **tắt** |
+| `ANTHROPIC_API_KEY` | khoá AI cho bộ viết bài, giữ một lần trên Xeon cho mọi shop | cửa viết bài trả 503 |
+| `XEON_MO_HINH_VIET` | mã mô hình của bộ viết bài | `claude-opus-5` |
 | `XEON_DIA_CHI` | địa chỉ công khai của Xeon, trả cho landing lúc đăng ký | landing không biết gọi về đâu |
 | `XEON_THU_MUC_DU_LIEU` | nơi giữ sổ license + khoá ký | `bo-nao/du-lieu` |
 | `XEON_BI_MAT_PHIEN` | bí mật ký cookie phiên admin | sinh mới mỗi lần khởi động (khởi động lại là đăng xuất) |
 | `XEON_HTTPS=1` | cookie phiên mang cờ Secure | không |
 | `TIN_PROXY=1` | tin IP trong tiêu đề khi có nginx/Cloudflare đứng trước | đọc IP socket |
 | `SHOP_JSON`, `MA_NHAN_TIN` | **chế độ cũ, chỉ để chạy thử**: shop khai tay, một mã chung | không dùng |
+
+## Triển khai cPanel (không cần Terminal)
+
+Repo `github.com/tupm2208/brain` clone thẳng làm *Application root* (Git Version Control), Node 24,
+startup file `packages/xeon/dist/main.js`, tên miền `centerbrain.site`. `.env` tải lên bằng File
+Manager (không đặt `PORT`); `du-lieu/` (sổ license + khoá ký) chép từ máy đang chạy — thiếu khoá ký
+thì mọi vé máy OMI mất hiệu lực và landing phải đăng ký lại.
+
+- **Build sau mỗi lần cập nhật:** Git Version Control → Pull or Deploy → *Update from Remote* rồi
+  *Deploy HEAD Commit*. `.cpanel.yml` chạy `scripts/cpanel/build.sh`: npm install cả dev → nối lại gói
+  workspace bằng đường tuyệt đối (trên cPanel `node_modules` là symlink sang nodevenv) → build.
+  Nhật ký ở `~/brain-logs/build-*.log`.
+- **Nạp bản mới:** Setup Node.js App → *Restart*; nếu vẫn chạy mã cũ thì *Run JS script* → `tien-trinh:tat`.
+- **Kiểm tra:** `https://centerbrain.site/health`.
 
 ## Nó giữ gì và không giữ gì
 

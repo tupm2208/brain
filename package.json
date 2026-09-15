@@ -11,6 +11,8 @@
     "check": "tsc --build --dry && tsc -p tsconfig.test.json",
     "clean": "tsc --build --clean",
     "start": "node packages/xeon/dist/main.js",
+    "tien-trinh:xem": "node scripts/cpanel/tien-trinh.mjs xem",
+    "tien-trinh:tat": "node scripts/cpanel/tien-trinh.mjs tat",
     "test": "npm run build && node --test --test-timeout=60000 --test-force-exit \"packages/*/test/*.test.mts\"",
     "test:mysql": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 --test-force-exit packages/xeon/test-mysql/integration.test.mts"
   },

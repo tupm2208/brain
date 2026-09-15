@@ -59,6 +59,7 @@ export const PATHS = {
   licenseLandingRegister: "/license/landing-dang-ky",
   licensePublicKey: "/license/khoa-cong",
   inbound: "/tin-den",
+  write: "/viet-bai",
   admin: "/quan-tri",
   machines: "/may"
 } as const;

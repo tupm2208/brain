@@ -54,8 +54,9 @@ interface SharedTicketKit {
 }
 
 const requireShared = createRequire(__filename);
-// From `packages/xeon/dist/support/` up to the repository root, then `chung/ve-may.js`.
-const kit: SharedTicketKit = requireShared("../../../../../chung/ve-may.js");
+// From `packages/xeon/dist/support/` up to the repo root `bo-nao/`, then `kit/ve-may.js` — a byte-identical
+// copy of `chung/ve-may.js` kept inside this repo, because Xeon deploys on its own.
+const kit: SharedTicketKit = requireShared("../../../../kit/ve-may.js");
 
 export const TICKET_PREFIX: string = kit.TIEN_TO;
 export const CLOCK_SKEW_TOLERANCE_MS: number = kit.LECH_GIO_CHO_PHEP_MS;
