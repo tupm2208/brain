@@ -30,7 +30,9 @@ echo "[build] node $(node -v), npm $(npm -v)"
 echo "[build] node_modules -> $(readlink node_modules || echo 'thư mục thật'), npm prefix: $(npm prefix)"
 
 # Application mode "Production" đặt NODE_ENV=production: npm sẽ bỏ devDependencies và thiếu typescript.
-npm install --include=dev --no-audit --no-fund
+# --no-save: npm must not rewrite package-lock.json here. A tracked file changed on the hosting makes
+# cPanel's "Update from Remote" refuse to pull (15/09/2026, with two tracked tsbuildinfo files).
+npm install --include=dev --no-audit --no-fund --no-save
 
 # Trên cPanel `node_modules` là symlink sang nodevenv. npm nối gói workspace (@sp/contract, @sp/brain,
 # @sp/xeon) bằng đường TƯƠNG ĐỐI tính từ app root; nhìn từ thư mục thật trong nodevenv thì đường đó trỏ
