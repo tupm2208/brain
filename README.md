@@ -46,7 +46,7 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 ## Triển khai cPanel (không cần Terminal)
 
 Repo `github.com/tupm2208/brain` clone thẳng làm *Application root* (Git Version Control), Node 24,
-startup file `packages/xeon/dist/main.js`, tên miền `brain.toprun.site`. `.env` tải lên bằng File
+startup file `packages/xeon/dist/main.js`, tên miền `centerbrain.site`. `.env` tải lên bằng File
 Manager (không đặt `PORT`); `du-lieu/` (sổ license + khoá ký) chép từ máy đang chạy — thiếu khoá ký
 thì mọi vé máy OMI mất hiệu lực và landing phải đăng ký lại.
 
@@ -55,7 +55,7 @@ thì mọi vé máy OMI mất hiệu lực và landing phải đăng ký lại.
   workspace bằng đường tuyệt đối (trên cPanel `node_modules` là symlink sang nodevenv) → build.
   Nhật ký ở `~/brain-logs/build-*.log`.
 - **Nạp bản mới:** Setup Node.js App → *Restart*; nếu vẫn chạy mã cũ thì *Run JS script* → `tien-trinh:tat`.
-- **Kiểm tra:** `https://brain.toprun.site/health`.
+- **Kiểm tra:** `https://centerbrain.site/health`.
 
 ## Nó giữ gì và không giữ gì
 
