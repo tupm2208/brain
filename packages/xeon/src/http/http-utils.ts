@@ -23,7 +23,8 @@ class BodyTooLargeError extends Error {
   readonly tooLarge = true;
 }
 
-function readRawBody(req: IncomingMessage): Promise<Buffer> {
+/** Reads the raw body (at most `MAX_BODY_BYTES`). Signatures such as Meta's are computed over these bytes. */
+export function readRawBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;

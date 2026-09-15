@@ -14,6 +14,10 @@
  *   TIN_PROXY=1            trust X-Forwarded-For (nginx / Cloudflare in front)
  *   ANTHROPIC_API_KEY      key for the post writer. Absent = the writing door answers 503 and says so.
  *   XEON_MO_HINH_VIET      model id for the writer (default claude-opus-5)
+ *   FACEBOOK_APP_SECRET    App Secret of the developer's Meta app: checks every webhook signature.
+ *                          Held ONLY here, never on a merchant's hosting. Absent = /meta/webhook answers 503.
+ *   FACEBOOK_VERIFY_TOKEN  the string Meta echoes when the webhook address is registered
+ *   META_GRAPH_API_VERSION Graph API version for page checks (default v23.0)
  *   MA_NHAN_TIN            LEGACY, trials only: one shared inbox token; with SHOP_JSON
  *   SHOP_JSON              LEGACY, trials only: {"toprun":{"diaChi":"http://...","ma":"...","nganh":"giay-chay"}}
  */
@@ -47,6 +51,13 @@ export interface XeonConfig {
    */
   writerApiKey: string;
   writerModel: string;
+  /**
+   * The developer's Meta app (decided 15/09/2026): one app for every merchant, so its secret and
+   * webhook live on Xeon. A merchant connects pages to it and never creates an app of its own.
+   */
+  metaAppSecret: string;
+  metaVerifyToken: string;
+  metaGraphVersion: string;
   /** Legacy shared token; empty in licensed mode. */
   sharedInboxToken: string;
   /** Legacy hand-declared merchants; empty in licensed mode. */
@@ -66,6 +77,9 @@ export function configFromEnv(env: NodeJS.ProcessEnv, defaultDataDirectory: stri
     trustProxy: String(env["TIN_PROXY"] || "").trim() === "1",
     writerApiKey: String(env["ANTHROPIC_API_KEY"] || "").trim(),
     writerModel: String(env["XEON_MO_HINH_VIET"] || "").trim(),
+    metaAppSecret: String(env["FACEBOOK_APP_SECRET"] || "").trim(),
+    metaVerifyToken: String(env["FACEBOOK_VERIFY_TOKEN"] || "").trim(),
+    metaGraphVersion: String(env["META_GRAPH_API_VERSION"] || "").trim(),
     sharedInboxToken: Object.keys(legacyShops).length > 0 ? String(env["MA_NHAN_TIN"] || "").trim() : "",
     legacyShops
   };

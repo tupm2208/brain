@@ -33,6 +33,9 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 | `XEON_ADMIN_MAT_KHAU` | mật khẩu trang `/quan-tri`, từ 12 ký tự | trang quản trị **tắt** |
 | `ANTHROPIC_API_KEY` | khoá AI cho bộ viết bài, giữ một lần trên Xeon cho mọi shop | cửa viết bài trả 503 |
 | `XEON_MO_HINH_VIET` | mã mô hình của bộ viết bài | `claude-opus-5` |
+| `FACEBOOK_APP_SECRET` | App Secret của app Meta nhà phát triển (một app cho mọi shop): kiểm chữ ký webhook | `/meta/webhook` trả 503 |
+| `FACEBOOK_VERIFY_TOKEN` | chuỗi Meta gửi lại khi đăng ký địa chỉ webhook `<XEON_DIA_CHI>/meta/webhook` | Meta không xác minh được địa chỉ |
+| `META_GRAPH_API_VERSION` | phiên bản Graph API khi hỏi Meta về trang | `v23.0` |
 | `XEON_DIA_CHI` | địa chỉ công khai của Xeon, trả cho landing lúc đăng ký | landing không biết gọi về đâu |
 | `XEON_THU_MUC_DU_LIEU` | nơi giữ sổ license + khoá ký | `bo-nao/du-lieu` |
 | `XEON_BI_MAT_PHIEN` | bí mật ký cookie phiên admin | sinh mới mỗi lần khởi động (khởi động lại là đăng xuất) |

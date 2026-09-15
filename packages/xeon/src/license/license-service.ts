@@ -398,6 +398,72 @@ export class LicenseService {
     return Object.values(this.ledger.read().cacKey).filter((record) => !record.khoaLuc).length;
   }
 
+  // ---------------------------------------------------------------- Meta pages
+
+  /**
+   * Where a merchant's Meta events go: any active key with a registered landing. Unlike
+   * `serviceEligibility` the chatbot need not be bought — the inbox keeps messages for a human too.
+   */
+  landingFor(shop: string): { ok: true; diaChi: string } | { ok: false; viSao: "khong_co_key" | "key_het_han" | "landing_chua_dang_ky" } {
+    const record = this.activeRecordOf(shop);
+    if (!record) return { ok: false, viSao: "khong_co_key" };
+    if (this.status(record) === "het_han") return { ok: false, viSao: "key_het_han" };
+    if (!record.landing?.diaChi) return { ok: false, viSao: "landing_chua_dang_ky" };
+    return { ok: true, diaChi: record.landing.diaChi };
+  }
+
+  /** Which merchant a Fanpage belongs to; a locked key owns nothing. */
+  shopForPage(pageId: unknown): string | null {
+    const id = String(pageId ?? "").trim();
+    if (!id) return null;
+    const record = Object.values(this.ledger.read().cacKey).find((x) => !x.khoaLuc && (x.trang ?? []).some((p) => p.ma === id));
+    return record ? record.shop : null;
+  }
+
+  /** The pages a merchant connected. */
+  pagesOf(shop: string): NonNullable<LicenseRecord["trang"]> {
+    return [...(this.activeRecordOf(shop)?.trang ?? [])];
+  }
+
+  /** Pages connected across every active merchant. */
+  pageCount(): number {
+    return Object.values(this.ledger.read().cacKey).filter((x) => !x.khoaLuc).reduce((sum, x) => sum + (x.trang ?? []).length, 0);
+  }
+
+  /**
+   * Records pages Meta confirmed for `shop` (the caller checked the tokens). A page owned by ANOTHER
+   * active merchant is refused: one page's events go to exactly one landing, and a landing must not
+   * take over another shop's customers by naming its page id.
+   */
+  async connectPages(shop: string, pages: { ma: string; ten: string }[]): Promise<{ ma: string; ok: boolean; viSao?: "trang_thuoc_shop_khac" | "khong_co_key" }[]> {
+    const record = this.activeRecordOf(shop);
+    if (!record) return pages.map((p) => ({ ma: p.ma, ok: false, viSao: "khong_co_key" as const }));
+    const at = this.now().toISOString();
+    const results = await this.ledger.update((state) => {
+      const row = state.cacKey[record.key] as LicenseRecord;
+      const owned = [...(row.trang ?? [])];
+      const out: { ma: string; ok: boolean; viSao?: "trang_thuoc_shop_khac" }[] = [];
+      for (const page of pages) {
+        const taken = Object.values(state.cacKey).some((x) => x.key !== row.key && !x.khoaLuc && (x.trang ?? []).some((p) => p.ma === page.ma));
+        if (taken) { out.push({ ma: page.ma, ok: false, viSao: "trang_thuoc_shop_khac" }); continue; }
+        const entry = { ma: page.ma, ten: page.ten, xacMinhLuc: at };
+        const index = owned.findIndex((p) => p.ma === page.ma);
+        if (index >= 0) owned[index] = entry;
+        else owned.push(entry);
+        out.push({ ma: page.ma, ok: true });
+      }
+      row.trang = owned;
+      return out;
+    });
+    const connected = results.filter((r) => r.ok).map((r) => r.ma);
+    if (connected.length > 0) this.logger.info(`[license] shop "${record.shop}": ket noi trang ${connected.join(", ")}`);
+    return results;
+  }
+
+  private activeRecordOf(shop: string): LicenseRecord | null {
+    return Object.values(this.ledger.read().cacKey).find((x) => x.shop === shop && !x.khoaLuc) ?? null;
+  }
+
   // ---------------------------------------------------------------- internals
 
   private now(): Date {

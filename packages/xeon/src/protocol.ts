@@ -45,6 +45,21 @@ export interface LandingRegistrationBody {
   diaChi?: unknown;
 }
 
+/**
+ * One page a landing connects on `POST /meta/trang`. The token only PROVES the landing holds the
+ * page: Xeon asks Meta whose token it is, and never keeps it.
+ */
+export interface PageClaimBody {
+  trang?: unknown;
+  /** Also subscribe the page to the developer app (`subscribed_apps`), so Meta starts delivering. */
+  dangKyNhanTin?: unknown;
+}
+
+/** What `POST /meta/trang` says about each page. */
+export type PageClaimOutcome =
+  | { ma: string; ok: true; ten: string; daDangKyNhanTin: boolean; loiDangKy?: string }
+  | { ma: string; ok: false; viSao: "thieu_ma_hoac_token" | "token_khong_dung_trang" | "trang_thuoc_shop_khac" | "khong_hoi_duoc_meta" | "khong_co_key"; chiTiet?: string };
+
 /** Header every state-changing request of the two web pages must carry (CSRF protection). */
 export const CSRF_HEADER = "x-yeu-cau";
 export const CSRF_HEADER_VALUE = "xeon";
@@ -61,5 +76,9 @@ export const PATHS = {
   inbound: "/tin-den",
   write: "/viet-bai",
   admin: "/quan-tri",
-  machines: "/may"
+  machines: "/may",
+  /** Meta's webhook for every merchant's Fanpages (one developer app, decided 15/09/2026). */
+  metaWebhook: "/meta/webhook",
+  /** A landing lists / connects its Fanpages. */
+  metaPages: "/meta/trang"
 } as const;

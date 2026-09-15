@@ -59,6 +59,10 @@ export interface OutboundReply {
   kenh?: string | undefined;
   nguoi: string;
   chu: string;
+  /** Comment channel: the comment the reply goes under. */
+  traLoiTin?: string | undefined;
+  /** The conversation (`<kênh>:<người>`), so the landing finds the thread — and its Fanpage — directly. */
+  maHoiThoai?: string | undefined;
 }
 
 /** Notification that the bot handed a conversation to a human. */
@@ -155,9 +159,23 @@ export class LandingGateway {
 
   /** Sends a reply to the customer through the landing's inbox; never calls Meta directly. */
   async sendReply(reply: OutboundReply): Promise<Record<string, unknown>> {
-    const r = await this.requestJson("/api/hop-thu/gui", { method: "POST", body: { kenh: reply.kenh ?? "facebook", nguoi: reply.nguoi, chu: reply.chu } });
+    const body: Record<string, unknown> = { kenh: reply.kenh ?? "facebook", nguoi: reply.nguoi, chu: reply.chu };
+    // A comment reply goes UNDER that comment; without its id the landing refuses (15/09/2026).
+    if (reply.traLoiTin) body["traLoiTin"] = reply.traLoiTin;
+    if (reply.maHoiThoai) body["maHoiThoai"] = reply.maHoiThoai;
+    const r = await this.requestJson("/api/hop-thu/gui", { method: "POST", body });
     if (!r.ok) throw new Error(String(r.body["message"] ?? r.body["error"] ?? `HTTP ${r.status}`));
     return r.body;
+  }
+
+  /**
+   * Hands one Meta packet (entries of this merchant's pages only) to the landing's inbox. The landing
+   * files it exactly as if Meta had called it, trusting Xeon's service ticket instead of Meta's signature.
+   */
+  async forwardMetaPacket(packet: unknown): Promise<{ ok: true } | { ok: false; viSao: string }> {
+    const r = await this.requestJson("/api/hop-thu/meta-tu-xeon", { method: "POST", body: { goi: packet } });
+    if (r.ok) return { ok: true };
+    return { ok: false, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["error"] ?? `HTTP ${r.status}`) };
   }
 
   /** Tells the merchant a conversation needs a human. Never throws; failures are logged. */

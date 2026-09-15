@@ -19,6 +19,9 @@ import type { InboundMessageBody, InboundResult } from "../protocol";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
 
+/** The landing's channel for PUBLIC COMMENTS on a Fanpage post (wire value set by the landing's inbox). */
+export const COMMENT_CHANNEL = "facebook-binh-luan";
+
 /** A merchant declared by hand in legacy test mode. */
 export interface LegacyShop {
   diaChi: string;
@@ -117,7 +120,9 @@ export class BrainService {
       return { daTraLoi: false, viSao: "chuyen_nguoi_that", traLoi: result.reply };
     }
 
-    await binding.gateway.sendReply({ kenh: message.kenh, nguoi: message.nguoi, chu: result.reply });
+    // A comment is answered UNDER that comment: its id is the message id the landing sent in.
+    const underComment = message.kenh === COMMENT_CHANNEL && message.maTin ? { traLoiTin: String(message.maTin) } : {};
+    await binding.gateway.sendReply({ kenh: message.kenh, nguoi: message.nguoi, chu: result.reply, maHoiThoai: conversationId, ...underComment });
     return {
       daTraLoi: true,
       hanhDong: result.action,

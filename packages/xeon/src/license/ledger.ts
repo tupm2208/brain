@@ -57,6 +57,20 @@ export interface LicenseRecord {
   /** Machine id of the machine on duty (runs the automation channels); empty when none. */
   mayTruc: string;
   landing: LandingRecord | null;
+  /** Fanpages the merchant connected; Meta events of these pages go to this merchant's landing. Absent in older files. */
+  trang?: PageRecord[];
+}
+
+/**
+ * A Fanpage connected to the developer's Meta app (decided 15/09/2026: one app for every merchant,
+ * events routed by page id). No token is kept — Meta confirmed the landing holds one.
+ */
+export interface PageRecord {
+  /** Page id — `entry.id` in Meta's webhook. */
+  ma: string;
+  ten: string;
+  /** ISO time Meta last confirmed the landing holds this page's token. */
+  xacMinhLuc: string;
 }
 
 export interface LedgerState {

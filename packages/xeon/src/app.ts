@@ -14,6 +14,7 @@ import { HealthController } from "./http/health-controller";
 import { AnthropicTextModel } from "./content/anthropic-text-model";
 import { noTextModel } from "./content/text-model";
 import { InboundController } from "./http/inbound-controller";
+import { MetaController } from "./http/meta-controller";
 import { WriteController } from "./http/write-controller";
 import { LicenseController } from "./http/license-controller";
 import { createXeonServer } from "./http/server";
@@ -21,6 +22,8 @@ import { StaticPageStore } from "./http/static-pages";
 import { LicenseLedger } from "./license/ledger";
 import { LicenseService } from "./license/license-service";
 import { SigningKeyStore } from "./license/signing-key";
+import { MetaGraphClient } from "./meta/graph-client";
+import { MetaForwarder } from "./meta/meta-forwarder";
 import { systemClock, type Clock } from "./support/clock";
 import { consoleLogger, type Logger } from "./support/logger";
 
@@ -54,6 +57,7 @@ export interface XeonApp {
   server: http.Server;
   license: LicenseService;
   brain: BrainService;
+  meta: MetaForwarder;
 }
 
 export interface BuildAppOptions {
@@ -77,10 +81,17 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
     ? { legacyShops: config.legacyShops, logger, clock }
     : { license, logger, clock });
 
+  // The developer's Meta app: one webhook for every merchant's pages (decided 15/09/2026).
+  const metaReady = config.metaAppSecret !== "" && config.metaVerifyToken !== "";
+  if (!metaReady) logger.warn("[meta] CHUA du FACEBOOK_APP_SECRET + FACEBOOK_VERIFY_TOKEN — /meta/webhook se tu choi cho toi khi dien.");
+  const meta = new MetaForwarder({ license, clock, logger, dataDirectory: config.dataDirectory });
+
   const server = createXeonServer({
     trustProxy: config.trustProxy,
     controllers: [
-      new HealthController(license, clock),
+      new HealthController(license, clock, () => ({
+        meta: { daCauHinh: metaReady, soTrang: license.pageCount(), goiDangCho: meta.pendingCount() }
+      })),
       new LicenseController(license, logger, clock),
       new AdminController({
         license, pages: new StaticPageStore(PAGES_DIRECTORY),
@@ -88,6 +99,10 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
         moduleChoices: moduleChoices(), clock, logger
       }),
       new InboundController({ brain, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger }),
+      new MetaController({
+        license, forwarder: meta, graph: new MetaGraphClient({ version: config.metaGraphVersion }),
+        appSecret: config.metaAppSecret, verifyToken: config.metaVerifyToken, logger
+      }),
       // The post writer. Without a key the door still exists and refuses with a sentence the shop
       // can act on — better than a screen where the button silently does nothing.
       new WriteController({
@@ -96,5 +111,5 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
       })
     ]
   });
-  return { server, license, brain };
+  return { server, license, brain, meta };
 }
