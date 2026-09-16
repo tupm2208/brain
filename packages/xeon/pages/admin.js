@@ -176,7 +176,9 @@
         byId("mat-khau").value = "";
         byId("khu-dang-nhap").hidden = true;
         byId("khu-chinh").hidden = false;
+        byId("khu-nhat-ky").hidden = false;
         await this.loadKeys();
+        loadLog(this.api);
       });
       byId("mat-khau").addEventListener("keydown", (e) => { if (e.key === "Enter") byId("nut-dang-nhap").click(); });
       byId("nut-dang-xuat").addEventListener("click", async () => { await this.api.call("/quan-tri/api/dang-xuat", {}); location.reload(); });
@@ -246,7 +248,33 @@
     }
   }
 
+  // ------------------------------------------------------------ nhật ký deploy
+
+  async function loadLog(api) {
+    const d = await api.call("/quan-tri/api/nhat-ky");
+    if (!d.ok) { notify("bao-log", d.error || "Không đọc được nhật ký."); return; }
+    notify("bao-log", "");
+    const tom = [];
+    if (d.deployId) tom.push("Commit: " + d.deployId);
+    if (d.buildLuc) tom.push("Build lúc: " + d.buildLuc);
+    byId("log-tom-tat").textContent = tom.join("  ·  ") || "Chưa có thông tin deploy.";
+    byId("log-auto-deploy").textContent = (d.duoiAutoDeployLog || []).join("\n") || "(trống)";
+    byId("log-build").textContent = (d.duoiBuildLog || []).join("\n") || "(trống)";
+    byId("log-stderr").textContent = (d.duoiStderr || []).join("\n") || "(trống)";
+    if (d.buildLogTen) {
+      const h = byId("log-build").previousElementSibling;
+      if (h) h.textContent = "Build log mới nhất (" + d.buildLogTen + ")";
+    }
+  }
+
   const page = new AdminPage(new ApiClient());
   page.bind();
-  page.start();
+  byId("nut-tai-log").addEventListener("click", () => loadLog(page.api));
+  page.start().then(() => {
+    // Chỉ tải log khi đã đăng nhập (khu-chinh đang hiện)
+    if (!byId("khu-chinh").hidden) {
+      byId("khu-nhat-ky").hidden = false;
+      loadLog(page.api);
+    }
+  });
 })();

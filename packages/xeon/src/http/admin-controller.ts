@@ -19,6 +19,9 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import { constantTimeEqual } from "../license/key-format";
 import type { LicenseService } from "../license/license-service";
 import { CSRF_HEADER, CSRF_HEADER_VALUE, PATHS } from "../protocol";
@@ -93,6 +96,7 @@ export class AdminController implements RequestController {
         return true;
       }
       if (ctx.path === `${base}/api/manh`) { sendJson(res, 200, { ok: true, manh: this.moduleChoices }); return true; }
+      if (ctx.path === PATHS.adminLog) return this.handleLog(res, req);
     }
     if (!ctx.path.startsWith(`${base}/api/`)) return false;
     if (!this.adminEnabled) { sendJson(res, 503, { ok: false, error: "quan_tri_dang_tat" }); return true; }
@@ -154,6 +158,68 @@ export class AdminController implements RequestController {
       sendJson(res, 400, { ok: false, error: "sai_yeu_cau", message: error instanceof Error ? error.message : String(error) });
       return true;
     }
+  }
+
+  // ---------------------------------------------------------------- nhật ký deploy + stderr
+
+  /**
+   * `GET /quan-tri/api/nhat-ky` — admin-only, returns deploy id, tail of stderr.log,
+   * latest build log, and auto-deploy log. Reuses the same `/proc`-free file-reading
+   * approach as `tien-trinh.mjs`.
+   */
+  private handleLog(res: ServerResponse, req: IncomingMessage): boolean {
+    if (!this.adminEnabled || !this.sessions.isValid(req)) {
+      sendJson(res, 401, { ok: false, error: "chua_dang_nhap" });
+      return true;
+    }
+    const root = path.join(__dirname, "..", "..", "..", "..");  // dist/http → dist → xeon → packages → repo root
+    const brainLogs = path.join(os.homedir(), "brain-logs");
+
+    // deploy-id.txt (written by build.sh)
+    let deployId = "";
+    let buildLuc = "";
+    try {
+      const lines = fs.readFileSync(path.join(root, "tmp", "deploy-id.txt"), "utf8").trim().split("\n");
+      deployId = lines[0] || "";
+      buildLuc = lines[1] || "";
+    } catch { /* chưa build lần nào */ }
+
+    // stderr.log — tail 20 dòng (cùng cách tien-trinh.mjs đọc)
+    let duoiStderr: string[] = [];
+    try {
+      const all = fs.readFileSync(path.join(root, "stderr.log"), "utf8").split(/\r?\n/).filter((l) => l.trim());
+      duoiStderr = all.slice(-20);
+    } catch { /* không có stderr.log */ }
+
+    // build-*.log mới nhất trong ~/brain-logs/
+    let duoiBuildLog: string[] = [];
+    let buildLogTen = "";
+    try {
+      const files = fs.readdirSync(brainLogs).filter((f) => f.startsWith("build-") && f.endsWith(".log")).sort();
+      if (files.length > 0) {
+        buildLogTen = files[files.length - 1]!;
+        const all = fs.readFileSync(path.join(brainLogs, buildLogTen), "utf8").split(/\r?\n/).filter((l) => l.trim());
+        duoiBuildLog = all.slice(-30);
+      }
+    } catch { /* không đọc được */ }
+
+    // auto-deploy.log
+    let duoiAutoDeployLog: string[] = [];
+    try {
+      const all = fs.readFileSync(path.join(brainLogs, "auto-deploy.log"), "utf8").split(/\r?\n/).filter((l) => l.trim());
+      duoiAutoDeployLog = all.slice(-20);
+    } catch { /* chưa có */ }
+
+    sendJson(res, 200, {
+      ok: true,
+      deployId,
+      buildLuc,
+      duoiStderr,
+      buildLogTen,
+      duoiBuildLog,
+      duoiAutoDeployLog
+    });
+    return true;
   }
 
   // ---------------------------------------------------------------- /may

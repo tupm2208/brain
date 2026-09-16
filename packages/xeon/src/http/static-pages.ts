@@ -19,7 +19,7 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 /** Page files served by Xeon. Kept in one place so a test can check every file exists. */
-export const PAGE_FILES = ["admin.html", "admin.js", "machines.html", "machines.js", "shared.css"] as const;
+export const PAGE_FILES = ["admin.html", "admin.js", "machines.html", "machines.js", "shared.css", "log.html", "log.js"] as const;
 export type PageFile = (typeof PAGE_FILES)[number];
 
 export class StaticPageStore {

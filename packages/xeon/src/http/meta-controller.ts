@@ -20,6 +20,7 @@ import type { MetaForwarder } from "../meta/meta-forwarder";
 import type { MetaGraphClient } from "../meta/graph-client";
 import { splitByPage, verifyMetaSignature, type PagePacket } from "../meta/meta-packet";
 import { PATHS, type PageClaimOutcome } from "../protocol";
+import type { ActivityLog } from "../support/activity-log";
 import type { Logger } from "../support/logger";
 import { bearerToken, readRawBody, sendJson, type RequestContext, type RequestController } from "./http-utils";
 
@@ -33,6 +34,7 @@ export interface MetaControllerOptions {
   appSecret: string;
   verifyToken: string;
   logger: Logger;
+  activityLog?: ActivityLog | undefined;
 }
 
 export class MetaController implements RequestController {
@@ -95,8 +97,17 @@ export class MetaController implements RequestController {
       byShop.set(shop, merged);
     }
     const results = await Promise.all([...byShop].map(([shop, packet]) => this.options.forwarder.deliver(shop, packet)));
+    const chuaChuyen = results.filter((r) => !r.ok).length;
     // Always 200 once the packet is split: a non-2xx makes Meta re-deliver every merchant's entries.
-    sendJson(res, 200, { ok: true, soShop: byShop.size, chuaChuyen: results.filter((r) => !r.ok).length, trangLa: strangers });
+    sendJson(res, 200, { ok: true, soShop: byShop.size, chuaChuyen, trangLa: strangers });
+
+    // Activity log: one entry per webhook call with the summary of what happened.
+    this.options.activityLog?.add({
+      huong: "in", loai: "meta-webhook", method: "POST", duong: "/meta/webhook",
+      status: 200,
+      tomTat: `${byPage.size} trang, ${byShop.size} shop, ${strangers} lạ, ${chuaChuyen} chưa chuyển`,
+      chiTiet: { soTrang: byPage.size, soShop: byShop.size, trangLa: strangers, chuaChuyen, shops: [...byShop.keys()] },
+    });
   }
 
   private listPages(req: IncomingMessage, res: ServerResponse): void {

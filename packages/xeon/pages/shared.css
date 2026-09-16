@@ -35,3 +35,6 @@ h2.khong-cach { margin: 0; }
 input.hep { max-width: 200px; }
 input.vua { max-width: 260px; }
 .cuon-ngang { overflow-x: auto; }
+.tieu-de-log { font-size: 14px; margin: 14px 0 4px; }
+.khung-log { background: var(--nen); border: 1px solid var(--vien); border-radius: 6px; padding: 10px; font-size: 12px; overflow-x: auto; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.khung-log-dai { max-height: 400px; }

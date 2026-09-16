@@ -19,6 +19,7 @@
 
 import type { CatalogItemLite, LinkError, ToolInput, ToolName, ToolOutput } from "@sp/contract";
 import type { CallCtx, CatalogPort, ConversationState, MemoryPort, ToolPort, ToolResult } from "@sp/brain";
+import type { ActivityLog } from "../support/activity-log";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
 
@@ -44,6 +45,7 @@ export interface LandingGatewayOptions {
   timeoutMs?: number | undefined;
   logger?: Logger | undefined;
   clock?: Clock | undefined;
+  activityLog?: ActivityLog | undefined;
 }
 
 interface JsonReply {
@@ -85,6 +87,7 @@ export class LandingGateway {
   private readonly timeoutMs: number;
   private readonly logger: Logger;
   private readonly clock: Clock;
+  private readonly activityLog: ActivityLog | undefined;
 
   private failedAt = 0;
   private toolList: ToolName[] = [...DEFAULT_TOOL_LIST];
@@ -99,6 +102,7 @@ export class LandingGateway {
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.logger = options.logger ?? { info: () => undefined, warn: () => undefined };
     this.clock = options.clock ?? { now: () => new Date() };
+    this.activityLog = options.activityLog;
 
     this.tools = {
       available: () => [...this.toolList],
@@ -211,6 +215,7 @@ export class LandingGateway {
     const method = options.method ?? "GET";
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), this.timeoutMs);
+    const start = Date.now();
     try {
       const response = await this.fetchImpl(`${this.origin}${path}`, {
         method,
@@ -221,11 +226,22 @@ export class LandingGateway {
       const parsed = await response.json().catch(() => ({}));
       const body = (parsed !== null && typeof parsed === "object" ? parsed : {}) as Record<string, unknown>;
       this.failedAt = 0;
-      return { ok: response.ok && body["ok"] === true, status: response.status, body };
+      const reply: JsonReply = { ok: response.ok && body["ok"] === true, status: response.status, body };
+      this.activityLog?.add({
+        huong: "out", loai: "goi-landing", method, duong: path,
+        status: response.status, ms: Date.now() - start,
+        tomTat: reply.ok ? "ok" : String(body["error"] ?? `HTTP ${response.status}`),
+      });
+      return reply;
     } catch (error) {
       // Network failure: restricted mode for 30 seconds. SILENCE ABOUT NUMBERS BEATS A WRONG NUMBER.
       this.failedAt = this.nowMs();
       this.logger.warn(`[noi] ${method} ${path} that bai: ${error instanceof Error ? error.message : String(error)}`);
+      this.activityLog?.add({
+        huong: "out", loai: "goi-landing", method, duong: path,
+        status: 0, ms: Date.now() - start,
+        tomTat: `lỗi mạng: ${error instanceof Error ? error.message : String(error)}`,
+      });
       return { ok: false, status: 0, body: {}, networkDown: true };
     } finally {
       clearTimeout(timer);

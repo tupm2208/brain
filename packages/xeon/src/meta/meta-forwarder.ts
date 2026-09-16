@@ -15,6 +15,7 @@ import { LandingGateway, type FetchLike } from "../gateway/landing-gateway";
 import { ServiceTicketProvider } from "../gateway/service-ticket-provider";
 import type { LicenseService } from "../license/license-service";
 import type { Clock } from "../support/clock";
+import type { ActivityLog } from "../support/activity-log";
 import type { Logger } from "../support/logger";
 import type { PagePacket } from "./meta-packet";
 
@@ -48,6 +49,7 @@ export interface MetaForwarderOptions {
   fetch?: FetchLike | undefined;
   /** Per landing call. Meta wants its answer within 20 seconds. */
   timeoutMs?: number | undefined;
+  activityLog?: ActivityLog | undefined;
 }
 
 export class MetaForwarder {
@@ -68,11 +70,18 @@ export class MetaForwarder {
 
   /** Delivers one merchant's packet; on failure it waits for the next webhook call. */
   async deliver(shop: string, packet: PagePacket): Promise<DeliveryResult> {
+    const start = Date.now();
     const result = await this.send(shop, packet);
     if (!result.ok) {
       this.options.logger.warn(`[meta] chua chuyen duoc goi cho shop "${shop}": ${result.viSao} — giu lai thu sau`);
       await this.keep({ shop, goi: packet, nhanLuc: this.options.clock.now().toISOString(), lanThu: 1, loiCuoi: result.viSao });
     }
+    this.options.activityLog?.add({
+      huong: "out", loai: "meta-chuyen", method: "POST", duong: "/api/hop-thu/meta-tu-xeon",
+      shop, status: result.ok ? 200 : 0, ms: Date.now() - start,
+      tomTat: result.ok ? "đã chuyển" : `lỗi: ${result.viSao}`,
+      chiTiet: { soEntry: packet.entry.length },
+    });
     return result;
   }
 
@@ -86,11 +95,27 @@ export class MetaForwarder {
       for (const item of this.book.muc) {
         if (now - Date.parse(item.nhanLuc) > PENDING_MAX_AGE_MS) {
           this.options.logger.warn(`[meta] bo goi cua shop "${item.shop}" qua 24 gio (thu ${item.lanThu} lan, loi cuoi: ${item.loiCuoi})`);
+          this.options.activityLog?.add({
+            huong: "internal", loai: "meta-retry", shop: item.shop,
+            tomTat: `bỏ gói quá 24h (thử ${item.lanThu} lần, lỗi cuối: ${item.loiCuoi})`,
+          });
           continue;
         }
+        const start = Date.now();
         const result = await this.send(item.shop, item.goi);
-        if (result.ok) delivered += 1;
-        else still.push({ ...item, lanThu: item.lanThu + 1, loiCuoi: result.viSao });
+        if (result.ok) {
+          delivered += 1;
+          this.options.activityLog?.add({
+            huong: "out", loai: "meta-retry", shop: item.shop, status: 200, ms: Date.now() - start,
+            tomTat: `chuyển bù thành công (lần ${item.lanThu + 1})`,
+          });
+        } else {
+          still.push({ ...item, lanThu: item.lanThu + 1, loiCuoi: result.viSao });
+          this.options.activityLog?.add({
+            huong: "out", loai: "meta-retry", shop: item.shop, status: 0, ms: Date.now() - start,
+            tomTat: `thử lại lần ${item.lanThu + 1} thất bại: ${result.viSao}`,
+          });
+        }
       }
       this.book = { phienBan: 1, muc: still };
       await this.persist();

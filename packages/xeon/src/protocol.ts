@@ -80,5 +80,9 @@ export const PATHS = {
   /** Meta's webhook for every merchant's Fanpages (one developer app, decided 15/09/2026). */
   metaWebhook: "/meta/webhook",
   /** A landing lists / connects its Fanpages. */
-  metaPages: "/meta/trang"
+  metaPages: "/meta/trang",
+  /** Admin log viewer: build log + stderr tail (authenticated, same session as /quan-tri). */
+  adminLog: "/quan-tri/api/nhat-ky",
+  /** Public activity log: every webhook, message, outbound call — ring buffer in memory. */
+  activityLog: "/nhat-ky"
 } as const;

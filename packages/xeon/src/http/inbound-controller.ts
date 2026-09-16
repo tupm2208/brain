@@ -19,6 +19,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { constantTimeEqual } from "../license/key-format";
 import type { LicenseService } from "../license/license-service";
 import { PATHS, type InboundMessageBody, type InboundResult } from "../protocol";
+import type { ActivityLog } from "../support/activity-log";
 import type { Logger } from "../support/logger";
 import { bearerToken, sendJson, type RequestContext, type RequestController } from "./http-utils";
 
@@ -33,6 +34,7 @@ export interface InboundControllerOptions {
   /** LEGACY, trials only: one shared token for every merchant; the tenant is then read from the body. */
   sharedToken?: string | undefined;
   logger: Logger;
+  activityLog?: ActivityLog | undefined;
 }
 
 export class InboundController implements RequestController {
@@ -40,12 +42,14 @@ export class InboundController implements RequestController {
   private readonly license: LicenseService | null;
   private readonly sharedToken: string;
   private readonly logger: Logger;
+  private readonly activityLog: ActivityLog | undefined;
 
   constructor(options: InboundControllerOptions) {
     this.brain = options.brain;
     this.license = options.license;
     this.sharedToken = options.sharedToken ?? "";
     this.logger = options.logger;
+    this.activityLog = options.activityLog;
     if (this.sharedToken) this.logger.warn("[bo-nao] MA_NHAN_TIN dung chung dang bat — chi de chay thu; ban that dung ma nhan tin rieng tung shop.");
   }
 
@@ -73,10 +77,22 @@ export class InboundController implements RequestController {
     }
     try {
       const message = { ...(body as unknown as InboundMessageBody), tenant };
+      const start = Date.now();
       const result = await this.brain.handleInbound(message);
+      this.activityLog?.add({
+        huong: "in", loai: "tin-den", method: "POST", duong: "/tin-den",
+        shop: tenant, status: 200, ms: Date.now() - start,
+        tomTat: result.daTraLoi ? `trả lời (${result.hanhDong})` : `không trả lời (${result.viSao})`,
+        chiTiet: { kenh: message.kenh ?? "facebook", nguoi: message.nguoi, chu: message.chu?.slice(0, 200) },
+      });
       sendJson(res, 200, { ok: true, ...result });
     } catch (error) {
       this.logger.warn(`[bo-nao] xu ly tin hong: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+      this.activityLog?.add({
+        huong: "in", loai: "tin-den", method: "POST", duong: "/tin-den",
+        shop: tenant, status: 500,
+        tomTat: `lỗi: ${error instanceof Error ? error.message : String(error)}`,
+      });
       sendJson(res, 500, { ok: false, error: "loi_he_thong" });
     }
     return true;

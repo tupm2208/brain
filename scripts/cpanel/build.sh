@@ -59,6 +59,10 @@ done
 # package is already built and skip its .d.ts — every import of it then becomes `any`. Build from scratch.
 rm -f packages/*/tsconfig.tsbuildinfo
 
+# Ghi commit đang build vào tmp/deploy-id.txt — /health sẽ trả lại để biết bản nào đang chạy.
+mkdir -p tmp
+printf '%s\n%s\n' "$(git rev-parse --short HEAD)" "$(date '+%F %T')" > tmp/deploy-id.txt
+
 npm run build
 test -f packages/xeon/dist/main.js
 
