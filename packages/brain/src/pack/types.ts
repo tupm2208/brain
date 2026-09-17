@@ -145,6 +145,26 @@ export const REQUIRED_TEMPLATES = [
 ] as const;
 export type TemplateKey = (typeof REQUIRED_TEMPLATES)[number];
 
+/**
+ * The AI agent profile of a pack (16/09/2026 — Sales Desk's level-2 agent moved to Xeon).
+ *
+ * The rule engine answers what it can PROVE (stock, price, orders); the agent answers the rest the
+ * way the shop's best salesperson would, calling the same landing tools. Everything here is the
+ * shop owner's selling knowledge written as data — the engine code is shared by every industry.
+ */
+export interface PackAgent {
+  /** The agent's rules and tool protocol. `{site}` is replaced by the merchant's public address. */
+  systemPrompt: string;
+  /** What the `bang_size` tool returns: size chart and fit rules. */
+  sizeGuide: string;
+  /** What `chinh_sach` returns when the merchant has filled in no policy on the landing. */
+  fallbackPolicy: string;
+  /** Regex on the accent-stripped customer message: matching messages are NOT given to the agent. */
+  mustHumanPattern: string;
+  /** Regex on the accent-stripped reply: the agent called a human in, so the merchant is notified. */
+  handoffReplyPattern: string;
+}
+
 export interface IndustryPack {
   id: string;
   name: string;
@@ -172,4 +192,6 @@ export interface IndustryPack {
    */
   extraValues?: Record<string, string>;
   templates: Record<string, string>;
+  /** AI agent profile. Absent = this industry is answered by the rule engine alone. */
+  agent?: PackAgent;
 }

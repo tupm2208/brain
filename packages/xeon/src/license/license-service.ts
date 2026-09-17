@@ -17,7 +17,7 @@
  * them to the console and the landing unchanged.
  */
 
-import { signTicket, type SigningKeyPair } from "../support/ticket-kit";
+import { signText, signTicket, type SigningKeyPair } from "../support/ticket-kit";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
 import {
@@ -389,6 +389,20 @@ export class LicenseService {
     };
   }
 
+  /** The industry pack id on a merchant's active key (Đ9 knowledge). Empty when the shop has no active key. */
+  industryOf(shop: string): string {
+    const record = Object.values(this.ledger.read().cacKey).find((x) => x.shop === shop && !x.khoaLuc);
+    return record ? String(record.nganh || "giay-chay") : "";
+  }
+
+  /**
+   * Signs an arbitrary string with Xeon's key (Đ9 Video Studio tickets). The private key never leaves
+   * this class; callers get the signature and the key id to verify it with.
+   */
+  signDetached(textToSign: string): { keyId: string; chuKy: string } {
+    return { keyId: this.signingKey.keyId, chuKy: signText(this.signingKey.khoaRiengPem, textToSign) };
+  }
+
   publicKey(): { keyId: string; khoaCongPem: string } {
     return { keyId: this.signingKey.keyId, khoaCongPem: this.signingKey.khoaCongPem };
   }
@@ -458,6 +472,22 @@ export class LicenseService {
     const connected = results.filter((r) => r.ok).map((r) => r.ma);
     if (connected.length > 0) this.logger.info(`[license] shop "${record.shop}": ket noi trang ${connected.join(", ")}`);
     return results;
+  }
+
+  /** Forgets pages of `shop` (Đ6 "Ngắt kết nối"): Xeon stops routing their events. Returns the ids really removed. */
+  async disconnectPages(shop: string, pageIds: string[]): Promise<string[]> {
+    const record = this.activeRecordOf(shop);
+    if (!record) return [];
+    const wanted = new Set(pageIds.map((id) => String(id ?? "").trim()).filter(Boolean));
+    const removed = await this.ledger.update((state) => {
+      const row = state.cacKey[record.key] as LicenseRecord;
+      const before = row.trang ?? [];
+      const gone = before.filter((p) => wanted.has(p.ma)).map((p) => p.ma);
+      row.trang = before.filter((p) => !wanted.has(p.ma));
+      return gone;
+    });
+    if (removed.length > 0) this.logger.info(`[license] shop "${record.shop}": ngat trang ${removed.join(", ")}`);
+    return removed;
   }
 
   private activeRecordOf(shop: string): LicenseRecord | null {

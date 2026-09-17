@@ -1,0 +1,3937 @@
+{
+  "version": 2,
+  "approvedAt": "2026-09-01T00:00:00.000Z",
+  "lines": [
+    {
+      "id": "adizero-adios",
+      "name": "adidas Adizero Adios",
+      "aliases": [
+        "adios 9",
+        "adios 8",
+        "adizero adios 9",
+        "adizero adios 8",
+        "adios"
+      ],
+      "brand": "adidas",
+      "purpose": "short_race",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Giày đua/tempo cự ly ngắn không có tấm carbon, đế mỏng đầm và bám, nhẹ; hợp buổi tempo, interval và đua 5K-10K. KHÁC hoàn toàn Adios Pro (Adios Pro là giày đua marathon có thanh Energy Rods).",
+      "styleNote": "Dáng đua gọn thấp, đi phố được nhưng đế mỏng nên không êm cho đi chơi cả ngày.",
+      "equivalents": [
+        "adizero-evo-sl",
+        "adizero-boston",
+        "adizero-takumi",
+        "saucony-endorphin-speed",
+        "asics-magic-speed"
+      ],
+      "beginnerAlternative": [
+        "adizero-sl",
+        "adidas-supernova",
+        "asics-novablast"
+      ],
+      "profile": "short_race",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 2,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 4,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "adizero-adios-pro",
+      "name": "adidas Adizero Adios Pro",
+      "aliases": [
+        "adios pro",
+        "adios pro 4",
+        "adios pro 3"
+      ],
+      "brand": "adidas",
+      "purpose": "race_carbon",
+      "plate": "energy_rods",
+      "level": "advanced",
+      "note": "Giày đua marathon có thanh carbon Energy Rods, nhẹ và bật mạnh; phát huy tốt nhất khi đã có nền tảng chạy và mục tiêu race rõ.",
+      "styleNote": "Dáng giày đua mỏng cao, không hợp đi chơi hằng ngày.",
+      "equivalents": [
+        "nike-vaporfly",
+        "nike-alphafly",
+        "asics-metaspeed",
+        "saucony-endorphin-pro",
+        "nb-sc-elite"
+      ],
+      "beginnerAlternative": [
+        "adidas-supernova",
+        "adizero-sl",
+        "asics-novablast"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "adizero-prime-x",
+      "name": "adidas Adizero Prime X",
+      "aliases": [
+        "prime x",
+        "prime x 3",
+        "prime x strung"
+      ],
+      "brand": "adidas",
+      "purpose": "super_trainer",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Siêu giày đế cực dày vượt chuẩn thi đấu, bật rất mạnh; dành cho người đã chạy khỏe muốn buổi tập dài/nhanh thật êm.",
+      "styleNote": "Đế rất cao, nhìn hầm hố; đi phố được nhưng cồng kềnh.",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-alphafly",
+        "nb-sc-trainer"
+      ],
+      "beginnerAlternative": [
+        "adidas-supernova",
+        "asics-novablast"
+      ],
+      "profile": "super_trainer",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 3,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "adizero-boston",
+      "name": "adidas Adizero Boston",
+      "aliases": [
+        "boston",
+        "boston 12",
+        "boston 13"
+      ],
+      "brand": "adidas",
+      "purpose": "tempo",
+      "plate": "energy_rods",
+      "level": "intermediate",
+      "note": "Giày tập tốc độ có thanh Energy Rods, đế khá cứng và đầm; hợp người đã chạy quen muốn buổi tempo/interval, người mới chạy sẽ thấy cứng chân.",
+      "styleNote": "Dáng thể thao gọn, phối đồ thể thao ổn; không phải giày thời trang thuần.",
+      "equivalents": [
+        "adizero-evo-sl",
+        "adizero-sl",
+        "saucony-endorphin-speed",
+        "hoka-mach",
+        "asics-novablast",
+        "nb-fuelcell-rebel"
+      ],
+      "beginnerAlternative": [
+        "adidas-supernova",
+        "asics-cumulus",
+        "hoka-clifton"
+      ],
+      "profile": "tempo",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "adizero-sl",
+      "name": "adidas Adizero SL",
+      "aliases": [
+        "adizero sl",
+        "adizero sl2",
+        "adizero sl 2"
+      ],
+      "brand": "adidas",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Cửa ngõ nhà Adizero: nhẹ, giá dễ chịu, chạy daily lẫn lên tí tốc độ đều được; người mới đi được luôn.",
+      "styleNote": "Gọn nhẹ, dễ phối đồ thể thao đi học đi làm.",
+      "equivalents": [
+        "nike-pegasus",
+        "asics-novablast",
+        "saucony-ride",
+        "adidas-supernova"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "adizero-evo-sl",
+      "name": "adidas Adizero Evo SL",
+      "aliases": [
+        "evo sl"
+      ],
+      "brand": "adidas",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Siêu nhẹ, đệm Lightstrike Pro full nhưng không thanh carbon; bật nảy, hợp tempo/interval và người thích cảm giác nhanh mà chưa cần giày đua.",
+      "styleNote": "Dáng racing thanh thoát, đi phố cũng đẹp.",
+      "equivalents": [
+        "adizero-boston",
+        "nb-fuelcell-rebel",
+        "saucony-endorphin-speed",
+        "hoka-mach"
+      ],
+      "beginnerAlternative": [
+        "adizero-sl",
+        "adidas-supernova"
+      ],
+      "profile": "tempo",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 5,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "adizero-takumi",
+      "name": "adidas Adizero Takumi Sen",
+      "aliases": [
+        "takumi",
+        "takumi sen"
+      ],
+      "brand": "adidas",
+      "purpose": "short_race",
+      "plate": "energy_rods",
+      "level": "advanced",
+      "note": "Giày đua cự ly ngắn 5K-10K, thấp và rất nhẹ; đòi hỏi chân khỏe, không hợp người mới.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "asics-metaspeed"
+      ],
+      "beginnerAlternative": [
+        "adizero-sl",
+        "asics-novablast"
+      ],
+      "profile": "short_race",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 2,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 3,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "adidas-supernova",
+      "name": "adidas Supernova",
+      "aliases": [
+        "supernova",
+        "supernova rise",
+        "supernova solution",
+        "supernova stride"
+      ],
+      "brand": "adidas",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày daily cao cấp hơn nhóm Cloudfoam: êm ái hơn, giảm chấn tốt hơn, có hỗ trợ lực đẩy một phần; lựa chọn an toàn nhất cho người mới, chạy đều hằng ngày và lên được 10-20km sau này.",
+      "styleNote": "Dáng tròn êm ái, đi bộ đi làm cả ngày thoải mái.",
+      "equivalents": [
+        "nike-pegasus",
+        "asics-cumulus",
+        "saucony-ride",
+        "hoka-clifton",
+        "nb-880"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "adidas-duramo",
+      "name": "adidas Duramo",
+      "aliases": [
+        "duramo",
+        "duramo speed",
+        "duramo sl"
+      ],
+      "brand": "adidas",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đa năng giá mềm, đệm Cloudfoam độ êm vừa phải, giảm chấn nhẹ — đi lại hằng ngày, chạy nhẹ quãng ngắn, tập gym đều đáp ứng được; chạy đều/xa hơn nên lên Supernova Rise hoặc Adizero SL.",
+      "styleNote": "Đơn giản dễ phối, hợp cả đi học.",
+      "equivalents": [
+        "adidas-galaxy",
+        "adidas-supernova",
+        "adizero-sl"
+      ],
+      "beginnerAlternative": [],
+      "profile": "budget_daily",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 4,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 2,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "adidas-galaxy",
+      "name": "adidas Galaxy",
+      "aliases": [
+        "galaxy 7",
+        "galaxy 6"
+      ],
+      "brand": "adidas",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giá dễ tiếp cận nhất nhóm chạy, đệm Cloudfoam độ êm vừa phải, giảm chấn nhẹ; hợp đi bộ, chạy nhẹ quãng ngắn, đi lại hằng ngày; chạy đều nên lên Supernova Rise.",
+      "styleNote": "",
+      "equivalents": [
+        "adidas-duramo"
+      ],
+      "beginnerAlternative": [],
+      "profile": "budget_daily",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 4,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 2,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "adidas-ultraboost",
+      "name": "adidas Ultraboost",
+      "aliases": [
+        "ultraboost",
+        "ultra boost",
+        "ub 22",
+        "ultraboost light",
+        "ultraboost 5"
+      ],
+      "brand": "adidas",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm Boost êm nhún đặc trưng; chạy nhẹ được nhưng thế mạnh thật là đi bộ/đi chơi êm cả ngày.",
+      "styleNote": "Biểu tượng sneaker phối đồ — rất nhiều khách mua vì đẹp, điều đó hoàn toàn hợp lý.",
+      "equivalents": [
+        "asics-nimbus",
+        "hoka-bondi",
+        "nb-1080"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 2,
+        "long": 3
+      }
+    },
+    {
+      "id": "adidas-samba",
+      "name": "adidas Samba",
+      "aliases": [
+        "samba og",
+        "samba"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle đế bằng, KHÔNG phải giày chạy; mua để đi chơi, phối đồ.",
+      "styleNote": "Hot nhất nhóm retro, phối quần jeans/ống rộng đều đẹp.",
+      "equivalents": [
+        "adidas-gazelle",
+        "adidas-spezial",
+        "adidas-campus",
+        "adidas-sl72"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-gazelle",
+      "name": "adidas Gazelle",
+      "aliases": [
+        "gazelle",
+        "gazelle indoor"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Retro da lộn nhiều màu, KHÔNG phải giày chạy; chọn theo màu và outfit.",
+      "styleNote": "Nhiều màu nổi, dễ tạo điểm nhấn.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-spezial",
+        "adidas-campus"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-spezial",
+      "name": "adidas Handball Spezial",
+      "aliases": [
+        "spezial",
+        "handball spezial"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Retro cùng nhà Samba, dáng mảnh hơn; giày đi chơi, không phải giày chạy.",
+      "styleNote": "",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-campus",
+      "name": "adidas Campus",
+      "aliases": [
+        "campus 00s",
+        "campus"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Sneaker da lộn bản to, thuần đi chơi/đi học; không dùng chạy bộ.",
+      "styleNote": "Hợp style rộng rãi, Gen Z chuộng.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle",
+        "adidas-forum"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-stan-smith",
+      "name": "adidas Stan Smith",
+      "aliases": [
+        "stan smith"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày trắng tennis cổ điển, thuần lifestyle; đi học đi làm đều hợp.",
+      "styleNote": "Trắng tối giản, gần như outfit nào cũng cân.",
+      "equivalents": [
+        "adidas-superstar",
+        "adidas-campus"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-superstar",
+      "name": "adidas Superstar",
+      "aliases": [
+        "superstar"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Mũi sò kinh điển, thuần lifestyle; bền và dễ đi.",
+      "styleNote": "",
+      "equivalents": [
+        "adidas-stan-smith",
+        "adidas-samba"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-sl72",
+      "name": "adidas SL 72",
+      "aliases": [
+        "sl 72",
+        "sl72"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Retro runner thập niên 70, mua để phối đồ; không dùng chạy nghiêm túc.",
+      "styleNote": "Dáng mảnh vintage, hợp quần ống đứng.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-forum",
+      "name": "adidas Forum",
+      "aliases": [
+        "forum low",
+        "forum mid",
+        "forum 84"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Sneaker bóng rổ retro bản to, thuần đi chơi.",
+      "styleNote": "",
+      "equivalents": [
+        "adidas-campus",
+        "adidas-superstar"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "nike-pegasus",
+      "name": "Nike Pegasus",
+      "aliases": [
+        "pegasus",
+        "pegasus 40",
+        "pegasus 41",
+        "peg 40",
+        "peg 41"
+      ],
+      "brand": "nike",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily trainer quốc dân của Nike: cân bằng êm/bền/đa dụng, ai chạy cũng dùng được.",
+      "styleNote": "Dễ phối đồ thể thao thường ngày.",
+      "equivalents": [
+        "adidas-supernova",
+        "asics-cumulus",
+        "saucony-ride",
+        "nb-880",
+        "adizero-sl"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "nike-structure",
+      "name": "Nike Structure",
+      "aliases": [
+        "structure"
+      ],
+      "brand": "nike",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Bản hỗ trợ ổn định của Nike, nền đế vững; hợp người lật cổ chân trong hoặc thích cảm giác chắc chân.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-kayano",
+        "asics-gt2000",
+        "saucony-guide",
+        "hoka-arahi"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "nike-invincible",
+      "name": "Nike Invincible",
+      "aliases": [
+        "invincible"
+      ],
+      "brand": "nike",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm ZoomX dày êm nhún nhất nhà Nike cho chạy nhẹ/recovery; hơi lắc với người chân yếu.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-nimbus",
+        "hoka-bondi",
+        "nb-1080",
+        "adidas-ultraboost"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "nike-vaporfly",
+      "name": "Nike Vaporfly",
+      "aliases": [
+        "vaporfly"
+      ],
+      "brand": "nike",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon chuẩn mực; dành cho race và người đã có nền tảng.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "asics-metaspeed",
+        "saucony-endorphin-pro",
+        "nb-sc-elite"
+      ],
+      "beginnerAlternative": [
+        "nike-pegasus",
+        "asics-novablast"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "nike-alphafly",
+      "name": "Nike Alphafly",
+      "aliases": [
+        "alphafly"
+      ],
+      "brand": "nike",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon đế dày nhất nhà Nike, có túi khí; thuần race marathon.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "asics-metaspeed"
+      ],
+      "beginnerAlternative": [
+        "nike-pegasus",
+        "adidas-supernova"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 3,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "asics-novablast",
+      "name": "ASICS Novablast",
+      "aliases": [
+        "novablast",
+        "novablast 4",
+        "novablast 5"
+      ],
+      "brand": "asics",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily êm và nảy, vui chân; đa dụng từ chạy nhẹ tới lên tempo nhẹ, người mới đi được.",
+      "styleNote": "Dáng hiện đại, phối đồ thể thao đẹp.",
+      "equivalents": [
+        "adizero-sl",
+        "nike-pegasus",
+        "hoka-mach",
+        "nb-fuelcell-rebel",
+        "saucony-ride"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 5,
+        "p430_5": 3,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 5
+      }
+    },
+    {
+      "id": "asics-nimbus",
+      "name": "ASICS Gel-Nimbus",
+      "aliases": [
+        "nimbus",
+        "gel nimbus"
+      ],
+      "brand": "asics",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Êm hàng đầu nhà ASICS cho chạy nhẹ/long run chậm và đứng lâu; nặng hơn nhóm daily thường.",
+      "styleNote": "",
+      "equivalents": [
+        "hoka-bondi",
+        "nb-1080",
+        "nike-invincible",
+        "saucony-triumph"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "asics-cumulus",
+      "name": "ASICS Gel-Cumulus",
+      "aliases": [
+        "cumulus",
+        "gel cumulus"
+      ],
+      "brand": "asics",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily nhẹ nhàng trung tính, dễ chịu; lựa chọn an toàn cho người mới.",
+      "styleNote": "",
+      "equivalents": [
+        "adidas-supernova",
+        "nike-pegasus",
+        "saucony-ride",
+        "nb-880"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "asics-kayano",
+      "name": "ASICS Gel-Kayano",
+      "aliases": [
+        "kayano",
+        "gel kayano"
+      ],
+      "brand": "asics",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Ổn định + êm cao cấp nhất nhà ASICS; hợp người cần đỡ vòm chân, chân lật trong, hoặc nặng cân.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-gt2000",
+        "nike-structure",
+        "hoka-arahi",
+        "saucony-guide"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "asics-gt2000",
+      "name": "ASICS GT-2000",
+      "aliases": [
+        "gt 2000",
+        "gt2000"
+      ],
+      "brand": "asics",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Bản ổn định tầm giá dễ hơn Kayano; chắc chân cho chạy daily.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-kayano",
+        "nike-structure",
+        "saucony-guide"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "asics-metaspeed",
+      "name": "ASICS Metaspeed",
+      "aliases": [
+        "metaspeed",
+        "metaspeed sky",
+        "metaspeed edge"
+      ],
+      "brand": "asics",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon của ASICS, rất nhẹ; thuần race.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "saucony-endorphin-pro"
+      ],
+      "beginnerAlternative": [
+        "asics-novablast",
+        "asics-cumulus"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "hoka-clifton",
+      "name": "HOKA Clifton",
+      "aliases": [
+        "clifton"
+      ],
+      "brand": "hoka",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily êm nhẹ đặc trưng HOKA; rất được lòng người mới và người chạy nhẹ nhàng.",
+      "styleNote": "Đế dày nổi bật, nhiều khách thích để đi bộ cả ngày.",
+      "equivalents": [
+        "adidas-supernova",
+        "asics-cumulus",
+        "nike-pegasus",
+        "saucony-ride"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "hoka-bondi",
+      "name": "HOKA Bondi",
+      "aliases": [
+        "bondi"
+      ],
+      "brand": "hoka",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Êm dày nhất nhà HOKA; chân ái của người đứng lâu, đi bộ nhiều, chạy chậm.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-nimbus",
+        "nb-1080",
+        "nike-invincible"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "hoka-mach",
+      "name": "HOKA Mach",
+      "aliases": [
+        "mach 5",
+        "mach 6",
+        "mach x"
+      ],
+      "brand": "hoka",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Nhẹ và nhanh cho daily lên tempo; êm hơn nhóm racing nên người chạy khá dùng hằng ngày rất hợp.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-evo-sl",
+        "nb-fuelcell-rebel",
+        "asics-novablast",
+        "saucony-endorphin-speed"
+      ],
+      "beginnerAlternative": [
+        "hoka-clifton"
+      ],
+      "profile": "tempo",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 5,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "hoka-arahi",
+      "name": "HOKA Arahi",
+      "aliases": [
+        "arahi"
+      ],
+      "brand": "hoka",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Ổn định kiểu HOKA, nhẹ hơn stability truyền thống; hợp chân lật trong.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-kayano",
+        "nike-structure",
+        "saucony-guide"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "hoka-speedgoat",
+      "name": "HOKA Speedgoat",
+      "aliases": [
+        "speedgoat"
+      ],
+      "brand": "hoka",
+      "purpose": "trail",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Giày trail bám đường đất/đá tốt; không dùng chạy đường nhựa hằng ngày.",
+      "styleNote": "",
+      "equivalents": [],
+      "beginnerAlternative": [],
+      "profile": "trail",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 4,
+        "p5_6": 3,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "nb-880",
+      "name": "New Balance 880",
+      "aliases": [
+        "880",
+        "880v14",
+        "880v13"
+      ],
+      "brand": "new balance",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily trainer chắc chắn bền bỉ; form NB hợp chân bè.",
+      "styleNote": "",
+      "equivalents": [
+        "nike-pegasus",
+        "asics-cumulus",
+        "adidas-supernova",
+        "saucony-ride"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "nb-1080",
+      "name": "New Balance 1080",
+      "aliases": [
+        "1080",
+        "1080v13",
+        "1080v14"
+      ],
+      "brand": "new balance",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Êm cao cấp nhà NB, mềm mại cho chạy nhẹ và đi cả ngày; form rộng thoải mái.",
+      "styleNote": "Đi làm đi chơi đều êm, nhiều khách mua chỉ để đi bộ.",
+      "equivalents": [
+        "asics-nimbus",
+        "hoka-bondi",
+        "nike-invincible",
+        "adidas-ultraboost"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "nb-fuelcell-rebel",
+      "name": "New Balance FuelCell Rebel",
+      "aliases": [
+        "rebel",
+        "fuelcell rebel",
+        "rebel v4"
+      ],
+      "brand": "new balance",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Nhẹ, bật, vui chân cho buổi nhanh; không thanh carbon nên vẫn thân thiện hơn giày đua.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-evo-sl",
+        "hoka-mach",
+        "asics-novablast",
+        "saucony-endorphin-speed"
+      ],
+      "beginnerAlternative": [
+        "nb-880"
+      ],
+      "profile": "tempo",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 5,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "nb-sc-elite",
+      "name": "New Balance SC Elite",
+      "aliases": [
+        "sc elite",
+        "fuelcell sc elite"
+      ],
+      "brand": "new balance",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon của NB; thuần race.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "asics-metaspeed"
+      ],
+      "beginnerAlternative": [
+        "nb-880",
+        "nb-fuelcell-rebel"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "nb-sc-trainer",
+      "name": "New Balance SC Trainer",
+      "aliases": [
+        "sc trainer",
+        "fuelcell sc trainer"
+      ],
+      "brand": "new balance",
+      "purpose": "super_trainer",
+      "plate": "carbon",
+      "level": "intermediate",
+      "note": "Super trainer đế dày có tấm carbon cho buổi tập dài/nhanh; cần chạy quen mới phát huy.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-prime-x",
+        "adizero-boston",
+        "saucony-endorphin-speed"
+      ],
+      "beginnerAlternative": [
+        "nb-880"
+      ],
+      "profile": "super_trainer",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 3,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "saucony-ride",
+      "name": "Saucony Ride",
+      "aliases": [
+        "saucony ride",
+        "ride 17"
+      ],
+      "brand": "saucony",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily trainer cân bằng, dễ dùng cho mọi trình độ.",
+      "styleNote": "",
+      "equivalents": [
+        "nike-pegasus",
+        "asics-cumulus",
+        "adidas-supernova",
+        "nb-880"
+      ],
+      "beginnerAlternative": [],
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "saucony-triumph",
+      "name": "Saucony Triumph",
+      "aliases": [
+        "triumph"
+      ],
+      "brand": "saucony",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Êm dày cho chạy nhẹ và long run chậm.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-nimbus",
+        "nb-1080",
+        "hoka-bondi"
+      ],
+      "beginnerAlternative": [],
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "saucony-guide",
+      "name": "Saucony Guide",
+      "aliases": [
+        "saucony guide"
+      ],
+      "brand": "saucony",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Bản ổn định nhẹ nhàng, đỡ chân lật trong mà không gò bó.",
+      "styleNote": "",
+      "equivalents": [
+        "asics-gt2000",
+        "nike-structure",
+        "hoka-arahi"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "saucony-endorphin-speed",
+      "name": "Saucony Endorphin Speed",
+      "aliases": [
+        "endorphin speed"
+      ],
+      "brand": "saucony",
+      "purpose": "tempo",
+      "plate": "nylon",
+      "level": "intermediate",
+      "note": "Tempo trainer có tấm nylon dẻo — nhanh nhưng thân thiện hơn carbon; hợp người tập tốc độ thường xuyên.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-boston",
+        "adizero-evo-sl",
+        "hoka-mach",
+        "nb-fuelcell-rebel"
+      ],
+      "beginnerAlternative": [
+        "saucony-ride"
+      ],
+      "profile": "tempo",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 4
+      }
+    },
+    {
+      "id": "saucony-endorphin-pro",
+      "name": "Saucony Endorphin Pro",
+      "aliases": [
+        "endorphin pro"
+      ],
+      "brand": "saucony",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon của Saucony; thuần race.",
+      "styleNote": "",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "asics-metaspeed",
+        "nb-sc-elite"
+      ],
+      "beginnerAlternative": [
+        "saucony-ride"
+      ],
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "nike-vomero",
+      "name": "Nike Vomero",
+      "aliases": [
+        "vomero",
+        "vomero 18",
+        "vomero 17",
+        "vomero plus"
+      ],
+      "brand": "nike",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm dày ZoomX + ReactX, êm hơn Pegasus, cho chạy chậm/long run và người nặng cân.",
+      "equivalents": [
+        "asics-nimbus",
+        "hoka-bondi",
+        "saucony-triumph",
+        "adidas-ultraboost"
+      ],
+      "beginnerAlternative": "",
+      "profile": "max_cushion",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "nike-zoom-fly",
+      "name": "Nike Zoom Fly",
+      "aliases": [
+        "zoom fly",
+        "zoom fly 6",
+        "zoomfly",
+        "zoom fly 5"
+      ],
+      "brand": "nike",
+      "purpose": "super_trainer",
+      "plate": "carbon",
+      "level": "intermediate",
+      "note": "Super trainer có tấm carbon, đệm ZoomX — tập tempo/long run nhanh, chạy đua được cự ly dài với giá rẻ hơn Vaporfly.",
+      "equivalents": [
+        "adizero-boston",
+        "saucony-endorphin-speed",
+        "hoka-mach",
+        "puma-deviate-nitro"
+      ],
+      "beginnerAlternative": "nike-pegasus",
+      "profile": "super_trainer",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 3,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "nike-streakfly",
+      "name": "Nike Streakfly",
+      "aliases": [
+        "streakfly",
+        "streak fly"
+      ],
+      "brand": "nike",
+      "purpose": "short_race",
+      "plate": "none",
+      "level": "advanced",
+      "note": "Giày đua 5K-10K siêu nhẹ, đế mỏng; không hợp chạy dài.",
+      "equivalents": [
+        "adizero-adios",
+        "adizero-takumi",
+        "asics-hyperspeed"
+      ],
+      "beginnerAlternative": "nike-pegasus",
+      "profile": "short_race",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 2,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 3,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "nike-winflo",
+      "name": "Nike Winflo",
+      "aliases": [
+        "winflo",
+        "winflo 11",
+        "winflo 10"
+      ],
+      "brand": "nike",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dòng phổ thông giá mềm cho người mới, đi bộ/chạy nhẹ.",
+      "equivalents": [
+        "adidas-duramo",
+        "adidas-galaxy",
+        "puma-electrify"
+      ],
+      "beginnerAlternative": "",
+      "profile": "budget_daily",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 4,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 3,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "nike-infinity-run",
+      "name": "Nike ReactX Infinity Run",
+      "aliases": [
+        "infinity run",
+        "infinity",
+        "reactx infinity",
+        "infinity run 4"
+      ],
+      "brand": "nike",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm ReactX dày, đế rộng ổn định — chạy đều ngày, giảm mỏi cho người mới và người chân yếu.",
+      "equivalents": [
+        "adidas-supernova",
+        "hoka-clifton",
+        "asics-novablast",
+        "nike-structure"
+      ],
+      "beginnerAlternative": "",
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "nike-pegasus-plus",
+      "name": "Nike Pegasus Plus / Premium",
+      "aliases": [
+        "pegasus plus",
+        "pegasus premium",
+        "peg plus",
+        "peg premium"
+      ],
+      "brand": "nike",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Pegasus đệm ZoomX toàn phần (Plus) hoặc thêm Air Zoom (Premium): nảy hơn Pegasus thường, hợp tempo và long run nhanh.",
+      "equivalents": [
+        "adizero-boston",
+        "adizero-evo-sl",
+        "hoka-mach",
+        "asics-novablast"
+      ],
+      "beginnerAlternative": "nike-pegasus",
+      "profile": "tempo",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "puma-velocity-nitro",
+      "name": "Puma Velocity Nitro",
+      "aliases": [
+        "velocity nitro",
+        "velocity nitro 3",
+        "velocity",
+        "velocity nitro 2"
+      ],
+      "brand": "puma",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Daily trainer đệm Nitro êm và nhẹ, giá hợp lý — đối trọng trực tiếp của Pegasus/Supernova.",
+      "equivalents": [
+        "nike-pegasus",
+        "adidas-supernova",
+        "saucony-ride",
+        "asics-cumulus"
+      ],
+      "beginnerAlternative": "",
+      "profile": "daily",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "puma-deviate-nitro",
+      "name": "Puma Deviate Nitro",
+      "aliases": [
+        "deviate nitro",
+        "deviate nitro 3",
+        "deviate",
+        "deviate nitro 2"
+      ],
+      "brand": "puma",
+      "purpose": "super_trainer",
+      "plate": "carbon",
+      "level": "intermediate",
+      "note": "Tấm carbon PWRPLATE + đệm Nitro: tập tempo, long run nhanh và đua HM/FM cho người tập đều.",
+      "equivalents": [
+        "nike-zoom-fly",
+        "saucony-endorphin-speed",
+        "adizero-boston",
+        "hoka-mach"
+      ],
+      "beginnerAlternative": "puma-velocity-nitro",
+      "profile": "super_trainer",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 3,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "puma-deviate-elite",
+      "name": "Puma Deviate Nitro Elite",
+      "aliases": [
+        "deviate nitro elite",
+        "deviate elite",
+        "deviate elite 3"
+      ],
+      "brand": "puma",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon nhẹ của Puma cho 10K-HM-FM.",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "asics-metaspeed",
+        "saucony-endorphin-pro"
+      ],
+      "beginnerAlternative": "puma-deviate-nitro",
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "puma-fast-r",
+      "name": "Puma Fast-R Nitro Elite",
+      "aliases": [
+        "fast-r",
+        "fast r",
+        "fast-r nitro elite",
+        "fast r 3",
+        "fastr"
+      ],
+      "brand": "puma",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua marathon top của Puma, đế tách đôi + carbon, dành cho pace nhanh.",
+      "equivalents": [
+        "nike-alphafly",
+        "adizero-adios-pro",
+        "asics-metaspeed"
+      ],
+      "beginnerAlternative": "puma-deviate-nitro",
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 3,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "puma-forever-run",
+      "name": "Puma ForeverRun Nitro",
+      "aliases": [
+        "forever run",
+        "foreverrun",
+        "forever run nitro",
+        "foreverrun nitro"
+      ],
+      "brand": "puma",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày ổn định (chống lật trong) êm, cho chân bẹt/chân yếu chạy đều.",
+      "equivalents": [
+        "asics-kayano",
+        "nike-structure",
+        "hoka-arahi",
+        "saucony-guide"
+      ],
+      "beginnerAlternative": "",
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "puma-magnify-nitro",
+      "name": "Puma Magnify Nitro",
+      "aliases": [
+        "magnify",
+        "magnify nitro",
+        "magnify nitro 2"
+      ],
+      "brand": "puma",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm dày nhất của Puma, cho chạy chậm, hồi phục, người nặng cân.",
+      "equivalents": [
+        "hoka-bondi",
+        "asics-nimbus",
+        "nike-vomero",
+        "saucony-triumph"
+      ],
+      "beginnerAlternative": "",
+      "profile": "max_cushion",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "puma-liberate-nitro",
+      "name": "Puma Liberate Nitro",
+      "aliases": [
+        "liberate",
+        "liberate nitro",
+        "liberate nitro 2"
+      ],
+      "brand": "puma",
+      "purpose": "short_race",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Siêu nhẹ, đế mỏng, cho 5K-10K nhanh và tập tốc độ.",
+      "equivalents": [
+        "adizero-adios",
+        "nike-streakfly",
+        "adizero-takumi"
+      ],
+      "beginnerAlternative": "puma-velocity-nitro",
+      "profile": "short_race",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 2,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 3,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "puma-electrify",
+      "name": "Puma Electrify Nitro",
+      "aliases": [
+        "electrify",
+        "electrify nitro",
+        "electrify nitro 3"
+      ],
+      "brand": "puma",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dòng nhập môn giá mềm có đệm Nitro, đi bộ/chạy nhẹ.",
+      "equivalents": [
+        "adidas-duramo",
+        "nike-winflo",
+        "adidas-galaxy"
+      ],
+      "beginnerAlternative": "",
+      "profile": "budget_daily",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 4,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 3,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "saucony-kinvara",
+      "name": "Saucony Kinvara",
+      "aliases": [
+        "kinvara",
+        "kinvara 15",
+        "kinvara 16",
+        "kinvara 14"
+      ],
+      "brand": "saucony",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Nhẹ, drop thấp, không tấm — chạy tự nhiên, tempo và 10K; người mới thích nhẹ cũng đi được.",
+      "equivalents": [
+        "adizero-sl",
+        "adizero-evo-sl",
+        "hoka-rincon",
+        "nb-fuelcell-rebel"
+      ],
+      "beginnerAlternative": "saucony-ride",
+      "profile": "tempo",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 5,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "saucony-hurricane",
+      "name": "Saucony Hurricane",
+      "aliases": [
+        "hurricane",
+        "hurricane 24",
+        "hurricane 23"
+      ],
+      "brand": "saucony",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Ổn định + đệm dày nhất của Saucony, cho chân bẹt chạy đường dài.",
+      "equivalents": [
+        "asics-kayano",
+        "hoka-gaviota",
+        "nike-structure",
+        "puma-forever-run"
+      ],
+      "beginnerAlternative": "",
+      "profile": "stability",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 3,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "saucony-endorphin-elite",
+      "name": "Saucony Endorphin Elite",
+      "aliases": [
+        "endorphin elite",
+        "endorphin elite 2"
+      ],
+      "brand": "saucony",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua cao cấp nhất của Saucony, nảy mạnh, cho pace nhanh FM/HM.",
+      "equivalents": [
+        "nike-alphafly",
+        "adizero-adios-pro",
+        "asics-metaspeed",
+        "puma-fast-r"
+      ],
+      "beginnerAlternative": "saucony-endorphin-speed",
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "saucony-tempus",
+      "name": "Saucony Tempus",
+      "aliases": [
+        "tempus",
+        "tempus 2"
+      ],
+      "brand": "saucony",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Giày ổn định nhưng nhẹ và nảy (PWRRUN PB) — chân bẹt muốn chạy nhanh hơn.",
+      "equivalents": [
+        "saucony-guide",
+        "asics-gt2000",
+        "puma-forever-run"
+      ],
+      "beginnerAlternative": "saucony-guide",
+      "profile": "stability",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 4,
+        "p430_5": 3,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 4
+      }
+    },
+    {
+      "id": "saucony-peregrine",
+      "name": "Saucony Peregrine",
+      "aliases": [
+        "peregrine",
+        "peregrine 14",
+        "peregrine 15"
+      ],
+      "brand": "saucony",
+      "purpose": "trail",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Trail nhẹ, bám tốt, hợp đường mòn kỹ thuật.",
+      "equivalents": [
+        "hoka-speedgoat",
+        "hoka-challenger",
+        "asics-trabuco"
+      ],
+      "beginnerAlternative": "",
+      "profile": "trail",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 4,
+        "p5_6": 3,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "hoka-rincon",
+      "name": "Hoka Rincon",
+      "aliases": [
+        "rincon",
+        "rincon 4",
+        "rincon 3"
+      ],
+      "brand": "hoka",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Clifton bản nhẹ hơn: đệm dày mà nhẹ, hợp chạy đều và tempo nhẹ, giá dễ.",
+      "equivalents": [
+        "hoka-clifton",
+        "saucony-kinvara",
+        "adizero-sl"
+      ],
+      "beginnerAlternative": "",
+      "profile": "tempo",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 5,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 2,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 4,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "hoka-rocket-x",
+      "name": "Hoka Rocket X",
+      "aliases": [
+        "rocket x",
+        "rocket x 2",
+        "rocket x 3",
+        "rocketx"
+      ],
+      "brand": "hoka",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua carbon của Hoka, đệm PEBA, cho HM/FM.",
+      "equivalents": [
+        "adizero-adios-pro",
+        "nike-vaporfly",
+        "saucony-endorphin-pro",
+        "asics-metaspeed"
+      ],
+      "beginnerAlternative": "hoka-mach",
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "hoka-cielo-x",
+      "name": "Hoka Cielo X1",
+      "aliases": [
+        "cielo x",
+        "cielo x1",
+        "cielo x 1",
+        "cielo x1 2.0",
+        "cielo"
+      ],
+      "brand": "hoka",
+      "purpose": "race_carbon",
+      "plate": "carbon",
+      "level": "advanced",
+      "note": "Giày đua đệm rất dày, nảy mạnh, đế cong — cho pace nhanh cự ly dài.",
+      "equivalents": [
+        "nike-alphafly",
+        "adizero-adios-pro",
+        "puma-fast-r"
+      ],
+      "beginnerAlternative": "hoka-mach",
+      "profile": "race_carbon",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 3,
+        "k10": 5,
+        "hm": 5,
+        "fm": 5,
+        "long": 2
+      }
+    },
+    {
+      "id": "hoka-skyward-x",
+      "name": "Hoka Skyward X",
+      "aliases": [
+        "skyward x",
+        "skyward"
+      ],
+      "brand": "hoka",
+      "purpose": "super_trainer",
+      "plate": "carbon",
+      "level": "intermediate",
+      "note": "Đệm cực dày có tấm carbon — long run êm cho người nặng cân/pace vừa; hơi nặng.",
+      "equivalents": [
+        "adizero-prime-x",
+        "nb-sc-trainer",
+        "nike-vomero"
+      ],
+      "beginnerAlternative": "hoka-clifton",
+      "profile": "super_trainer",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 2,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "hoka-gaviota",
+      "name": "Hoka Gaviota",
+      "aliases": [
+        "gaviota",
+        "gaviota 5",
+        "gaviota 6"
+      ],
+      "brand": "hoka",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Ổn định + đệm dày nhất của Hoka, cho chân bẹt/người nặng chạy chậm và đi bộ.",
+      "equivalents": [
+        "saucony-hurricane",
+        "asics-kayano",
+        "hoka-arahi"
+      ],
+      "beginnerAlternative": "",
+      "profile": "stability",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 5,
+        "p6_7": 5,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 5,
+        "k5": 4,
+        "k10": 4,
+        "hm": 4,
+        "fm": 3,
+        "long": 5
+      }
+    },
+    {
+      "id": "hoka-challenger",
+      "name": "Hoka Challenger",
+      "aliases": [
+        "challenger",
+        "challenger 7",
+        "challenger atr",
+        "challenger 8"
+      ],
+      "brand": "hoka",
+      "purpose": "trail",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Trail nhẹ đi được cả đường nhựa — hợp người hay đổi giữa đường mòn và đường phố.",
+      "equivalents": [
+        "hoka-speedgoat",
+        "saucony-peregrine",
+        "asics-trabuco"
+      ],
+      "beginnerAlternative": "",
+      "profile": "trail",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 4,
+        "p5_6": 3,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "asics-superblast",
+      "name": "ASICS Superblast",
+      "aliases": [
+        "superblast",
+        "superblast 2",
+        "super blast"
+      ],
+      "brand": "asics",
+      "purpose": "super_trainer",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Đệm FF Blast Turbo dày, nảy, không tấm — long run nhanh và tập nhiều cự ly; nhiều người dùng đua FM.",
+      "equivalents": [
+        "adizero-boston",
+        "adizero-prime-x",
+        "nb-sc-trainer",
+        "saucony-endorphin-speed"
+      ],
+      "beginnerAlternative": "asics-novablast",
+      "profile": "super_trainer",
+      "priceTier": 4,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 4,
+        "sub4": 2
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 3,
+        "k10": 4,
+        "hm": 5,
+        "fm": 5,
+        "long": 5
+      }
+    },
+    {
+      "id": "asics-magic-speed",
+      "name": "ASICS Magic Speed",
+      "aliases": [
+        "magic speed",
+        "magicspeed",
+        "magic speed 4",
+        "magic speed 3"
+      ],
+      "brand": "asics",
+      "purpose": "tempo",
+      "plate": "carbon",
+      "level": "intermediate",
+      "note": "Tấm carbon + đệm FF Blast — tempo, interval và đua 10K-HM với giá dưới Metaspeed.",
+      "equivalents": [
+        "adizero-boston",
+        "nike-zoom-fly",
+        "puma-deviate-nitro",
+        "saucony-endorphin-speed"
+      ],
+      "beginnerAlternative": "asics-novablast",
+      "profile": "tempo",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 4,
+        "p5_6": 5,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 3
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 4,
+        "k10": 5,
+        "hm": 5,
+        "fm": 4,
+        "long": 4
+      }
+    },
+    {
+      "id": "asics-noosa",
+      "name": "ASICS Noosa Tri",
+      "aliases": [
+        "noosa",
+        "noosa tri",
+        "noosa tri 16",
+        "noosa tri 15"
+      ],
+      "brand": "asics",
+      "purpose": "short_race",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Giày nhẹ nhiều màu cho triathlon/5K-10K nhanh, dây co giãn xỏ nhanh.",
+      "equivalents": [
+        "adizero-adios",
+        "puma-liberate-nitro",
+        "asics-hyperspeed"
+      ],
+      "beginnerAlternative": "asics-novablast",
+      "profile": "short_race",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 3,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 3,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "asics-hyperspeed",
+      "name": "ASICS Hyperspeed",
+      "aliases": [
+        "hyperspeed",
+        "hyper speed",
+        "hyperspeed 4"
+      ],
+      "brand": "asics",
+      "purpose": "short_race",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Giày đua/tập tốc độ giá rẻ, siêu nhẹ, đế mỏng.",
+      "equivalents": [
+        "adizero-adios",
+        "nike-streakfly",
+        "puma-liberate-nitro"
+      ],
+      "beginnerAlternative": "asics-novablast",
+      "profile": "short_race",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 2,
+        "p5_6": 4,
+        "p430_5": 5,
+        "p4_430": 5,
+        "sub4": 5
+      },
+      "distance": {
+        "easy": 0,
+        "k5": 5,
+        "k10": 5,
+        "hm": 3,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "asics-trabuco",
+      "name": "ASICS Gel-Trabuco",
+      "aliases": [
+        "trabuco",
+        "gel trabuco",
+        "trabuco 12",
+        "trabuco 13"
+      ],
+      "brand": "asics",
+      "purpose": "trail",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Trail đệm dày, bám tốt, hợp người mới chạy trail đường dài.",
+      "equivalents": [
+        "hoka-speedgoat",
+        "hoka-challenger",
+        "saucony-peregrine"
+      ],
+      "beginnerAlternative": "",
+      "profile": "trail",
+      "priceTier": 3,
+      "pace": {
+        "p7plus": 4,
+        "p6_7": 4,
+        "p5_6": 3,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 3,
+        "hm": 4,
+        "fm": 4,
+        "long": 5
+      }
+    },
+    {
+      "id": "adidas-response-super",
+      "name": "adidas Response Super",
+      "aliases": [
+        "response super"
+      ],
+      "brand": "adidas",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm Dreamstrike+ (gốc PEBA) dày, êm mà đàn hồi, đế cao su dạng thanh, chênh gót mũi 10 mm, khoảng 330 g (2025). Đây là đôi duy nhất trong nhà Response đủ sức tập chạy đều, tuần ba bốn buổi. Nặng, chạy nhanh thấy ì.",
+      "styleNote": "Dáng giày chạy phổ thông, đi làm đi chơi vẫn ổn.",
+      "equivalents": [
+        "adidas-supernova-rise",
+        "adidas-supernova-ease"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "adidas-response",
+      "name": "adidas Response",
+      "aliases": [
+        "response runner",
+        "response"
+      ],
+      "brand": "adidas",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm EVA suốt đế, chênh gót mũi 10 mm, đế cao su phủ đầy nên bền nhất nhóm giá mềm; bản Response Runner phom unisex rộng rãi hơn. Cho đi bộ, chạy nhẹ, người mới. Không nảy, chạy nhanh không hợp.",
+      "styleNote": "Dáng đơn giản, chắc chắn, hơi thô.",
+      "equivalents": [
+        "adidas-duramo-sl",
+        "adidas-galaxy"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 1,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 2,
+        "hm": 1,
+        "fm": 0,
+        "long": 1
+      }
+    },
+    {
+      "id": "adidas-runfalcon",
+      "name": "adidas Runfalcon",
+      "aliases": [
+        "runfalcon 5",
+        "runfalcon 3.0",
+        "runfalcon"
+      ],
+      "brand": "adidas",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm Cloudfoam, đế Adiwear, chênh gót mũi 10 mm, khoảng 290 g theo adidas, đo lab 275 g (bản 5). Đôi giày chạy rẻ nhất adidas làm đàng hoàng: cho người mới, chạy 3–5 km vài buổi một tuần, còn lại đi bộ đi làm. Bám mặt ướt kém và mũi gót mòn nhanh nếu chạy đường nhựa mỗi ngày.",
+      "styleNote": "Dáng gọn, nhiều màu, mặc đồ thường đi được.",
+      "equivalents": [
+        "adidas-duramo-sl",
+        "adidas-galaxy"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 2,
+        "p5_6": 1,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 1,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-ultimashow",
+      "name": "adidas Ultimashow",
+      "aliases": [
+        "ultimashow"
+      ],
+      "brand": "adidas",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dòng chạy giá mềm, đệm Cloudfoam, thân lưới nhẹ. Cho đi bộ, tập nhẹ trong phòng gym, người mới. Không có dữ liệu lab riêng nên không khẳng định thông số.",
+      "styleNote": "Dáng gọn, hợp đi lại hằng ngày.",
+      "equivalents": [
+        "adidas-runfalcon",
+        "adidas-galaxy"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 2,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 1,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-pureboost",
+      "name": "adidas Pureboost",
+      "aliases": [
+        "pureboost 23",
+        "pureboost 5",
+        "pureboost"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đệm Boost, thân dệt ôm chân, đế mềm. adidas xếp vào nhóm chạy nhưng thực tế phần lớn khách mua để đi lại và tập nhẹ; không có thanh đỡ, không hợp chạy dài nghiêm túc.",
+      "styleNote": "Dáng thể thao mềm, dễ phối đồ thường ngày.",
+      "equivalents": [
+        "adidas-ultraboost"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 2,
+        "p5_6": 1,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 1,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-adizero-rc",
+      "name": "adidas Adizero RC",
+      "aliases": [
+        "adizero rc 4",
+        "adizero rc"
+      ],
+      "brand": "adidas",
+      "purpose": "tempo",
+      "plate": "none",
+      "level": "intermediate",
+      "note": "Dòng Adizero đế mỏng nhẹ cho buổi tempo và cự ly ngắn, không có tấm carbon. Đế thấp nên chạy chậm thấy cứng. Chưa có số đo lab riêng cho bản RC 4.",
+      "styleNote": "Dáng đua gọn, đế mỏng.",
+      "equivalents": [
+        "adizero-adios",
+        "adidas-duramo-speed"
+      ],
+      "beginnerAlternative": [
+        "adidas-supernova-rise"
+      ],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 1,
+        "p5_6": 3,
+        "p430_5": 3,
+        "p4_430": 2,
+        "sub4": 1
+      },
+      "distance": {
+        "easy": 1,
+        "k5": 3,
+        "k10": 3,
+        "hm": 2,
+        "fm": 1,
+        "long": 1
+      }
+    },
+    {
+      "id": "adidas-switch-fwd",
+      "name": "adidas Switch FWD",
+      "aliases": [
+        "switch fwd 2",
+        "switch fwd"
+      ],
+      "brand": "adidas",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày tập hằng ngày của adidas, đệm dày mềm, thân lưới. Chưa có số đo lab riêng nên chỉ nói định tính: êm, đầm, hợp chạy chậm và chạy dài nhẹ nhàng.",
+      "styleNote": "Dáng đế dày hiện đại.",
+      "equivalents": [
+        "adidas-supernova-rise",
+        "adidas-supernova-ease"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 2,
+        "fm": 1,
+        "long": 2
+      }
+    },
+    {
+      "id": "adidas-vl-court",
+      "name": "adidas VL Court",
+      "aliases": [
+        "vl court base",
+        "vl court 3.0",
+        "vl court 2.0",
+        "vl court"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng court, thân da tổng hợp phủ kín nên lau khăn ẩm là sạch, đế cao su đặc. KHÔNG phải giày chạy. Đệm ở mức đi làm đi chơi, đứng cả ngày sẽ thấy cứng chân.",
+      "styleNote": "Dáng court trơn, mặc quần âu hay jean đều hợp; nhiều bản có đế gum.",
+      "equivalents": [
+        "adidas-grand-court",
+        "adidas-advantage"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-grand-court",
+      "name": "adidas Grand Court",
+      "aliases": [
+        "grand court 2.0",
+        "grand court base",
+        "grand court lo",
+        "grand court se",
+        "grand court"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng court, thân da tổng hợp, có lót Cloudfoam Comfort nên êm hơn nhóm court cơ bản. KHÔNG phải giày chạy.",
+      "styleNote": "Dáng court kinh điển, hợp đi làm; nhiều bản nữ ba sọc màu nhạt.",
+      "equivalents": [
+        "adidas-vl-court",
+        "adidas-advantage"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-advantage",
+      "name": "adidas Advantage",
+      "aliases": [
+        "advantage 2.0",
+        "advantage"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng tennis cổ điển, ba sọc đục lỗ, thân da tổng hợp, có lót Cloudfoam Comfort. KHÔNG phải giày chạy hay giày tennis thi đấu.",
+      "styleNote": "Dáng tennis trắng cổ điển, đi làm rất lịch sự.",
+      "equivalents": [
+        "adidas-grand-court",
+        "adidas-vl-court"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-barreda",
+      "name": "adidas Barreda",
+      "aliases": [
+        "barreda decode lux",
+        "barreda decode",
+        "barreda lo",
+        "barreda"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng retro sân cỏ, thân da tổng hợp phối mảng da lộn, mũi chữ T, đế cupsole. KHÔNG phải giày chạy. Đế mỏng, đứng lâu cũng mỏi.",
+      "styleNote": "Cho người thích dáng cổ điển mà không muốn đụng Samba.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-spezial"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-lightblaze",
+      "name": "adidas Lightblaze",
+      "aliases": [
+        "lightblaze pod",
+        "lightblaze slide",
+        "lightblaze"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày dáng thể thao hiện đại, thân LƯỚI phối da lộn hoặc nubuck, đệm Lightstrike, đế dày. Thân lưới nên không hợp ngày mưa. adidas xếp ngoài nhóm chạy: mua để đi bộ nhiều, đi lại hằng ngày.",
+      "styleNote": "Đế dày, nhìn to hơn nhóm court.",
+      "equivalents": [
+        "adidas-run-70s"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 2,
+        "p6_7": 1,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 1,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-run-70s",
+      "name": "adidas Run 70s",
+      "aliases": [
+        "run 70s 2.0",
+        "run 70s",
+        "run 60s 4.0",
+        "run 60s"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng giày chạy thập niên 70, thân da tổng hợp phối lưới, đệm Cloudfoam. KHÔNG phải giày chạy hiện đại.",
+      "styleNote": "Dáng retro runner, dễ mặc hằng ngày.",
+      "equivalents": [
+        "adidas-sl72",
+        "adidas-lightblaze"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-japan",
+      "name": "adidas Japan",
+      "aliases": [
+        "adidas japan",
+        "japan decon",
+        "japan w",
+        "japan h",
+        "giay japan"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng giày chạy thập niên 60 (gốc Tokyo 1964), thân da mềm đục lỗ phối mũi da lộn, mũi thon dài, đế mỏng. KHÔNG phải giày chạy. Phom nhỏ, thường phải lên nửa số. (Luu y tra cuu: alias khong de chu \"japan\" tran vi tin nhan khach hay co tu Japan nghia la nuoc Nhat.)",
+      "styleNote": "Dáng mảnh nhất nhóm retro, hợp chân thon và đồ nữ tính.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle",
+        "adidas-sl72"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-ny90",
+      "name": "adidas NY 90",
+      "aliases": [
+        "ny 90 stripes",
+        "ny 90"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng court, thân da phủ kín nên bền và chịu mưa tốt, đế cao su đúc. KHÔNG phải giày chạy. Da kín nên ngày nóng đi lâu hơi bí.",
+      "styleNote": "Dáng court cổ điển, dễ lau chùi, đi làm đi chơi đều được.",
+      "equivalents": [
+        "adidas-grand-court",
+        "adidas-samba"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-k74",
+      "name": "adidas K 74",
+      "aliases": [
+        "adidas k 74",
+        "k 74"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng tennis thập niên 70, thân da phối da lộn, đế mỏng. KHÔNG phải giày chạy.",
+      "styleNote": "Dáng retro thấp, gọn chân.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-italia-70s",
+      "name": "adidas Italia 70s",
+      "aliases": [
+        "italia 70s",
+        "italia 60s"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Giày lifestyle dáng retro Ý, thân da lộn phối da, đế mỏng có vân. KHÔNG phải giày chạy.",
+      "styleNote": "Dáng cổ điển thấp, hợp quần ống rộng.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-gazelle",
+        "adidas-k74"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-adizero-aruku",
+      "name": "adidas Adizero Aruku",
+      "aliases": [
+        "adizero aruku",
+        "aruku"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Ra 04/2025, đệm SWIRLFOAM, dáng lifestyle có đế Progressive Platform hơi cong (rocker), phom ôm hơn Stan Smith. adidas xếp ngoài nhóm chạy: đây là giày đi lại, không phải giày tập.",
+      "styleNote": "Dáng tối giản kiểu Nhật, đế cong nhẹ.",
+      "equivalents": [
+        "adidas-samba",
+        "adidas-stan-smith"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 1,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 2,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-adilette-comfort",
+      "name": "adidas Adilette Comfort",
+      "aliases": [
+        "adilette comfort 2.0",
+        "adilette comfort"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dép quai ngang bản to ba sọc, lót có lớp đệm Cloudfoam dày nên đi trong nhà cả ngày không mỏi. Lót đệm thấm nước, đi mưa hay đi tắm thì phải lấy bản Aqua hoặc Shower.",
+      "styleNote": "Dép đi trong nhà, đi làm về thay chân; dòng Adilette gốc ra đời 1972.",
+      "equivalents": [
+        "adidas-adilette-aqua",
+        "adidas-adilette-shower"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 1,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-adilette-shower",
+      "name": "adidas Adilette Shower",
+      "aliases": [
+        "adilette shower"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dép quai ngang có lỗ thoát nước, làm cho phòng tắm và hồ bơi. Lót đúc không thấm, khác bản Comfort ở chỗ không có lớp đệm dày.",
+      "styleNote": "Dép đi tắm, đi hồ bơi, đi mưa.",
+      "equivalents": [
+        "adidas-adilette-aqua",
+        "adidas-adilette-comfort"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 1,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "adidas-adilette-aqua",
+      "name": "adidas Adilette Aqua",
+      "aliases": [
+        "adilette aqua",
+        "adilette flow",
+        "adilette lite",
+        "adilette clog",
+        "adilette og cf",
+        "adilette 22",
+        "adilette zplaash",
+        "adilette"
+      ],
+      "brand": "adidas",
+      "purpose": "casual",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Nhóm dép đúc một khối, nhẹ, không thấm nước: Aqua bản cơ bản, Flow đế dày quai to hơn, Lite mỏng nhẹ, Clog là sục kín mũi. Đi mưa, đi biển, đi trong nhà đều được.",
+      "styleNote": "Dép nhẹ, giá mềm, nhiều màu.",
+      "equivalents": [
+        "adidas-adilette-shower",
+        "adidas-adilette-comfort"
+      ],
+      "beginnerAlternative": [],
+      "profile": "casual",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 0,
+        "p6_7": 0,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 1,
+        "k5": 0,
+        "k10": 0,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    },
+    {
+      "id": "mizuno-wave-rider",
+      "name": "Mizuno Wave Rider",
+      "aliases": [
+        "wave rider 29",
+        "wave rider"
+      ],
+      "brand": "Mizuno",
+      "purpose": "daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đôi chủ lực của Mizuno: đệm Enerzy NXT cộng tấm Wave (tấm nhựa lượn sóng kẹp trong đệm từ gót tới giữa bàn chân, dàn lực ra nên chân đầm chứ không lún). 258 g nam, chênh gót mũi 10 mm, mũi rộng thoải (76,7 mm), bản 29 ra 2025. Bảng size Mizuno bán ở Việt Nam tính theo UK.",
+      "styleNote": "Dáng giày chạy phổ thông.",
+      "equivalents": [
+        "adidas-supernova-rise",
+        "nike-pegasus",
+        "asics-cumulus"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 3,
+        "p430_5": 2,
+        "p4_430": 1,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 3,
+        "fm": 2,
+        "long": 3
+      }
+    },
+    {
+      "id": "mizuno-wave-inspire",
+      "name": "Mizuno Wave Inspire",
+      "aliases": [
+        "wave inspire 22",
+        "wave inspire 20",
+        "wave inspire"
+      ],
+      "brand": "Mizuno",
+      "purpose": "stability",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Bản ổn định của Wave Rider: cùng nền đệm Enerzy NXT nhưng tấm Wave kéo vào giữa bàn chân để đỡ người tiếp đất đổ vào trong, chân bẹt, hay mỏi mắt cá. KHÔNG có thanh đỡ cứng riêng (medial post). Nặng hơn Rider, khoảng 280 g nam, bản 22 ra 2026.",
+      "styleNote": "Dáng giày chạy chắc chắn.",
+      "equivalents": [
+        "asics-gt-2000",
+        "brooks-adrenaline"
+      ],
+      "beginnerAlternative": [],
+      "profile": "stability",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 3,
+        "fm": 2,
+        "long": 3
+      }
+    },
+    {
+      "id": "mizuno-neo-zen",
+      "name": "Mizuno Neo Zen",
+      "aliases": [
+        "neo zen 2",
+        "neo zen",
+        "neo vista"
+      ],
+      "brand": "Mizuno",
+      "purpose": "max_cushion",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Dòng mới của Mizuno, đệm Enerzy NXT dày, BỎ HẲN tấm Wave nên mất cái đầm chân đặc trưng của hãng, đổi lại êm hơn. Thân lưới ôm chân, cổ giày dệt mềm, 237 g, chênh gót mũi 6 mm, mũi hẹp hơn Rider (68,3 mm), bản 2 ra 02/2026.",
+      "styleNote": "Đế dày mềm, dáng hiện đại.",
+      "equivalents": [
+        "hoka-clifton",
+        "nike-vomero"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 2,
+        "p430_5": 1,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 3,
+        "hm": 3,
+        "fm": 2,
+        "long": 3
+      }
+    },
+    {
+      "id": "nike-journey-run",
+      "name": "Nike Journey Run",
+      "aliases": [
+        "journey run"
+      ],
+      "brand": "Nike",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đôi cho người mới của Nike: đệm ComfiRide chắc vừa, không nảy, 298 g, chênh gót mũi 10 mm, mũi hơi hẹp (69,8 mm), ra 2024. Rẻ hơn Pegasus khá nhiều, chạy 5–10 km ổn; chạy pace dưới 5 sẽ thấy thiếu.",
+      "styleNote": "Dáng gọn, vừa chạy vừa đi làm được.",
+      "equivalents": [
+        "adidas-runfalcon",
+        "adidas-duramo-sl"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 2,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 3,
+        "p5_6": 1,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 3,
+        "k10": 2,
+        "hm": 1,
+        "fm": 0,
+        "long": 1
+      }
+    },
+    {
+      "id": "nike-downshifter",
+      "name": "Nike Downshifter",
+      "aliases": [
+        "downshifter 14",
+        "downshifter"
+      ],
+      "brand": "Nike",
+      "purpose": "budget_daily",
+      "plate": "none",
+      "level": "beginner_ok",
+      "note": "Đôi giá mềm nhất nhà Nike: đệm EVA cơ bản, khá chắc và hơi nặng (315 g), thân lưới kín nên trời nóng chạy lâu hơi bí, chênh gót mũi 8 mm theo Nike (đo lab 7,4). Cho đi bộ, tập gym, chạy nhẹ vài km; không hợp tập cho giải.",
+      "styleNote": "Dáng giày chạy phổ thông, giá mềm.",
+      "equivalents": [
+        "adidas-runfalcon",
+        "adidas-galaxy"
+      ],
+      "beginnerAlternative": [],
+      "profile": "neutral",
+      "priceTier": 1,
+      "pace": {
+        "p7plus": 3,
+        "p6_7": 2,
+        "p5_6": 0,
+        "p430_5": 0,
+        "p4_430": 0,
+        "sub4": 0
+      },
+      "distance": {
+        "easy": 3,
+        "k5": 2,
+        "k10": 1,
+        "hm": 0,
+        "fm": 0,
+        "long": 0
+      }
+    }
+  ]
+}

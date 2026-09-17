@@ -54,7 +54,17 @@ export class PackValidator {
     this.checkTemplates(pack, axisIds, report);
     this.checkIntents(pack, axisIds, report);
     this.checkGates(pack, report);
+    this.checkAgent(pack, report);
     return problems;
+  }
+
+  private checkAgent(pack: IndustryPack, report: (m: string) => void): void {
+    const agent = pack.agent;
+    if (agent === undefined) return;
+    if (agent.systemPrompt.trim() === "") report("Agent AI thieu luat (`agent.systemPrompt`).");
+    for (const field of ["mustHumanPattern", "handoffReplyPattern"] as const) {
+      try { new RegExp(agent[field]); } catch { report(`Agent AI: \`${field}\` khong phai bieu thuc chinh quy hop le.`); }
+    }
   }
 
   private checkIdentity(pack: IndustryPack, report: (m: string) => void): void {

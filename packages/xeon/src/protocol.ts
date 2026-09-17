@@ -24,13 +24,24 @@ export interface InboundMessageBody {
   maHoiThoai?: string | undefined;
   /** Number of images attached. */
   soAnh?: number | undefined;
+  /**
+   * Đ7: how the landing answers this conversation — `auto` (the bot sends), `suggest` (drafts for a
+   * person only), `off`. Anything but `auto` is never sent by `/tin-den`. Absent = auto (older landings).
+   */
+  cheDo?: string | undefined;
 }
 
 /** Result of handling an inbound message, returned to the landing. */
 export type InboundResult =
-  | { daTraLoi: true; hanhDong: "send" | "ask_back"; traLoi: string }
+  | { daTraLoi: true; hanhDong: "send" | "ask_back" | "agent"; traLoi: string }
   | { daTraLoi: false; viSao: "chuyen_nguoi_that"; traLoi: string }
-  | { daTraLoi: false; viSao: "khong_phuc_vu_shop" };
+  /** A human answered this conversation in the last few minutes: the bot stays out of it. */
+  | { daTraLoi: false; viSao: "nguoi_dang_truc" }
+  /** The customer sent another message before this one was answered: the later turn answers the whole burst. */
+  | { daTraLoi: false; viSao: "gop_vao_tin_sau" }
+  | { daTraLoi: false; viSao: "khong_phuc_vu_shop" }
+  /** Đ7: the conversation (or its page, or the shop) is in suggest-only or off mode. */
+  | { daTraLoi: false; viSao: "che_do_khong_tu_gui" };
 
 /** Body of `POST /license/kiem`. */
 export interface MachineCheckBody {
@@ -75,12 +86,33 @@ export const PATHS = {
   licensePublicKey: "/license/khoa-cong",
   inbound: "/tin-den",
   write: "/viet-bai",
+  /** Đ7 — the AI desk: draft (never sends), sandbox, batch analysis, knowledge proposal, image reading, token ledger, price table. */
+  aiDraft: "/ai/goi-y",
+  aiSandbox: "/ai/hop-cat",
+  aiAnalyze: "/ai/phan-tich-lo",
+  aiKnowledge: "/ai/de-xuat-kien-thuc",
+  aiImage: "/ai/doc-anh",
+  aiTokens: "/ai/token",
+  aiPricing: "/ai/bang-gia",
+  /** Đ8 — the Content screen: critique (three judges), optimise against the critique, weekly trend research. */
+  contentReview: "/noi-dung/phan-bien",
+  contentOptimize: "/noi-dung/toi-uu",
+  contentTrends: "/noi-dung/xu-huong",
+  /** Đ9 — industry knowledge (sample profiles, research queue, line knowledge) and the Video Studio ticket. */
+  knowledgePrefix: "/kien-thuc/",
+  videoTicket: "/video/ve",
   admin: "/quan-tri",
   machines: "/may",
   /** Meta's webhook for every merchant's Fanpages (one developer app, decided 15/09/2026). */
   metaWebhook: "/meta/webhook",
   /** A landing lists / connects its Fanpages. */
   metaPages: "/meta/trang",
+  /** A landing stops routing some of its Fanpages (Đ6). */
+  metaPagesDisconnect: "/meta/trang/ngat",
+  /** Facebook Login through the developer app (Đ6): start, Meta's redirect back, the landing collects the pages. */
+  metaLogin: "/meta/dang-nhap",
+  metaLoginDone: "/meta/dang-nhap/xong",
+  metaLoginResult: "/meta/dang-nhap/ket-qua",
   /** Admin log viewer: build log + stderr tail (authenticated, same session as /quan-tri). */
   adminLog: "/quan-tri/api/nhat-ky",
   /** Public activity log: every webhook, message, outbound call — ring buffer in memory. */

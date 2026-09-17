@@ -112,6 +112,45 @@ export interface ToolMap {
     output: { isReturning: boolean; orderCount: number; lastOrderAt?: string | undefined };
   };
   /**
+   * The AI agent's stock finder (Sales Desk `tra_kho`, moved 16/09/2026): in-stock items by name,
+   * code, size, purpose and gender, the way the shop's customers describe them. `ketQua` is a list,
+   * or a sentence telling the agent not to invent anything. Field names are Vietnamese on purpose:
+   * the agent's prompt reads them.
+   */
+  "catalog.find": {
+    input: { ten?: string; ma?: string; size?: string; chi_hang_san?: boolean; muc_dich?: string; gioi_tinh?: string };
+    output: { ketQua: { ma: string; ten: string; loai?: string; cac_size: { size: string; gia: number; loai?: string }[]; anh: string; link: string; nhom?: string }[] | string };
+  };
+  /** The shop's bank account — already public on the storefront; the agent checks a transfer screenshot against it. */
+  "shop.bankAccount": {
+    input: Record<string, never>;
+    output: { nganHang: string; maNganHang: string; soTaiKhoan: string; chuTaiKhoan: string };
+  };
+  /** The recent messages of THIS conversation, oldest first. Read per turn, never kept on Xeon. */
+  "conversation.recent": {
+    input: { conversationId: ConversationId; limit?: number };
+    output: { tin: { chieu: "den" | "di"; boi: string; chu: string; soAnh: number; luc: string }[] };
+  };
+  /**
+   * What the shop TAUGHT the AI (Đ7): approved Q&A and rules from the review queue, style examples,
+   * product fit notes, knowledge libraries, sample customer profiles, and the external product the
+   * customer settled on in this conversation. Only APPROVED items are returned — the queue itself
+   * never reaches the model. Read per turn, never kept on Xeon.
+   */
+  "training.knowledge": {
+    input: { q?: string; conversationId?: string };
+    output: {
+      hoiDap: { intent: string; cauHoi: string; traLoi: string }[];
+      quyTac: { tieuDe: string; noiDung: string; loai: string }[];
+      cauMau: { cauKhach: string; traLoi: string; lyDo: string }[];
+      kienThuc: { ma: string; ten: string; form: string; phuHop: string; tuVanSize: string; luuY: string }[];
+      thuVien: { ten: string; dungKhi: string[]; noiDung: string }[];
+      hoSoMau: { ten: string; tomTat: string }[];
+      spNgoai: { ma: string; ten: string; size: string; gia: number } | null;
+      cauHinh: { tatHangDoiTac: boolean };
+    };
+  };
+  /**
    * A HUMAN approves a draft order and records the payment.
    * `audience: "human"`: the bot never sees this tool. It exists so that spending money is
    * declared INSIDE the contract rather than done off the books.
@@ -183,6 +222,22 @@ export const TOOLS: { readonly [K in ToolName]: ToolMeta } = {
   "customer.recognize": {
     name: "customer.recognize", module: "don-khach", effect: "read", audience: "bot",
     describe: "Whether this customer bought before, how many orders, when the last one was."
+  },
+  "catalog.find": {
+    name: "catalog.find", module: "hang-kho", effect: "read", audience: "bot",
+    describe: "Find in-stock items the way customers describe them: name, code, size, purpose, gender."
+  },
+  "shop.bankAccount": {
+    name: "shop.bankAccount", module: "don-khach", effect: "read", audience: "bot",
+    describe: "The shop's bank account, to check a customer's transfer screenshot."
+  },
+  "conversation.recent": {
+    name: "conversation.recent", module: "hop-thu", effect: "read", audience: "bot",
+    describe: "Recent messages of this conversation, to answer in context."
+  },
+  "training.knowledge": {
+    name: "training.knowledge", module: "hop-thu", effect: "read", audience: "bot",
+    describe: "What the shop approved for the AI: Q&A, rules, style examples, fit notes, knowledge, the external product settled on."
   },
   "order.approve": {
     name: "order.approve", module: "tien", effect: "money", audience: "human",
@@ -290,6 +345,7 @@ export function validateToolInput(tool: ToolName, input: unknown): string | null
     case "purchase.eta": return field(o, "itemId", "string") ?? field(o, "variantId", "string", false);
     case "storefront.link": return field(o, "q", "string", false) ?? field(o, "filters", "object", false);
     case "customer.recognize": return field(o, "conversationId", "string");
+    case "training.knowledge": return field(o, "q", "string", false) ?? field(o, "conversationId", "string", false);
     case "order.approve":
       return field(o, "orderId", "string") ?? field(o, "approvedBy", "string") ?? field(o, "amount", "number");
     default: return null;
@@ -361,6 +417,9 @@ export function validateToolOutput(tool: ToolName, data: unknown): string | null
     case "purchase.eta": return field(o, "available", "boolean") ?? finiteNumber(o, "days", false);
     case "storefront.link": return field(o, "url", "string", false);
     case "customer.recognize": return field(o, "isReturning", "boolean") ?? finiteNumber(o, "orderCount");
+    case "training.knowledge":
+      return field(o, "hoiDap", "array") ?? field(o, "quyTac", "array") ?? field(o, "cauMau", "array") ?? field(o, "kienThuc", "array")
+        ?? field(o, "thuVien", "array") ?? field(o, "hoSoMau", "array") ?? field(o, "cauHinh", "object");
     default: return null;
   }
 }

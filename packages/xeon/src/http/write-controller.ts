@@ -16,6 +16,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { withUsage } from "../ai/usage-context";
 import { buildPrompt, DRAFT_SCHEMA, readDraft } from "../content/content-writer";
 import type { WriteBriefBody, WriteResult } from "../content/brief";
 import type { TextModelPort } from "../content/text-model";
@@ -82,7 +83,9 @@ export class WriteController implements RequestController {
     }
 
     const prompt = buildPrompt({ ...brief, mon: items });
-    const outcome = await this.model.complete({ system: prompt.system, user: prompt.user, schema: DRAFT_SCHEMA as unknown as Record<string, unknown> });
+    const postId = String((body as Record<string, unknown>)["maBai"] ?? "").slice(0, 120);
+    const outcome = await withUsage({ shop: String(tenant || ""), agent: "content_writer", postId }, () =>
+      this.model.complete({ system: prompt.system, user: prompt.user, schema: DRAFT_SCHEMA as unknown as Record<string, unknown> }));
     if (!outcome.ok) {
       sendJson(res, 502, { ok: false, error: "mo_hinh_tu_choi", message: outcome.viSao });
       return true;

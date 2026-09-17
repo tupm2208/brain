@@ -64,12 +64,12 @@ export const MODULES: { readonly [K in ModuleId]: ModuleDef } = {
   // ---------------------------------------------------------------- Operations
   "hang-kho": {
     id: "hang-kho", group: "vanhanh", name: "Hàng hoá & kho", runsOn: "omi", core: true,
-    tools: ["catalog.search", "stock.lookup", "variant.chart"],
+    tools: ["catalog.search", "stock.lookup", "variant.chart", "catalog.find"],
     emits: ["stock.changed"], listens: [], dependsOn: []
   },
   "don-khach": {
     id: "don-khach", group: "vanhanh", name: "Đơn hàng & khách", runsOn: "omi", core: true,
-    tools: ["order.lookup", "order.draft", "policy.get", "customer.recognize"],
+    tools: ["order.lookup", "order.draft", "policy.get", "customer.recognize", "shop.bankAccount"],
     emits: ["order.created", "order.status_changed", "order.cancelled", "order.paid"],
     listens: [], dependsOn: ["hang-kho"]
   },
@@ -125,7 +125,7 @@ export const MODULES: { readonly [K in ModuleId]: ModuleDef } = {
   // ---------------------------------------------------------------- Chatbot
   "hop-thu": {
     id: "hop-thu", group: "chatbot", name: "Hộp thư đa kênh", runsOn: "omi", core: false,
-    tools: [], emits: [], listens: ["bot.handoff"], dependsOn: ["don-khach"]
+    tools: ["conversation.recent", "training.knowledge"], emits: [], listens: ["bot.handoff"], dependsOn: ["don-khach"]
   },
   "chatbot-cskh": {
     id: "chatbot-cskh", group: "chatbot", name: "Chatbot chăm sóc khách", runsOn: "xeon", core: false,

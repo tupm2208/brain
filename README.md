@@ -13,7 +13,7 @@ gói. Giao thức với landing và OMI (đường HTTP, tên trường JSON, bi
 ```bash
 cd D:\projects\toprunvn_modules\bo-nao
 npm install
-npm test          # dịch rồi chạy 222 bài: giao kèo + bộ máy + license + máy chủ + trang quản trị
+npm test          # dịch rồi chạy 267 bài: giao kèo + bộ máy + license + máy chủ + trang quản trị
 npm run check     # kiểm kiểu cả mã lẫn test, không dịch
 
 cp .env.example .env   # rồi điền XEON_ADMIN_MAT_KHAU, XEON_DIA_CHI, ANTHROPIC_API_KEY...
@@ -41,6 +41,8 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 | `XEON_BI_MAT_PHIEN` | bí mật ký cookie phiên admin | sinh mới mỗi lần khởi động (khởi động lại là đăng xuất) |
 | `XEON_HTTPS=1` | cookie phiên mang cờ Secure | không |
 | `TIN_PROXY=1` | tin IP trong tiêu đề khi có nginx/Cloudflare đứng trước | đọc IP socket |
+| `XEON_AI_CHAT_URL`, `XEON_AI_CHAT_KEY`, `XEON_AI_CHAT_MODEL` | mô hình cho agent trả lời khách và mọi việc AI của Đ7 (nháp, hộp cát, phân tích, đọc ảnh) | agent tắt, máy luật soạn; cửa phân tích / đọc ảnh trả 503 |
+| `XEON_SHOP_SUA_BANG_GIA` | danh sách shop (phẩy) được sửa bảng giá AI dùng chung từ OMI | không shop nào sửa được; mọi shop chỉ xem |
 | `SHOP_JSON`, `MA_NHAN_TIN` | **chế độ cũ, chỉ để chạy thử**: shop khai tay, một mã chung | không dùng |
 
 ## Triển khai cPanel (không cần Terminal)
@@ -105,4 +107,10 @@ OMI (7 giờ), vai `dich-vu` cho bộ não gọi landing (1 giờ). Chi tiết: 
 - Không có hàng đợi: Xeon tắt lúc tin đến là tin đó bot không trả lời.
 - Landing tìm hàng bằng cả câu (LIKE), bộ não gửi nguyên câu khách → bot không nhận ra món khi
   câu có thêm chữ ("KE0696 còn size nào"). Sửa ở landing (`hang-kho/kho-bang.js`, tách từ khoá).
+## Đ7 — AI ở Xeon (17/09/2026)
+
+Cửa `/ai/*` (xác thực bằng mã nhận tin riêng như `/tin-den`; shop suy ra từ mã): `POST /ai/goi-y` (nháp + dấu vết, KHÔNG gửi; `nguon=tu-dong` + chế độ `off` thì bỏ qua), `POST /ai/hop-cat` (Demo AI: bộ nhớ dùng một lần, công cụ chỉ đọc), `POST /ai/phan-tich-lo` (lô hội thoại landing đã ẩn thông tin cá nhân; Xeon ẩn lại lần nữa), `POST /ai/de-xuat-kien-thuc`, `POST /ai/doc-anh`, `POST /ai/token` (sổ token của CHÍNH shop), `GET|POST /ai/bang-gia`. `/tin-den` nhận thêm `cheDo`: khác `auto` thì không gửi. Công cụ mới `training.knowledge`: bộ não chỉ đọc mục ĐÃ DUYỆT của shop.
+
+Sổ token: `du-lieu/ai-usage/<yyyy-mm>.ndjson` (một dòng mỗi lượt gọi mô hình, không có chữ khách). Bảng giá: `du-lieu/bang-gia-ai.json` thay cả bảng mặc định (`ai/price-table.ts`).
+
 - Kênh Facebook khi landing chưa có token trang: Xeon trả 500 chung chung thay vì nói rõ.

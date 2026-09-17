@@ -56,7 +56,8 @@ export function createRequestListener(options: RequestListenerOptions): RequestL
         return;
       }
     }
-    sendJson(res, 404, { ok: false, error: "khong_thay" });
+    // Unknown route: usually a landing newer than this Xeon. The landing turns this mark into "Xeon bản cũ".
+    sendJson(res, 404, { ok: false, error: "khong_thay", khongCoDuong: true, message: `Xeon chưa có đường ${ctx.method} ${ctx.path} — Xeon đang chạy bản cũ hơn landing.` });
     if (!skip) log!.add({
       huong: "in", loai: "http",
       method: ctx.method, duong: ctx.path,

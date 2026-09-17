@@ -43,6 +43,25 @@ export interface WriteBriefBody {
   luat?: WriteRules | undefined;
   /** Errors the judge found in the PREVIOUS draft — the "tối ưu" step, closed as a loop. */
   loiLanTruoc?: string[] | undefined;
+  /**
+   * Đ8: the shop's WRITING STYLE, chosen in OMI and stored on the landing (Desk "Phong cách &
+   * prompt mẫu"). Like the rules, it travels with the brief: Xeon keeps no shop's voice.
+   */
+  phongCach?: WritingStyle | undefined;
+  /** Đ8: the buying angle of this post (Desk `CONTENT_BUY_ANGLES`) — who the post speaks to. */
+  goc?: { ten?: string | undefined; huongDan?: string | undefined } | undefined;
+}
+
+/** A shop's writing style as the landing stores it. Every field is the shop's own words. */
+export interface WritingStyle {
+  ten?: string | undefined;
+  moTa?: string | undefined;
+  /** "System prompt / luật viết". */
+  luatViet?: string | undefined;
+  /** "Cấu trúc output bắt buộc". */
+  cauTruc?: string | undefined;
+  /** "Bài viral mẫu / câu mẫu yêu thích" — to learn the rhythm from, never to copy. */
+  baiMau?: string | undefined;
 }
 
 /** The judge's rules, as numbers and sentences the writer can follow. */

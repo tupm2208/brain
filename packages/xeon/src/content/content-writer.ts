@@ -11,7 +11,7 @@
  * the result. Writing a rule here would create a second, quietly diverging copy.
  */
 
-import type { BriefItem, WriteBriefBody, WriteDraft, WriteRules } from "./brief";
+import type { BriefItem, WriteBriefBody, WriteDraft, WriteRules, WritingStyle } from "./brief";
 
 export interface Prompt {
   system: string;
@@ -58,6 +58,18 @@ function rulesBlock(rules: WriteRules | undefined): string {
   return lines.join("\n");
 }
 
+/** The shop's writing style (Đ8), restated in its own words. Empty when the shop chose none. */
+export function styleBlock(style: WritingStyle | undefined): string {
+  if (style === undefined) return "";
+  const parts = [
+    text(style.ten) === "" ? "" : `Phong cách viết của shop: ${text(style.ten)}${text(style.moTa) === "" ? "" : ` — ${text(style.moTa)}`}`,
+    text(style.luatViet) === "" ? "" : `Luật viết của shop:\n${text(style.luatViet).slice(0, 3000)}`,
+    text(style.cauTruc) === "" ? "" : `Cấu trúc bài shop muốn:\n${text(style.cauTruc).slice(0, 2000)}`,
+    text(style.baiMau) === "" ? "" : `Bài / câu mẫu shop thích (học nhịp viết, KHÔNG chép nguyên văn):\n${text(style.baiMau).slice(0, 4000)}`
+  ].filter((p) => p !== "");
+  return parts.join("\n");
+}
+
 /**
  * Builds the prompt for one post.
  *
@@ -81,6 +93,8 @@ export function buildPrompt(brief: WriteBriefBody): Prompt {
     brief.dangBai === undefined ? "" : `Dạng bài: ${text(brief.dangBai)}`,
     text(brief.huongDan) === "" ? "" : `Bài này cần làm được: ${text(brief.huongDan)}`,
     text(brief.chuDe) === "" ? "" : `Chủ đề cụ thể: ${text(brief.chuDe)}`,
+    text(brief.goc?.ten) === "" ? "" : `Góc mua (khách mua vì): ${text(brief.goc?.ten)}${text(brief.goc?.huongDan) === "" ? "" : ` — ${text(brief.goc?.huongDan)}`}`,
+    styleBlock(brief.phongCach),
     "",
     items.length === 0 ? "Không có mã sản phẩm nào." : `Các mã trong bài (chỉ dùng đúng các mã này):\n${items.map(itemLine).join("\n")}`,
     rules === "" ? "" : `\nLuật bắt buộc — bài sẽ bị chấm lại theo đúng những luật này:\n${rules}`,

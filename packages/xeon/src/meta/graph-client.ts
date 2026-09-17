@@ -49,9 +49,41 @@ export class MetaGraphClient {
     return r.value["success"] === true ? { ok: true, value: true } : { ok: false, message: "Meta khong xac nhan dang ky nhan tin." };
   }
 
+  /** Stops Meta delivering the page's events to the developer app (Đ6 "Ngắt kết nối"). */
+  async unsubscribePage(pageId: string, token: string): Promise<GraphResult<true>> {
+    const r = await this.call("DELETE", `${encodeURIComponent(pageId)}/subscribed_apps`, token);
+    if (!r.ok) return r;
+    return r.value["success"] === true ? { ok: true, value: true } : { ok: false, message: "Meta khong xac nhan huy dang ky." };
+  }
+
+  /**
+   * Facebook Login (Đ6): the one-time `code` the dialog handed back, exchanged with the app secret for
+   * a user token. The token lives only for the next call — Xeon keeps neither.
+   */
+  async exchangeCode(input: { appId: string; appSecret: string; redirectUri: string; code: string }): Promise<GraphResult<string>> {
+    const query = `oauth/access_token?client_id=${encodeURIComponent(input.appId)}&client_secret=${encodeURIComponent(input.appSecret)}&redirect_uri=${encodeURIComponent(input.redirectUri)}&code=${encodeURIComponent(input.code)}`;
+    const r = await this.call("GET", query, "");
+    if (!r.ok) return r;
+    const token = String(r.value["access_token"] ?? "");
+    return token ? { ok: true, value: token } : { ok: false, message: "Meta khong tra token nguoi dung." };
+  }
+
+  /** The pages a user manages, each with ITS page token (`/me/accounts`). */
+  async pagesOfUser(userToken: string): Promise<GraphResult<{ id: string; name: string; token: string }[]>> {
+    const r = await this.call("GET", "me/accounts?fields=id,name,access_token&limit=100", userToken);
+    if (!r.ok) return r;
+    const data = Array.isArray(r.value["data"]) ? (r.value["data"] as Record<string, unknown>[]) : [];
+    return {
+      ok: true,
+      value: data.map((p) => ({ id: String(p["id"] ?? ""), name: String(p["name"] ?? ""), token: String(p["access_token"] ?? "") })).filter((p) => p.id && p.token)
+    };
+  }
+
   private async call(method: string, pathAndQuery: string, token: string): Promise<GraphResult<Record<string, unknown>>> {
     const separator = pathAndQuery.includes("?") ? "&" : "?";
-    const url = `https://graph.facebook.com/${this.version}/${pathAndQuery}${separator}access_token=${encodeURIComponent(token)}`;
+    const url = token === ""
+      ? `https://graph.facebook.com/${this.version}/${pathAndQuery}`
+      : `https://graph.facebook.com/${this.version}/${pathAndQuery}${separator}access_token=${encodeURIComponent(token)}`;
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), this.timeoutMs);
     try {

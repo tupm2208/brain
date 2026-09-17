@@ -8,6 +8,7 @@
  */
 
 import type { IndustryPack } from "../pack/types";
+import { runningShoesAgent } from "./running-shoes-agent";
 
 export const runningShoesPack: IndustryPack = {
   id: "giay-chay",
@@ -144,8 +145,12 @@ export const runningShoesPack: IndustryPack = {
 
   allowedTools: [
     "catalog.search", "stock.lookup", "variant.chart",
-    "order.lookup", "policy.get", "storefront.link", "customer.recognize", "purchase.eta"
+    "order.lookup", "policy.get", "storefront.link", "customer.recognize", "purchase.eta",
+    // The AI agent's tools (16/09/2026).
+    "catalog.find", "shop.bankAccount", "conversation.recent"
   ],
+
+  agent: runningShoesAgent,
 
   gates: [
     { kind: "no_facts_when_offline" },

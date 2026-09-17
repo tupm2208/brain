@@ -99,7 +99,9 @@ export class LandingGateway {
     this.origin = options.origin.replace(/\/+$/, "");
     this.ticket = typeof options.ticket === "function" ? options.ticket : (() => options.ticket as string);
     this.fetchImpl = options.fetch ?? (globalThis.fetch as unknown as FetchLike);
-    this.timeoutMs = options.timeoutMs ?? 10_000;
+    // 30 s: the agent's stock finder reads the whole catalogue on its first call after a landing
+    // start (5k items took over 10 s on 16/09/2026 and the call was aborted mid-answer).
+    this.timeoutMs = options.timeoutMs ?? 30_000;
     this.logger = options.logger ?? { info: () => undefined, warn: () => undefined };
     this.clock = options.clock ?? { now: () => new Date() };
     this.activityLog = options.activityLog;

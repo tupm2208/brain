@@ -20,7 +20,7 @@ export interface TextRequest {
 }
 
 export type TextOutcome =
-  | { ok: true; text: string; model: string }
+  | { ok: true; text: string; model: string; usage?: import("../agent/chat-model").TokenUsage | undefined }
   | { ok: false; viSao: string };
 
 export interface TextModelPort {

@@ -71,7 +71,18 @@ export class AnthropicTextModel implements TextModelPort {
         .join("")
         .trim();
       if (text === "") return { ok: false, viSao: "Mô hình trả về bài rỗng." };
-      return { ok: true, text, model: response.model };
+      // Đ7 token ledger: Anthropic counts cache reads and cache writes OUTSIDE `input_tokens`.
+      const usage = response.usage;
+      const cacheRead = Number(usage?.cache_read_input_tokens ?? 0) || 0;
+      return {
+        ok: true, text, model: response.model,
+        usage: {
+          inputTokens: (Number(usage?.input_tokens ?? 0) || 0) + cacheRead + (Number(usage?.cache_creation_input_tokens ?? 0) || 0),
+          outputTokens: Number(usage?.output_tokens ?? 0) || 0,
+          reasoningTokens: 0,
+          cacheReadTokens: cacheRead
+        }
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`[bo-nao] goi mo hinh viet bai hong: ${message}`);

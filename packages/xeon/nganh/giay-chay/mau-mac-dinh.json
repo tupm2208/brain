@@ -1,0 +1,572 @@
+{
+  "version": 1,
+  "nguon": "Sales Desk initialSampleProfiles (chep 17/09/2026)",
+  "mau": [
+    {
+      "id": "adidas-adizero-evo-sl",
+      "name": "Adidas Adizero EVO SL",
+      "brand": "adidas",
+      "category": "speed_trainer_no_plate",
+      "useCases": [
+        "tempo",
+        "interval",
+        "daily_speed",
+        "5k_10k",
+        "half_marathon"
+      ],
+      "keywords": [
+        "EVO SL",
+        "Adizero EVO SL",
+        "Adizero Evo"
+      ],
+      "scores": {
+        "daily": 8,
+        "beginner": 4,
+        "longRun": 8,
+        "speed": 10,
+        "race": 8,
+        "stability": 7,
+        "comfort": 8.5,
+        "wideFoot": 5,
+        "trail": 0,
+        "value": 9,
+        "bounce": 8.5,
+        "flexibility": 7.5,
+        "breathability": 8,
+        "durability": 7,
+        "grip": 7.5,
+        "energyReturn": 8.5,
+        "versatility": 8.5
+      },
+      "paceDistanceScores": {
+        "3k_5k": {
+          "easy": 6,
+          "moderate": 8.5,
+          "fast": 9.5
+        },
+        "5k_10k": {
+          "easy": 7,
+          "moderate": 9,
+          "fast": 9.5
+        },
+        "10k_half": {
+          "easy": 7,
+          "moderate": 8.5,
+          "fast": 9
+        },
+        "marathon": {
+          "easy": 6,
+          "moderate": 7.5,
+          "fast": 7.5
+        },
+        "trail": {
+          "easy": 0,
+          "moderate": 0,
+          "fast": 0
+        }
+      },
+      "filters": {
+        "runnerLevels": [
+          "intermediate",
+          "advanced"
+        ],
+        "distanceBands": [
+          "3k_5k",
+          "5k_10k",
+          "10k_half",
+          "marathon"
+        ],
+        "paceBand": "best_4_00_to_5_30_per_km",
+        "terrain": "road",
+        "rideFeel": "light_responsive_natural",
+        "stabilityNeed": "low_to_medium"
+      },
+      "technicalSpecs": {
+        "version": "Version 1, ra mat cuoi 2024 - thi truong 2025/2026",
+        "segment": "Speed Trainer / Premium Daily Speed",
+        "weightMen": "~224g (US 9)",
+        "weightWomen": "~188g (US 7-7.5)",
+        "drop": "6.5-7 mm",
+        "heelStack": "~38.5 mm",
+        "forefootStack": "~32 mm",
+        "midsole": "100% Lightstrike Pro full-length",
+        "plate": "Khong co carbon plate / EnergyRods",
+        "upper": "Engineered mesh mong, toi gian",
+        "outsole": "Liquid/Textured rubber mong, khong phai Continental",
+        "durability": "Du kien 500-650 km tuy can nang, form chay va be mat duong"
+      },
+      "technologies": [
+        "100% Lightstrike Pro full-length: em sau, nay nhanh, khong bi cam giac qua lun neu chay dung toc do.",
+        "No Plate: khong carbon plate, khong EnergyRods; cam giac tu nhien hon va ban chan phai tu lam viec nhieu hon.",
+        "Rocker geometry / toe-spring ro: ho tro chuyen buoc muot khi tang pace.",
+        "Engineered mesh upper: mong, nhe, thoang, nhung phan got toi gian co the can that runner's loop.",
+        "Liquid/Textured rubber outsole: bam tot tren duong kho, can can trong hon khi duong uot."
+      ],
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular_racing_fit",
+        "toeBox": "medium",
+        "instep": "medium",
+        "sizingNote": "True-to-size voi chan thuong; chan be nhieu nen can nhac tang 0.5 size hoac do long trong truoc khi chot. Neu bi long got, uu tien that day kieu runner's loop."
+      },
+      "bestFor": [
+        "Runner da co nen tang, muon giay sieu nhe cho tempo/interval/daily speed.",
+        "Phu hop nhat pace 4:00-5:30/km, cu ly 5K-21K.",
+        "Nguoi muon trai nghiem super-foam Lightstrike Pro nhung khong muon cam giac cung cua carbon plate."
+      ],
+      "avoidFor": [
+        "Nguoi moi can giay on dinh, de di va cham hon.",
+        "Runner tren 85kg, co co chan yeu, overpronation/flat feet ro.",
+        "Nguoi tim giay di bo lau, tap gym, trail hoac chay duong uot tron thuong xuyen."
+      ],
+      "webContent": {
+        "shortDescription": "Adidas Adizero EVO SL la speed trainer khong plate, dung full Lightstrike Pro, rat nhe va hop runner da co nen tang can giay tempo/daily speed.",
+        "intro": "Adidas Adizero EVO SL mang cam hung tu Adios Pro Evo 1 nhung loai bo plate de tao cam giac nhe, nay va tu nhien hon. Diem manh la trong luong thap, bo dem Lightstrike Pro full-length va rocker chuyen buoc muot; diem can can nhac la do on dinh ngang chi trung binh va got co the can that day ky.",
+        "features": [
+          "Sieu nhe trong phan khuc speed trainer de day.",
+          "Cam giac nay tu nhien, khong bi day cuong buc nhu giay carbon.",
+          "Tot nhat cho tempo, interval, 5K-10K va half marathon voi runner co co chan khoe.",
+          "Gia tri cao neu muon trai nghiem full Lightstrike Pro trong tam gia speed trainer."
+        ],
+        "technologies": [
+          "100% Lightstrike Pro full-length",
+          "No carbon plate / no EnergyRods",
+          "Rocker geometry va toe-spring ro",
+          "Engineered mesh upper mong nhe",
+          "Liquid/Textured rubber outsole, khong phai Continental"
+        ],
+        "bestFor": [
+          "Runner trung cap den nang cao.",
+          "Pace 4:00-5:30/km.",
+          "5K, 10K, half marathon va long run nhanh 25-30km neu co co chan khoe."
+        ],
+        "notFor": [
+          "Nguoi moi chay bo.",
+          "Nguoi can stability cao hoac co chan/phom dap lech trong ro.",
+          "Di bo lau, tap gym, trail, duong uot tron."
+        ],
+        "fitGuide": "True-to-size nhung om sat kieu racing fit. Toe-box vua phai, phan got toi gian co the hoi long voi mot so nguoi.",
+        "sizeNote": "Chan thuong di dung size; chan be nhieu nen thu/do long trong hoac tang 0.5 size. Neu long got, that runner's loop truoc khi doi size.",
+        "comparisonNote": "EVO SL nhe va tu nhien hon Boston 12, nhung Boston 12 on dinh va ben hon nho EnergyRods/cau truc chac hon."
+      },
+      "runrepeatUrl": "https://runrepeat.com/adidas-adizero-evo-sl",
+      "sourceSummary": "Tong hop tu RunRepeat, Adidas, Believe In The Run, Road Trail Run, Doctors of Running, Kofuzi va bai nghien cuu AI do TopRun cung cap; TopRun dung de bien tap thanh profile tu van noi bo."
+    },
+    {
+      "id": "nike-pegasus-41",
+      "name": "Nike Pegasus 41",
+      "brand": "Nike",
+      "category": "daily_trainer",
+      "useCases": [
+        "daily_run",
+        "beginner",
+        "5k_10k",
+        "long_run_light"
+      ],
+      "keywords": [
+        "Pegasus 41",
+        "Nike Pegasus",
+        "Peg 41"
+      ],
+      "scores": {
+        "daily": 10,
+        "beginner": 10,
+        "longRun": 8,
+        "speed": 6,
+        "race": 2,
+        "stability": 6,
+        "comfort": 8,
+        "wideFoot": 6,
+        "trail": 0,
+        "value": 8
+      },
+      "filters": {
+        "runnerLevels": [
+          "beginner",
+          "intermediate"
+        ],
+        "distanceBands": [
+          "3k_10k",
+          "10k_half"
+        ],
+        "paceBand": "easy_to_moderate",
+        "terrain": "road",
+        "rideFeel": "balanced",
+        "stabilityNeed": "medium"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Uu tien lam mau daily trainer cho nguoi moi; can do long trong va forefoot width."
+      },
+      "bestFor": [
+        "Nguoi moi chay can mot doi daily de dung.",
+        "Khach chay 3-10km nhieu buoi/tu tuan."
+      ],
+      "avoidFor": [
+        "Khach can race shoe carbon.",
+        "Trail dia hinh hoac can support manh."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/nike-pegasus-41",
+      "sourceSummary": "RunRepeat xep Pegasus 41 theo huong daily trainer/versatile reference; TopRun quy doi thanh diem noi bo."
+    },
+    {
+      "id": "asics-novablast-5",
+      "name": "ASICS Novablast 5",
+      "brand": "ASICS",
+      "category": "responsive_daily",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "tempo_light"
+      ],
+      "keywords": [
+        "Novablast 5",
+        "ASICS Novablast",
+        "Novablast"
+      ],
+      "scores": {
+        "daily": 10,
+        "beginner": 8,
+        "longRun": 10,
+        "speed": 8,
+        "race": 4,
+        "stability": 6,
+        "comfort": 10,
+        "wideFoot": 6,
+        "trail": 0,
+        "value": 8
+      },
+      "filters": {
+        "runnerLevels": [
+          "beginner",
+          "intermediate"
+        ],
+        "distanceBands": [
+          "3k_10k",
+          "10k_half",
+          "marathon"
+        ],
+        "paceBand": "easy_to_moderate",
+        "terrain": "road",
+        "rideFeel": "cushioned_responsive",
+        "stabilityNeed": "medium"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular_to_wide",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Can do width vi dong Novablast thuong duoc khach quan tam ve do rong/upper."
+      },
+      "bestFor": [
+        "Daily trainer em va co do nay.",
+        "Khach muon mot doi chay deu, long run nhe, khong qua racing."
+      ],
+      "avoidFor": [
+        "Nguoi can stability cao.",
+        "Nguoi thich de thap/chac va it bounce."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/asics-novablast-5",
+      "sourceSummary": "Dung RunRepeat/brand specs lam reference cho nhom responsive daily, sau do TopRun can do fit-size rieng."
+    },
+    {
+      "id": "asics-gel-kayano-31",
+      "name": "ASICS Gel-Kayano 31",
+      "brand": "ASICS",
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run",
+        "long_run",
+        "flat_feet_candidate"
+      ],
+      "keywords": [
+        "Gel-Kayano 31",
+        "Kayano 31",
+        "Kayano"
+      ],
+      "scores": {
+        "daily": 8,
+        "beginner": 8,
+        "longRun": 8,
+        "speed": 2,
+        "race": 0,
+        "stability": 10,
+        "comfort": 8,
+        "wideFoot": 6,
+        "trail": 0,
+        "value": 6
+      },
+      "filters": {
+        "runnerLevels": [
+          "beginner",
+          "intermediate"
+        ],
+        "distanceBands": [
+          "3k_10k",
+          "10k_half"
+        ],
+        "paceBand": "easy_to_moderate",
+        "terrain": "road",
+        "rideFeel": "stable_cushioned",
+        "stabilityNeed": "high"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Can hoi them lich su dau/co chan va do vom chan; khong tu van nhu chan doan y khoa."
+      },
+      "bestFor": [
+        "Khach can daily on dinh hon neutral shoe.",
+        "Nguoi co xu huong can support khi chay dai/easy."
+      ],
+      "avoidFor": [
+        "Khach uu tien nhe/toc do.",
+        "Nguoi khong thich cam giac structured."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/asics-gel-kayano-31",
+      "sourceSummary": "RunRepeat co lab/review cho Kayano; TopRun dung lam reference stability category."
+    },
+    {
+      "id": "adidas-adizero-boston-12",
+      "name": "Adidas Adizero Boston 12",
+      "brand": "adidas",
+      "category": "tempo_super_trainer",
+      "useCases": [
+        "tempo",
+        "speed",
+        "long_run_fast"
+      ],
+      "keywords": [
+        "Boston 12",
+        "Adizero Boston",
+        "Boston"
+      ],
+      "scores": {
+        "daily": 6,
+        "beginner": 4,
+        "longRun": 8,
+        "speed": 8,
+        "race": 6,
+        "stability": 6,
+        "comfort": 6,
+        "wideFoot": 4,
+        "trail": 0,
+        "value": 8
+      },
+      "filters": {
+        "runnerLevels": [
+          "intermediate",
+          "advanced"
+        ],
+        "distanceBands": [
+          "10k_half",
+          "marathon"
+        ],
+        "paceBand": "moderate_to_fast",
+        "terrain": "road",
+        "rideFeel": "firm_responsive",
+        "stabilityNeed": "medium"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Can canh bao nguoi moi neu muon cam giac mem/de di."
+      },
+      "bestFor": [
+        "Runner da chay deu, muon bai tempo/long run nhanh.",
+        "Khach can super trainer gia tri hon race shoe."
+      ],
+      "avoidFor": [
+        "Nguoi moi can daily em de lam quen.",
+        "Khach chi di bo/di lam ca ngay."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/adidas-adizero-boston-12",
+      "sourceSummary": "Reference cho nhom tempo/super trainer; TopRun can chinh theo feedback khach Viet Nam."
+    },
+    {
+      "id": "hoka-clifton-9",
+      "name": "HOKA Clifton 9",
+      "brand": "HOKA",
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "beginner",
+        "easy_run",
+        "long_run_light"
+      ],
+      "keywords": [
+        "Clifton 9",
+        "HOKA Clifton",
+        "Clifton"
+      ],
+      "scores": {
+        "daily": 10,
+        "beginner": 10,
+        "longRun": 8,
+        "speed": 4,
+        "race": 0,
+        "stability": 6,
+        "comfort": 10,
+        "wideFoot": 6,
+        "trail": 0,
+        "value": 6
+      },
+      "filters": {
+        "runnerLevels": [
+          "beginner",
+          "intermediate"
+        ],
+        "distanceBands": [
+          "3k_10k",
+          "10k_half"
+        ],
+        "paceBand": "easy_to_moderate",
+        "terrain": "road",
+        "rideFeel": "cushioned",
+        "stabilityNeed": "medium"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "HOKA can do ky chieu dai va do om midfoot/instep cho khach mu cao."
+      },
+      "bestFor": [
+        "Khach can daily em, nhe tuong doi, de chay easy.",
+        "Nguoi moi thich cam giac dem day."
+      ],
+      "avoidFor": [
+        "Nguoi can race/toc do.",
+        "Nguoi can stability manh."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/hoka-clifton-9",
+      "sourceSummary": "Reference cho nhom max cushion daily/easy run."
+    },
+    {
+      "id": "nike-vaporfly-3",
+      "name": "Nike Vaporfly 3",
+      "brand": "Nike",
+      "category": "race_carbon",
+      "useCases": [
+        "race",
+        "speed",
+        "10k_half_marathon_marathon"
+      ],
+      "keywords": [
+        "Vaporfly 3",
+        "Nike Vaporfly",
+        "Vaporfly"
+      ],
+      "scores": {
+        "daily": 2,
+        "beginner": 2,
+        "longRun": 8,
+        "speed": 10,
+        "race": 10,
+        "stability": 4,
+        "comfort": 6,
+        "wideFoot": 4,
+        "trail": 0,
+        "value": 4
+      },
+      "filters": {
+        "runnerLevels": [
+          "advanced"
+        ],
+        "distanceBands": [
+          "10k_half",
+          "marathon"
+        ],
+        "paceBand": "fast",
+        "terrain": "road",
+        "rideFeel": "race_responsive",
+        "stabilityNeed": "low_or_unknown"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "race_fit",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Chi goi y khi khach co muc tieu race/toc do; can check fit ky vi race fit co the om."
+      },
+      "bestFor": [
+        "Race day va runner da quen giay nhanh/carbon.",
+        "Khach co muc tieu PR 10K-HM-FM."
+      ],
+      "avoidFor": [
+        "Nguoi moi mua doi dau tien.",
+        "Daily run cham, di bo, can on dinh cao."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/nike-vaporfly-3",
+      "sourceSummary": "Reference cho nhom race carbon, can tu van canh bao ro."
+    },
+    {
+      "id": "hoka-speedgoat-6",
+      "name": "HOKA Speedgoat 6",
+      "brand": "HOKA",
+      "category": "trail",
+      "useCases": [
+        "trail",
+        "mixed_terrain",
+        "long_trail"
+      ],
+      "keywords": [
+        "Speedgoat 6",
+        "HOKA Speedgoat",
+        "Speedgoat"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 6,
+        "longRun": 8,
+        "speed": 4,
+        "race": 4,
+        "stability": 8,
+        "comfort": 8,
+        "wideFoot": 6,
+        "trail": 10,
+        "value": 6
+      },
+      "filters": {
+        "runnerLevels": [
+          "beginner",
+          "intermediate",
+          "advanced"
+        ],
+        "distanceBands": [
+          "trail"
+        ],
+        "paceBand": "terrain_dependent",
+        "terrain": "trail",
+        "rideFeel": "protective",
+        "stabilityNeed": "medium_high"
+      },
+      "fitSizing": {
+        "measurementStatus": "pending_toprun_measurement",
+        "widthProfile": "regular",
+        "toeBox": "unknown",
+        "instep": "unknown",
+        "sizingNote": "Trail shoe can can du mui nhieu hon cho xuong doc; do long trong theo size la bat buoc."
+      },
+      "bestFor": [
+        "Trail, duong dat/da, chay dai dia hinh.",
+        "Khach can de bam va bao ve chan hon road shoe."
+      ],
+      "avoidFor": [
+        "Road daily thuan tuy.",
+        "Khach can giay toc do mat duong."
+      ],
+      "runrepeatUrl": "https://runrepeat.com/hoka-speedgoat-6",
+      "sourceSummary": "Reference cho nhom trail/protective."
+    }
+  ]
+}

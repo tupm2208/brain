@@ -46,6 +46,9 @@ async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | 
     const reply = (payload: unknown, status = 200) => ({ ok: status < 300, status, json: async () => payload });
     if (u.hostname === "graph.facebook.com") {
       graphCalls.push(`${init.method} ${u.pathname}`);
+      // Facebook Login (Đ6): the code becomes a user token, the user token lists the pages.
+      if (u.pathname.endsWith("/oauth/access_token")) return u.searchParams.get("code") === "ma-dung" ? reply({ access_token: "tk-nguoi" }) : reply({ error: { message: "Invalid code" } }, 400);
+      if (u.searchParams.get("access_token") === "tk-nguoi" && u.pathname.endsWith("/me/accounts")) return reply({ data: [{ id: "trang-a", name: "Trang A", access_token: "tk-trang-a" }] });
       const page = META_PAGES[u.searchParams.get("access_token") ?? ""];
       if (!page) return reply({ error: { message: "Invalid OAuth access token." } }, 400);
       if (u.pathname.endsWith("/me")) return reply({ id: page.id, name: page.name });
@@ -61,7 +64,7 @@ async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | 
   const server = createXeonServer({
     controllers: [
       new HealthController(license, clock, () => ({ meta: { soTrang: license.pageCount(), goiDangCho: forwarder.pendingCount() } })),
-      new MetaController({ license, forwarder, graph: new MetaGraphClient({ fetch }), appSecret, verifyToken: VERIFY, logger })
+      new MetaController({ license, forwarder, graph: new MetaGraphClient({ fetch }), appSecret, verifyToken: VERIFY, appId: "app-thu", xeonAddress: "https://xeon.test", logger })
     ]
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -236,4 +239,51 @@ test("a reply under a comment carries the comment id, and every reply names its 
   assert.equal(calls[0]!["traLoiTin"], "123_456");
   assert.equal(calls[0]!["maHoiThoai"], "facebook-binh-luan:khach-1");
   assert.equal("traLoiTin" in calls[1]!, false, "a plain message carries no comment id");
+});
+
+test("Đ6: a landing disconnects a page it owns (unsubscribed at Meta); another shop's page is left alone", async () => {
+  const x = await setup();
+  try {
+    await x.call("/meta/trang", { method: "POST", token: x.inboxA, body: { trang: [{ ma: "trang-a", token: "tk-trang-a" }] } });
+    assert.equal(x.license.shopForPage("trang-a"), "shop-a");
+    assert.equal((await x.call("/meta/trang/ngat", { method: "POST", body: { trang: ["trang-a"] } })).status, 401);
+    const stranger = await x.call("/meta/trang/ngat", { method: "POST", token: x.inboxB, body: { trang: [{ ma: "trang-a", token: "tk-trang-a" }] } });
+    assert.deepEqual(stranger.body, { ok: true, daNgat: [], huyDangKy: [] });
+    assert.equal(x.license.shopForPage("trang-a"), "shop-a", "shop B cannot disconnect shop A's page");
+    const r = await x.call("/meta/trang/ngat", { method: "POST", token: x.inboxA, body: { trang: [{ ma: "trang-a", token: "tk-trang-a" }] } });
+    assert.deepEqual(r.body, { ok: true, daNgat: ["trang-a"], huyDangKy: [{ ma: "trang-a", ok: true }] });
+    assert.ok(x.graphCalls.includes("DELETE /v23.0/trang-a/subscribed_apps"));
+    assert.equal(x.license.shopForPage("trang-a"), null);
+    assert.equal((await x.call("/meta/trang/ngat", { method: "POST", token: x.inboxA, body: { trang: [] } })).status, 400);
+  } finally { await x.close(); }
+});
+
+test("Đ6: Facebook Login through the developer app — the landing starts, Meta redirects back, the landing collects the pages ONCE", async () => {
+  const x = await setup();
+  try {
+    assert.equal((await x.call("/meta/dang-nhap", { method: "POST", body: {} })).status, 401);
+    const start = await x.call("/meta/dang-nhap", { method: "POST", token: x.inboxA, body: {} });
+    assert.equal(start.status, 200);
+    const url = new URL(String(start.body!["url"]));
+    assert.equal(url.hostname, "www.facebook.com");
+    assert.equal(url.searchParams.get("client_id"), "app-thu");
+    assert.equal(url.searchParams.get("redirect_uri"), "https://xeon.test/meta/dang-nhap/xong");
+    const state = String(start.body!["maPhien"]);
+    assert.equal(url.searchParams.get("state"), state);
+
+    const waiting = await x.call(`/meta/dang-nhap/ket-qua?maPhien=${state}`, { token: x.inboxA });
+    assert.deepEqual(waiting.body, { ok: true, xong: false, loi: "" });
+    assert.equal((await x.call(`/meta/dang-nhap/ket-qua?maPhien=${state}`, { token: x.inboxB })).status, 404, "another shop cannot collect it");
+
+    assert.equal((await x.call(`/meta/dang-nhap/xong?state=${state}&code=ma-sai`)).status, 502);
+    const back = await x.call(`/meta/dang-nhap/xong?state=${state}&code=ma-dung`);
+    assert.equal(back.status, 200);
+    assert.match(back.text, /Đọc được 1 trang/);
+    assert.ok(!back.text.includes("tk-trang-a"), "the page shows no token");
+
+    const got = await x.call(`/meta/dang-nhap/ket-qua?maPhien=${state}`, { token: x.inboxA });
+    assert.deepEqual(got.body, { ok: true, xong: true, trang: [{ ma: "trang-a", ten: "Trang A", token: "tk-trang-a" }] });
+    assert.equal((await x.call(`/meta/dang-nhap/ket-qua?maPhien=${state}`, { token: x.inboxA })).status, 404, "collected once, then forgotten");
+    assert.equal((await x.call("/meta/dang-nhap/xong?state=la&code=ma-dung")).status, 400);
+  } finally { await x.close(); }
 });
