@@ -51,4 +51,14 @@ export class IntentDetector {
     if (id === undefined) return null;
     return this.pack.intents.find((i) => i.id === id) ?? null;
   }
+
+  /**
+   * The intent the rule router's verdict maps to: a pack intent with that exact id, or one that
+   * lists it under `routerIntents`. `null` when the pack has no intent for it ("greeting",
+   * "small_talk", "unknown"...), and the engine scores keywords as before.
+   */
+  byHint(hint: string | undefined): PackIntent | null {
+    if (hint === undefined || hint === "") return null;
+    return this.pack.intents.find((i) => i.id === hint || (i.routerIntents ?? []).includes(hint)) ?? null;
+  }
 }

@@ -1,0 +1,67 @@
+{
+  "_doc": "TANG 2 — LLM#1 phan tich ngu canh, phan RIENG nganh giay chay (chep tu Sales Desk buildContextAnalysisPrompt). Khoi o day noi TIEP khoi tang 1 (loi-chung/phan-tich-ngu-canh.json); `schema` GOP THEM khoa vao khung JSON chung. Khong ghi ten shop, ten nguoi, con so cua rieng shop nao.",
+  "khoi": [
+    {
+      "id": "chan-dung-nhu-cau",
+      "tieuDe": "Chan dung nhu cau (needBrief)",
+      "shopSua": false,
+      "loiDan": [
+        "CHAN DUNG NHU CAU (needBrief) — doc CA hoi thoai, khong chi tin cuoi. Suy tu dieu khach da noi o BAT KY tin nao, ke ca tin cua SHOP neu khach da xac nhan:",
+        "- sport: running | tennis | pickleball | basketball | football | gym | walking | lifestyle | unknown. Suy tu ten giay khach nhac neu khach khong noi thang (Adios/Pegasus/Novablast = running; Barricade/Gel-Resolution = tennis).",
+        "- surface: mat san/duong khach dung. Tennis/pickleball: san_cung (hard) | dat_nen (clay) | co (grass) | trong_nha (indoor). Chay: duong_nhua (road) | duong_mon (trail) | duong_chay (track) | may_chay (treadmill). Chua ro de trong.",
+        "- intensity: muc do su dung. Chay: moi_tap | chay_deu | co_muc_tieu_race | thi_dau. The thao khac: phong_trao | ban_chuyen | thi_dau. Chua ro de trong.",
+        "- distance / pace: cu ly va toc do khach neu (5k, 10k, HM, FM, \"6 phut/km\"). Chua ro de trong.",
+        "- purpose: chay_hang_ngay | tap_toc_do | thi_dau | di_bo | di_choi | tap_gym | mua_tang.",
+        "- targetProduct: mau khach DANG MUON MUA (khac currentShoe la mau khach DANG DI). Neu khach hoi mua LAI dung doi dang di thi repurchaseSameShoe=true va targetProduct = chinh doi do.",
+        "- knownSize: size giay khach da xac nhan cho lan mua NAY (uu tien tin moi nhat).",
+        "- readyToBuy: true khi khach the hien y chot (\"chot\", \"lay doi nay\", \"minh lay size 44\", da dua SDT/dia chi).",
+        "- missingCritical: CHI liet ke thong tin THAT SU con thieu de tu van/chot don, theo dung thu tu can hoi. Da biet roi thi KHONG duoc liet ke lai. SIZE khong phai muc thieu o giai doan TU VAN DONG (khach chay bo co cu ly + pace la du de goi y dong; size chi hoi khi khach chon dong/chot don) — dang tu van thi KHONG duoc ghi size vao missingCritical.",
+        "- nextQuestion: DUNG MOT cau hoi ngan nhat can hoi tiep. Neu du thong tin roi thi de TRONG (bot se chuyen sang tra ket qua kho, khong hoi nua)."
+      ]
+    },
+    {
+      "id": "tach-ten-san-pham",
+      "tieuDe": "Tach cau truc ten san pham",
+      "shopSua": false,
+      "loiDan": [
+        "TACH CAU TRUC TEN SAN PHAM (he thong tra kho theo TUNG TRUONG, khong doan chuoi):",
+        "- brand = HANG: adidas, Nike, Saucony, ASICS, HOKA, New Balance, Puma, Mizuno, Under Armour...",
+        "- productLine = TEN DONG (bo hang, bo so doi). Vi du: Saucony Endorphin Pro 4 -> brand=Saucony, productLine=Endorphin Pro, modelVersion=4. Adizero Adios Pro 4 -> brand=adidas, productLine=Adizero Adios Pro, modelVersion=4. Air Jordan 1 Low -> brand=Nike, productLine=Air Jordan 1 Low. Boston 13 -> brand=adidas, productLine=Adizero Boston, modelVersion=13.",
+        "- modelVersion = so doi khach neu (4, 13, 40). KHONG phai size.",
+        "- productType = loai: giay | dep | ao | quan | balo | tui | phu kien | tat.",
+        "- experience: \"new\" = khach noi moi chay/moi tap/chan yeu/chua chay bao gio; \"regular\" = chay deu co cu ly cu the; \"advanced\" = co pace/muc tieu race ro. buyerType \"perf\" = hoi cu ly/pace/do em/cong nghe/so sanh dong giay; \"style\" = khong dung tu vung chay bo."
+      ]
+    },
+    {
+      "id": "size-nac-mot-phan-ba",
+      "tieuDe": "Size nac 1/3",
+      "shopSua": false,
+      "loiDan": [
+        "Size noi theo he nua size (44.5, 44 ruoi) tren giay adidas nac 1/3 nghia la nac gan nhat (44 2/3) — dac biet khi bot vua goi y nac do.",
+        "resolve_stock la lenh dung cho MOI cau hoi ve mot mau cu the co size; search_catalog khi chua co mau cu the."
+      ]
+    }
+  ],
+  "schema": {
+    "entities": {
+      "brand": "",
+      "productLine": "",
+      "modelVersion": "",
+      "need": "",
+      "footForm": ""
+    },
+    "needBrief": {
+      "sport": "",
+      "surface": "",
+      "intensity": "",
+      "distance": "",
+      "pace": "",
+      "repurchaseSameShoe": false,
+      "currentShoe": "",
+      "currentShoeSize": ""
+    }
+  },
+  "nhan": {
+    "dna": "DNA DONG GIAY (du lieu chuan noi bo — giup hieu \"boston 13\" la giay gi de doan gia thuyet nhu cau, KHONG ket luan gia/ton):"
+  }
+}

@@ -92,11 +92,12 @@ export function buildPrompt(brief: WriteBriefBody): Prompt {
   const user = [
     brief.dangBai === undefined ? "" : `Dạng bài: ${text(brief.dangBai)}`,
     text(brief.huongDan) === "" ? "" : `Bài này cần làm được: ${text(brief.huongDan)}`,
-    text(brief.chuDe) === "" ? "" : `Chủ đề cụ thể: ${text(brief.chuDe)}`,
+    text(brief.chuDe) === "" ? "" : `Chủ đề cụ thể BẮT BUỘC, không được tự đổi phạm vi/hãng/nhu cầu: ${text(brief.chuDe)}`,
     text(brief.goc?.ten) === "" ? "" : `Góc mua (khách mua vì): ${text(brief.goc?.ten)}${text(brief.goc?.huongDan) === "" ? "" : ` — ${text(brief.goc?.huongDan)}`}`,
     styleBlock(brief.phongCach),
     "",
     items.length === 0 ? "Không có mã sản phẩm nào." : `Các mã trong bài (chỉ dùng đúng các mã này):\n${items.map(itemLine).join("\n")}`,
+    "\nHOOK VÀ CHỮ ẢNH: hook phải gọi đúng một insight hoặc vấn đề cụ thể của khách, tạo khoảng tò mò để họ dừng lại và đọc tiếp; tránh câu chung chung chỉ giới thiệu danh mục. Chữ lớn trên ảnh phải nêu bật chính vấn đề/insight đó, ngắn hơn hook và không chỉ lặp tên sản phẩm.",
     rules === "" ? "" : `\nLuật bắt buộc — bài sẽ bị chấm lại theo đúng những luật này:\n${rules}`,
     retry.length === 0
       ? ""

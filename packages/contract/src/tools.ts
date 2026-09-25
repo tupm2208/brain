@@ -17,6 +17,7 @@ import type { CatalogItemLite, StockRow } from "./catalog";
 import type { ConversationId, ItemId, OrderId, VariantId } from "./ids";
 import type { Money, MoneyOnOrder } from "./money";
 import type { ModuleId } from "./modules";
+import type { ShopProfile } from "./shop-profile";
 
 /** Effect of a tool. `money` is forbidden territory for the bot. */
 export type ToolEffect = "read" | "draft" | "money";
@@ -32,14 +33,76 @@ export type StockLookupInput =
   | { code: string; variantLabel?: string | undefined }
   | { itemId: ItemId; variantLabel?: string | undefined };
 
+/**
+ * 25/09/2026 (tier-1 Desk rebuild): may the customer still change size on this order? Copied from
+ * Desk `orderExchangeState`: "made-to-order goods cannot be exchanged" is only true AFTER the
+ * warehouse has bought; an order the warehouse has not bought yet can still change size.
+ */
+export interface OrderExchangeState {
+  allowed: boolean;
+  /** `don_da_dong` · `da_gui_hang` · `da_mua` · `chua_mua`. */
+  reason: string;
+  note?: string | undefined;
+  /** Lines still open for exchange, as "name size X". */
+  openItems?: string[] | undefined;
+  /** Code / name / size of each open line, so the exchange checks stock of the EXACT item ordered. */
+  openLines?: { code: string; name: string; size: string }[] | undefined;
+}
+
+/** 25/09/2026: the waybill of an order. `url` is built by the MERCHANT SERVER from its carrier configuration — the brain never composes one. */
+export interface OrderTracking {
+  carrier?: string | undefined;
+  code?: string | undefined;
+  url?: string | undefined;
+  /** The parcel is still on its way (not delivered / cancelled / returned) AND there is a link to send. */
+  active: boolean;
+}
+
 export interface OrderBrief {
   orderId: OrderId;
   status: string;
   createdAt: string;
   /** Money passes through a single origin (money.ts). Never recomputed anywhere. */
   money: MoneyOnOrder;
-  /** Item name + variant, enough to answer the customer. No recipient address. */
-  lines: { name: string; variantLabel: string; qty: number }[];
+  /** Item name + variant, enough to answer the customer. No recipient address. `code` since 25/09/2026. */
+  lines: { name: string; variantLabel: string; qty: number; code?: string | undefined }[];
+  /** 25/09/2026: Vietnamese status label. Older landings omit it. */
+  statusLabel?: string | undefined;
+  exchange?: OrderExchangeState | undefined;
+  tracking?: OrderTracking | undefined;
+}
+
+/**
+ * One item as the AI agent's finder returns it (`catalog.find` / `catalog.resolveStock`). Field
+ * names are Vietnamese on purpose: the agent's prompt reads them. `so_luong` / `kho` / `dk` /
+ * `dieu_kien` were added 25/09/2026 and 24/09/2026; older landings omit them.
+ */
+export interface FoundCatalogItem {
+  ma: string;
+  ten: string;
+  loai?: string;
+  cac_size: {
+    size: string;
+    gia: number;
+    loai?: string;
+    /** Real remaining quantity of this size, all warehouses added up (Desk `so_luong`). */
+    so_luong?: number;
+    /** Expected warehouse id of the size (the same ids `shop.profile.kho[].ma` lists). */
+    kho?: string;
+    /** Key into `dieu_kien`: the selling terms of the warehouse this size ships from. */
+    dk?: string;
+  }[];
+  anh: string;
+  link: string;
+  nhom?: string;
+  dieu_kien?: Record<string, string>;
+}
+
+/** One rung entry of `catalog.resolveStock`: a found item plus whether it has the size asked. */
+export interface ResolvedStockEntry extends FoundCatalogItem {
+  hasRequestedSize: boolean;
+  /** Version read from the name ("12", "13"); empty when the name carries none. */
+  doi: string;
 }
 
 export interface ToolMap {
@@ -108,8 +171,21 @@ export interface ToolMap {
    * the brain must not see those (DECISION 3).
    */
   "customer.recognize": {
-    input: { conversationId: ConversationId };
-    output: { isReturning: boolean; orderCount: number; lastOrderAt?: string | undefined };
+    /**
+     * 25/09/2026: `phoneGivenInConversation` — the number the customer typed THEMSELVES; without it
+     * the landing answers "unknown" (RULE 2 of the gateway, same as `order.lookup`).
+     */
+    input: { conversationId: ConversationId; phoneGivenInConversation?: string | undefined };
+    output: {
+      isReturning: boolean;
+      orderCount: number;
+      lastOrderAt?: string | undefined;
+      /** 25/09/2026 (Desk `buildCustomerPortrait`): the two sizes bought most often in the last five orders. */
+      usualSizes?: string[] | undefined;
+      lastOrder?: { status: string; statusLabel?: string | undefined; productName: string; size: string; createdAt: string } | null | undefined;
+      /** An address is on file — the bot may ASK to reuse it, but never sees it. */
+      hasSavedAddress?: boolean | undefined;
+    };
   };
   /**
    * The AI agent's stock finder (Sales Desk `tra_kho`, moved 16/09/2026): in-stock items by name,
@@ -118,8 +194,50 @@ export interface ToolMap {
    * the agent's prompt reads them.
    */
   "catalog.find": {
-    input: { ten?: string; ma?: string; size?: string; chi_hang_san?: boolean; muc_dich?: string; gioi_tinh?: string };
-    output: { ketQua: { ma: string; ten: string; loai?: string; cac_size: { size: string; gia: number; loai?: string }[]; anh: string; link: string; nhom?: string }[] | string };
+    input: { ten?: string; ma?: string; size?: string; chi_hang_san?: boolean; muc_dich?: string; gioi_tinh?: string; phan_khuc?: string };
+    output: { ketQua: FoundCatalogItem[] | string };
+  };
+  /**
+   * THE STOCK LADDER (Desk `resolve_stock`, moved 25/09/2026): when a customer asks for one model
+   * in one size, the answer is the FIRST rung that serves it — exact code, another variant of the
+   * same line and version (men's / women's / colour), another version of the line (only opened once
+   * the same version cannot serve the size), an equivalent line, or nothing. The industry's line
+   * aliases go IN (`dongTuongDuong`, `dongNguoiMoi`): the merchant server knows no industry.
+   * Every entry has the shape of a `catalog.find` result, with real quantities.
+   */
+  "catalog.resolveStock": {
+    input: {
+      ma?: string; ten?: string; doiSo?: string; size?: string; loaiHang?: string;
+      /** Aliases of the lines of the SAME segment (may replace the one asked). */
+      dongTuongDuong?: string[];
+      /** Aliases of "beginner alternative" lines (another segment — a hint, never called equivalent). */
+      dongNguoiMoi?: string[];
+    };
+    output: {
+      resolvedLevel: "exact" | "same_line_same_version" | "same_line_other_version" | "equivalent" | "none";
+      anchor: { ma: string; ten: string } | null;
+      exact: { hasRequestedSize: boolean; rows: ResolvedStockEntry[]; otherKho: string[] } | null;
+      sameLineSameVersion: ResolvedStockEntry[];
+      sameLineOtherVersion: ResolvedStockEntry[];
+      equivalents: ResolvedStockEntry[];
+      note: string;
+    };
+  };
+  /**
+   * WHICH CODE A CUSTOMER'S PHOTO IS (21/09/2026). The merchant server matches the picture against
+   * the fingerprints of its OWN catalogue photos and puts that beside the code the brain's vision
+   * model read off the label. `chot.ket`: `tu_tin` (one code), `hoi_lai` (ask the customer — a photo
+   * shared by several codes, or label text that disagrees with the picture), `khong_biet`.
+   * Only the ADDRESS of the customer's photo goes in; the catalogue photos never leave the merchant.
+   */
+  "catalog.matchImage": {
+    input: { anh: string; maDocDuoc?: string };
+    output: {
+      chot: { ket: "tu_tin" | "hoi_lai" | "khong_biet"; ma?: string; viSao?: string; luaChon?: string[]; loiNhan?: string };
+      ungVien: { ma: string; ten: string }[];
+      khoangCach: number | null;
+      loiNhan: string;
+    };
   };
   /** The shop's bank account — already public on the storefront; the agent checks a transfer screenshot against it. */
   "shop.bankAccount": {
@@ -129,7 +247,65 @@ export interface ToolMap {
   /** The recent messages of THIS conversation, oldest first. Read per turn, never kept on Xeon. */
   "conversation.recent": {
     input: { conversationId: ConversationId; limit?: number };
-    output: { tin: { chieu: "den" | "di"; boi: string; chu: string; soAnh: number; luc: string }[] };
+    output: {
+      tin: {
+        /** Message id on its channel (Meta `mid`, OMI id, or the landing's own for what it sent). Older landings omit it. */
+        maTin?: string;
+        chieu: "den" | "di";
+        /**
+         * Who produced it: `khach` on the way in; on the way out `bo-nao`, `omi`, a person's name
+         * (web admin session or the shop's own people in a Zalo group). `""` = the landing does not
+         * know (a message filed before the field existed).
+         */
+        boi: string;
+        chu: string;
+        soAnh: number;
+        luc: string;
+        /** Image addresses kept in the thread (https or the shop's own media path). Absent when none. */
+        anh?: string[];
+        /** 24/09/2026: the message this one is a "Reply" to (Meta `reply_to.mid`). Absent on a plain message. */
+        traLoiTin?: string;
+      }[];
+      /** 24/09/2026 (tier-1 Desk rebuild): conversation-level facts. Older landings omit the whole object. */
+      hoiThoai?: {
+        /** The landing already sent the AI greeting for this conversation. */
+        daChaoAi: boolean;
+        /** The customer typed a Vietnamese phone number THEMSELVES in one of their messages. */
+        dienThoaiDaCho: boolean;
+        /**
+         * 25/09/2026 (Giai đoạn 7): product codes whose card the landing sent in this conversation
+         * within the last 6 hours — asking for them again is refused as `da-gui-6h`. Older landings omit it.
+         */
+        theDaGui?: string[];
+      };
+    };
+  };
+  /**
+   * 25/09/2026 (Giai đoạn 7, Desk m-order card): the ORDER FORM LINK for what the customer settled
+   * on. The LANDING builds it — pre-fills name / phone / address from the customer's own messages
+   * (`chat`, regex, may be wrong) or from their last order (`don-cu`), refuses while the thread is
+   * still about a live order (`chan`), and prices the card face from LIVE web stock. No phone or
+   * address is in the output except inside the URL itself. The brain passes `url` / `loiMoi` / `the`
+   * to `/api/hop-thu/gui` as `phieuDatHang`; the landing sends the card.
+   */
+  "order.formLink": {
+    input: {
+      conversationId: ConversationId;
+      /** Code + size the customer settled on (at most 5). */
+      items: { ma: string; size: string }[];
+      /** Pre-fill level the brain ASKS for; the landing answers with the level it could really do. */
+      dienSan?: "khong" | "chat" | "don-cu";
+    };
+    output: {
+      /** Empty when refused (`chan`). */
+      url: string;
+      dienSan: "khong" | "chat" | "don-cu";
+      /** The invitation sentence for that level (neutral Vietnamese; the shop may reword on the landing). */
+      loiMoi: string;
+      chan?: { lyDo: "dang_ban_don_cu" | "thieu_mon"; maDon?: string };
+      /** Face of the "Đặt đơn ngay" card: title, subtitle, image of the first item. */
+      the?: { tieuDe: string; phuDe: string; anh: string };
+    };
   };
   /**
    * What the shop TAUGHT the AI (Đ7): approved Q&A and rules from the review queue, style examples,
@@ -148,6 +324,21 @@ export interface ToolMap {
       hoSoMau: { ten: string; tomTat: string }[];
       spNgoai: { ma: string; ten: string; size: string; gia: number } | null;
       cauHinh: { tatHangDoiTac: boolean };
+    };
+  };
+  /**
+   * THE SHOP PROFILE (tier 3, 24/09/2026): what is true of this shop only — pronouns, what it sells,
+   * how it sells, when a person must take over, and the industry blocks it switched off or rewrote.
+   * Bundled with the three policy texts and the warehouses' selling policies, so one call gives the
+   * brain everything that is the shop's to decide. Read per turn, never kept on Xeon.
+   */
+  "shop.profile": {
+    input: Record<string, never>;
+    output: {
+      hoSo: ShopProfile;
+      chinhSach: { doiTra: string; ship: string; baoHanh: string };
+      /** The shop's warehouses with the selling policy each one declared (empty = none declared). */
+      kho: { ma: string; ten: string; loai: "ready" | "order"; uuTien: number; chinhSach: string }[];
     };
   };
   /**
@@ -227,6 +418,14 @@ export const TOOLS: { readonly [K in ToolName]: ToolMeta } = {
     name: "catalog.find", module: "hang-kho", effect: "read", audience: "bot",
     describe: "Find in-stock items the way customers describe them: name, code, size, purpose, gender."
   },
+  "catalog.matchImage": {
+    name: "catalog.matchImage", module: "hang-kho", effect: "read", audience: "bot",
+    describe: "Which catalogue code a customer's photo matches, by the picture itself; may answer 'ask the customer'."
+  },
+  "catalog.resolveStock": {
+    name: "catalog.resolveStock", module: "hang-kho", effect: "read", audience: "bot",
+    describe: "Stock ladder for one model + size: exact code, same line same version, other version, equivalent line, none."
+  },
   "shop.bankAccount": {
     name: "shop.bankAccount", module: "don-khach", effect: "read", audience: "bot",
     describe: "The shop's bank account, to check a customer's transfer screenshot."
@@ -238,6 +437,14 @@ export const TOOLS: { readonly [K in ToolName]: ToolMeta } = {
   "training.knowledge": {
     name: "training.knowledge", module: "hop-thu", effect: "read", audience: "bot",
     describe: "What the shop approved for the AI: Q&A, rules, style examples, fit notes, knowledge, the external product settled on."
+  },
+  "shop.profile": {
+    name: "shop.profile", module: "hop-thu", effect: "read", audience: "bot",
+    describe: "The shop's own profile: pronouns, what and how it sells, handoff topics, policy texts, warehouse policies."
+  },
+  "order.formLink": {
+    name: "order.formLink", module: "don-khach", effect: "read", audience: "bot",
+    describe: "Link to the order form for the items the customer settled on, pre-filled by the landing; refused while a live order is being discussed."
   },
   "order.approve": {
     name: "order.approve", module: "tien", effect: "money", audience: "human",
@@ -344,8 +551,16 @@ export function validateToolInput(tool: ToolName, input: unknown): string | null
     case "payment.status": return field(o, "orderId", "string");
     case "purchase.eta": return field(o, "itemId", "string") ?? field(o, "variantId", "string", false);
     case "storefront.link": return field(o, "q", "string", false) ?? field(o, "filters", "object", false);
-    case "customer.recognize": return field(o, "conversationId", "string");
+    case "customer.recognize": return field(o, "conversationId", "string") ?? field(o, "phoneGivenInConversation", "string", false);
+    case "catalog.resolveStock":
+      return field(o, "ma", "string", false) ?? field(o, "ten", "string", false) ?? field(o, "doiSo", "string", false)
+        ?? field(o, "size", "string", false) ?? field(o, "loaiHang", "string", false)
+        ?? field(o, "dongTuongDuong", "array", false) ?? field(o, "dongNguoiMoi", "array", false);
     case "training.knowledge": return field(o, "q", "string", false) ?? field(o, "conversationId", "string", false);
+    case "shop.profile": return null;
+    case "order.formLink":
+      return field(o, "conversationId", "string") ?? field(o, "dienSan", "string", false)
+        ?? eachElement(o, "items", (x) => field(x, "ma", "string") ?? field(x, "size", "string", false));
     case "order.approve":
       return field(o, "orderId", "string") ?? field(o, "approvedBy", "string") ?? field(o, "amount", "number");
     default: return null;
@@ -417,9 +632,19 @@ export function validateToolOutput(tool: ToolName, data: unknown): string | null
     case "purchase.eta": return field(o, "available", "boolean") ?? finiteNumber(o, "days", false);
     case "storefront.link": return field(o, "url", "string", false);
     case "customer.recognize": return field(o, "isReturning", "boolean") ?? finiteNumber(o, "orderCount");
+    case "catalog.resolveStock": {
+      const rung = (x: Record<string, unknown>): string | null => field(x, "ma", "string") ?? field(x, "cac_size", "array") ?? field(x, "hasRequestedSize", "boolean");
+      return field(o, "resolvedLevel", "string") ?? field(o, "note", "string", false)
+        ?? (o["exact"] === null || o["exact"] === undefined ? null : field(o, "exact", "object") ?? eachElement(o["exact"] as Record<string, unknown>, "rows", rung))
+        ?? eachElement(o, "sameLineSameVersion", rung) ?? eachElement(o, "sameLineOtherVersion", rung) ?? eachElement(o, "equivalents", rung);
+    }
     case "training.knowledge":
       return field(o, "hoiDap", "array") ?? field(o, "quyTac", "array") ?? field(o, "cauMau", "array") ?? field(o, "kienThuc", "array")
         ?? field(o, "thuVien", "array") ?? field(o, "hoSoMau", "array") ?? field(o, "cauHinh", "object");
+    case "shop.profile": return field(o, "hoSo", "object") ?? field(o, "chinhSach", "object") ?? field(o, "kho", "array");
+    case "order.formLink":
+      return field(o, "url", "string", false) ?? field(o, "dienSan", "string") ?? field(o, "loiMoi", "string", false)
+        ?? field(o, "chan", "object", false) ?? field(o, "the", "object", false);
     default: return null;
   }
 }

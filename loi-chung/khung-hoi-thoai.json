@@ -1,0 +1,107 @@
+{
+  "_doc": "TANG 1 — KHUNG HOI THOAI + PHIEN MUA dung chung moi nganh (chep tu Sales Desk dialogue_frame.js 28/08 va episode_tracker.js 30/08/2026). Bieu thuc chinh quy chay tren chu DA BO DAU (normalize), tru `ack`/`deny` chay tren chu goc (co dau, khong phan biet hoa thuong). Mau dinh nganh (hoi size, hoi muc dich, ma san pham, tu nhieu trong ten mau) nam o nganh/<id>/khung-hoi-thoai.json va duoc GHEP THEM vao day. Sua tep nay = doi cach doc tin ngan cua ca nen tang.",
+  "pageTurnOrder": ["asked_size", "asked_purpose", "asked_confirm", "asked_contact", "gave_bank", "said_out"],
+  "pageTurn": {
+    "asked_confirm": [
+      "(dung (mau|doi|ma|ban|size) (nay|do|khong|ko)|xac nhan|dung khong|phai khong|dung ko|phai ko|chu a|a nhi|nhi\\?|lay (ban|mau|doi) (nay|do) (khong|ko|nhe|a)|(khong|ko) a\\?$|dc (khong|ko) a|(lay|mua|chot|dat) (khong|ko) (a|nhe|nha|chi|anh|bac)|(lay|mua|chot) (luon|nhe|nha) (khong|ko|a)|(chi|anh|bac|minh) (lay|chot|mua) (nhe|khong|ko))"
+    ],
+    "asked_contact": [
+      "(cho (em|e|shop|minh) xin (sdt|so dien thoai|dia chi|thong tin)|gui (em|e) (sdt|dia chi)|sdt va dia chi|so dien thoai (va|,) dia chi|dia chi nhan hang|cho e xin thong tin)"
+    ],
+    "gave_bank": [
+      "(stk|so tai khoan|techcombank|vietcombank|mb bank|bidv|vietinbank|chuyen khoan vao|ck vao|ck giup|coc (truoc|giup)|thanh toan truoc)",
+      "\\b\\d{9,16}\\b.*(bank|ngan hang|ck|chuyen)|(bank|ngan hang|ck|chuyen).*\\b\\d{9,16}\\b"
+    ],
+    "said_out": [
+      "(het (roi|hang|size)|khong con|ko con|k con|tam het|chua co san|chua ve|khong co san)"
+    ]
+  },
+  "askedOther": ["\\?\\s*$", "(khong a|ko a|k a|khong|ko)\\s*$"],
+  "ack": "^(da |dạ |a |à |u |ừ |uh |uhm |ok(e|ie|ay)?[, ]*)?(vang|vâng|ok|oke|okie|okay|duoc|được|dung|đúng|dung roi|đúng rồi|dung r|đúng r|chuan|chuẩn|roi|rồi|uh|ừ|ừm|uhm|co|có|lay|lấy|chot|chốt|ok bac|ok bác|đúng r bác|dung r bac|yes)( e| em| a| ạ| shop| b| bạn| anh| chị| bác| nhé| nha| nhe| ban| ban oi| luon| luôn| di| đi)*\\s*[.!~]*$",
+  "deny": "^(k|ko|khong|không|thoi|thôi|k can|ko can|không cần|de sau|để sau|chua|chưa)( e| em| a| ạ| shop| b| bạn| anh| chị| nhé| nha| nhe| dau| đâu)*\\s*[.!~]*$",
+  "refer": "(doi nay|mau nay|cai nay|mau do|doi do|cai do|mau kia|doi kia|2 mau|hai mau|ca 2|ca hai|mau (trang|den|xanh|do|tim|hong|xam|be|vang|cam|nau)( |$))",
+  "productLinkPatterns": [
+    "[?&]p=([A-Za-z0-9-]{4,20})",
+    "\\/product(?:\\.html)?\\/([A-Za-z0-9-]{4,20})"
+  ],
+  "imagePlaceholders": ["^\\[page gửi ảnh\\]$", "^\\[\\d+ tệp đính kèm\\]$", "^\\[khách gửi ảnh\\]$", "^\\[\\d+ tep dinh kem\\]$"],
+  "shortAnswer": { "maxWords": 6, "maxChars": 60 },
+  "kindTexts": {
+    "asked_size": "page vừa HỎI SIZE",
+    "asked_purpose": "page vừa HỎI MỤC ĐÍCH/NHU CẦU",
+    "asked_confirm": "page vừa HỎI KHÁCH XÁC NHẬN",
+    "asked_contact": "page vừa XIN SĐT/ĐỊA CHỈ",
+    "gave_bank": "page vừa GỬI SỐ TÀI KHOẢN / YÊU CẦU CỌC",
+    "said_out": "page vừa BÁO HẾT HÀNG/HẾT SIZE",
+    "sent_images": "page vừa GỬI ẢNH SẢN PHẨM (không kèm chữ)",
+    "sent_images_with_text": "page vừa GỬI ẢNH kèm lời",
+    "sent_link": "page vừa GỬI LINK SẢN PHẨM/BỘ LỌC",
+    "asked_other": "page vừa HỎI khách một câu",
+    "statement": "page vừa nói",
+    "none": ""
+  },
+  "answerTexts": {
+    "size": "khách ĐANG TRẢ LỜI SIZE",
+    "agree": "khách ĐỒNG Ý / xác nhận điều page vừa nói",
+    "decline": "khách TỪ CHỐI / không cần",
+    "refers_to_page_item": "khách đang CHỈ VÀO mẫu/màu page vừa gửi",
+    "short": "khách trả lời ngắn cho đúng câu đó",
+    "other": "khách nói tiếp"
+  },
+  "aboutTexts": {
+    "product": " (về mẫu {ten} {ma})",
+    "line": " (về dòng {ten})",
+    "images": " (page vừa gửi {so} ảnh, chưa rõ mã)",
+    "link": " (link bộ lọc nhiều mẫu, chưa rõ mẫu nào)"
+  },
+  "frameFormat": "{loai}{ve}: \"{chuPage}\" → {dap}.",
+  "episode": {
+    "dismiss": "(thoi|khong lay|ko lay|k lay|bo qua|khong can|ko can|doi khac|mau khac|doi (sang|qua)|thay bang|lay (doi|mau|cai) (kia|khac|do)|chuyen (sang|qua))",
+    "dismissLeading": "^(thoi|khong lay|ko lay|k lay|bo qua|khong can|ko can)",
+    "compare": "(so voi|hon (hay|khong|ko)|khac (gi|nhau)|hay la|hay (doi|mau|cai)|thi sao|the nao so|con (doi|mau) (nao|khac)|(doi|mau) (nao|khac) (khong|ko|nua))",
+    "rebuy": "(mua lai|lay lai|dat lai|doi (nay|nua)|them (1|mot) doi)",
+    "orderConfirmed": "(XÁC NHẬN ĐƠN HÀNG|XAC NHAN DON HANG|#(ORD|MAN)-\\d)",
+    "transactionalIntents": ["ask_size", "place_order", "send_image"],
+    "closingIntents": ["place_order"],
+    "checkoutStates": ["cart_created", "waiting_customer_form"],
+    "placedStates": ["cart_created", "done"],
+    "afterOrderIntents": ["payment_confirmation", "shipping"],
+    "roleLabels": {
+      "shop_goi_y": "shop gợi ý/chào thay thế",
+      "khach_so_sanh": "khách đem ra so sánh/hỏi lướt",
+      "dang_di": "đôi khách ĐANG ĐI (mốc ướm size, không phải để mua)",
+      "da_bo": "khách đã bỏ qua",
+      "phu": "nhắc qua"
+    },
+    "stageLabels": {
+      "tu_van": "đang tư vấn",
+      "chot": "đang chốt",
+      "sau_dat": "đã lên đơn — chỉ còn thanh toán/giao hàng"
+    },
+    "outcomeLabels": {
+      "da_dat": "đã lên đơn",
+      "bo_do": "bỏ dở, chưa chốt",
+      "tu_choi": "khách không lấy"
+    },
+    "texts": {
+      "unknownFocus": "chưa rõ mẫu",
+      "justOpened": "PHIÊN MỚI BẮT ĐẦU VỚI TIN NÀY (khách quay lại sau {cach}). Chưa có mẫu chính. Mọi mã/size/giá của phiên trước CHỈ là lịch sử — không dùng làm mẫu đang bàn trừ khi khách nhắc lại rõ.",
+      "current": "PHIÊN HIỆN TẠI (từ {tu}, {luot} lượt, giai đoạn: {giaiDoan}{quayLai}):",
+      "returning": " — KHÁCH QUAY LẠI SAU {cach}: mặc định vẫn nói tiếp mẫu chính/đơn đang dở (không chào lại từ đầu, không hỏi lại mẫu); chỉ coi là chuyện mới nếu khách nêu mẫu/nhu cầu khác",
+      "focus": "  MẪU CHÍNH (khách đang bàn để mua — 'đôi này/mẫu này/size X' đều chỉ mẫu này): {mau}{chiTiet}",
+      "noFocus": "  MẪU CHÍNH: chưa xác định (khách chưa nêu mẫu cụ thể trong phiên này).",
+      "others": "  MẪU PHỤ (KHÔNG phải mẫu khách đang mua): {danhSach}",
+      "summary": "  TÓM TẮT PHIÊN (tích lũy): {tomTat}",
+      "past": "PHIÊN TRƯỚC (đã đóng — chỉ để hiểu khách, KHÔNG dùng mã/size của chúng cho phiên này): {danhSach}",
+      "gapNote": "—— cách {cach}, coi như PHIÊN MỚI từ đây ——",
+      "detailSizes": "size hỏi: {size}",
+      "detailPrice": "giá đã báo: {gia}",
+      "detailStock": "tồn đã trả lời: {ton}",
+      "detailClosed": "khách ĐÃ CHỐT",
+      "detailPlaced": "đã lên đơn",
+      "minutes": "{n} phút",
+      "hours": "{n} giờ",
+      "days": "{n} ngày"
+    }
+  }
+}

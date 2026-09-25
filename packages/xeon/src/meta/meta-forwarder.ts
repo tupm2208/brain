@@ -136,7 +136,7 @@ export class MetaForwarder {
     const tickets = new ServiceTicketProvider(this.options.license, shop, this.options.clock);
     const gateway = new LandingGateway({
       origin, ticket: () => tickets.ticket(), fetch: this.options.fetch,
-      timeoutMs: this.options.timeoutMs ?? 8_000, logger: this.options.logger, clock: this.options.clock
+      timeoutMs: this.options.timeoutMs ?? 8_000, logger: this.options.logger, clock: this.options.clock, shop
     });
     this.gateways.set(shop, { origin, gateway });
     return gateway;

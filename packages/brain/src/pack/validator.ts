@@ -12,7 +12,8 @@ import { canonicalValue, extractAxis } from "../engine/axis";
 import { detectIntent } from "../engine/intent";
 import { normalize, stripDiacritics, tokens } from "../engine/text-analysis";
 import { DISPATCHABLE_TOOLS } from "../engine/tool-handlers";
-import type { IndustryPack } from "./types";
+import { REPLY_GATE_SCHEMA } from "./parse";
+import type { DialogueConfig, EntityConfig, IndustryPack, IntentRules, MatchingConfig, ReplyGateConfig, ScriptTexts } from "./types";
 
 /** Placeholders the engine always supplies. Packs add their own through `extraValues`. */
 export const ENGINE_VARS = [
@@ -43,6 +44,183 @@ function hasDiacritics(value: string): boolean {
   return stripDiacritics(value) !== value.toLowerCase();
 }
 
+/**
+ * A SHOP'S OWN NUMBER inside industry text (24/09/2026). The deposit rate, the lead time and any
+ * price belong to one shop's profile (tier 3); written into a block they would reach every shop of
+ * the industry — the exact bug the three tiers exist to end ("shop giày thứ hai nói chính sách của
+ * TopRun"). Sizes and centimetres pass: "size 42", "+1,5cm", "42 2/3" are the industry's.
+ */
+const SHOP_NUMBER_RE = /\d+\s*%|\b\d+\s*[-–]\s*\d+\s*(ngay|ngày|tuan|tuần|thang|tháng)\b|\b\d{1,3}(?:[.,]\d{3}){2,}(?!\d)|\b\d+\s*(tr|trieu|triệu)\b(?![a-z])/i;
+
+/** Problems in a list of instruction blocks (industry or tier 1): a shop's number, an empty text. */
+export function checkBlocksFree(blocks: readonly { id: string; loiDan: string }[], where: string): string[] {
+  const problems: string[] = [];
+  for (const block of blocks) {
+    if (block.loiDan.trim() === "") { problems.push(`${where}: khoi "${block.id}" khong co loi dan.`); continue; }
+    const hit = stripDiacritics(block.loiDan).match(SHOP_NUMBER_RE);
+    if (hit) problems.push(`${where}: khoi "${block.id}" chua con so cua rieng mot shop ("${hit[0].trim()}") — dua vao ho so shop, trong khoi chi de cho trong {banHang.…}.`);
+  }
+  return problems;
+}
+
+/**
+ * Every regex of a dialogue frame / episode config must compile. A broken one would surface as a
+ * `SyntaxError` on the first terse customer message, three layers away from the JSON that caused it.
+ */
+export function checkDialogueConfig(config: DialogueConfig, where: string): string[] {
+  const problems: string[] = [];
+  const check = (pattern: string, at: string, flags = ""): void => {
+    if (pattern === "") return;
+    try { new RegExp(pattern, flags); } catch { problems.push(`${where}: \`${at}\` khong phai bieu thuc chinh quy hop le: ${pattern}`); }
+  };
+  for (const [kind, patterns] of Object.entries(config.pageTurn)) patterns.forEach((p, i) => check(p, `pageTurn.${kind}[${i}]`));
+  config.askedOther.forEach((p, i) => check(p, `askedOther[${i}]`));
+  check(config.ack, "ack", "i");
+  check(config.deny, "deny", "i");
+  check(config.refer, "refer");
+  config.sizeOnly.forEach((p, i) => check(p, `sizeOnly[${i}]`));
+  config.productCodePatterns.forEach((p, i) => check(p, `productCodePatterns[${i}]`, "g"));
+  config.productLinkPatterns.forEach((p, i) => check(p, `productLinkPatterns[${i}]`));
+  config.imagePlaceholders.forEach((p, i) => check(p, `imagePlaceholders[${i}]`, "i"));
+  const e = config.episode;
+  check(e.dismiss, "episode.dismiss"); check(e.dismissLeading, "episode.dismissLeading"); check(e.compare, "episode.compare");
+  check(e.rebuy, "episode.rebuy"); check(e.orderConfirmed, "episode.orderConfirmed", "i");
+  return problems;
+}
+
+/** Tries to compile one pack regex; records a plain-language problem naming the field when it cannot. */
+function checkRegex(problems: string[], where: string, pattern: string, at: string, flags = ""): void {
+  if (pattern === "") return;
+  try { new RegExp(pattern, flags); } catch { problems.push(`${where}: \`${at}\` khong phai bieu thuc chinh quy hop le: ${pattern}`); }
+}
+
+/** Every regex of the intent rules must compile; every rule must name an intent and carry a keyword. */
+export function checkIntentRules(rules: IntentRules, where: string): string[] {
+  const problems: string[] = [];
+  rules.rules.forEach((rule, i) => {
+    if (rule.intent === "") problems.push(`${where}: rules[${i}] thieu ten y dinh.`);
+    if (rule.keywords.length === 0) problems.push(`${where}: rules[${i}] ("${rule.intent}") khong co tu khoa nao.`);
+  });
+  checkRegex(problems, where, rules.paidMoney, "paidMoney");
+  checkRegex(problems, where, rules.paidAboutGoods, "paidAboutGoods");
+  for (const [k, v] of Object.entries(rules.deposit)) checkRegex(problems, where, v, `deposit.${k}`);
+  const pf = rules.paymentFrame;
+  checkRegex(problems, where, pf.moneyTalk, "paymentFrame.moneyTalk");
+  checkRegex(problems, where, pf.explicitlyAsksBank, "paymentFrame.explicitlyAsksBank");
+  pf.pastPayment.forEach((p, i) => checkRegex(problems, where, p, `paymentFrame.pastPayment[${i}]`));
+  checkRegex(problems, where, pf.dispute, "paymentFrame.dispute");
+  checkRegex(problems, where, pf.receiptSeen, "paymentFrame.receiptSeen");
+  checkRegex(problems, where, pf.collected, "paymentFrame.collected");
+  const rc = rules.reconcile;
+  rc.carriesRequest.forEach((p, i) => checkRegex(problems, where, p, `reconcile.carriesRequest[${i}]`));
+  const plain = ["nudge", "pageAsked", "thanks", "pageSaidPaid", "customerReceiptImage", "buysMore", "asksForPhotos", "adviceRequest",
+    "paymentContextCustomer", "paymentContextPage", "sadPhrase", "policyQuestion", "shippingFee"] as const;
+  for (const key of plain) checkRegex(problems, where, rc[key], `reconcile.${key}`);
+  checkRegex(problems, where, rc.shortAnswerToPage, "reconcile.shortAnswerToPage", "i");
+  checkRegex(problems, where, rc.bareAck, "reconcile.bareAck", "i");
+  return problems;
+}
+
+/** Every regex of the entity patterns must compile (with `{core}` expanded); every chart row needs a tag and a size. */
+export function checkEntityConfig(config: EntityConfig, where: string): string[] {
+  const problems: string[] = [];
+  checkRegex(problems, where, config.phone, "phone");
+  checkRegex(problems, where, config.productCodeFallback, "productCodeFallback", "g");
+  config.productCodeNotCode.forEach((p, i) => checkRegex(problems, where, p, `productCodeNotCode[${i}]`));
+  checkRegex(problems, where, config.address.markers, "address.markers", "i");
+  checkRegex(problems, where, config.address.placeWords, "address.placeWords");
+  checkRegex(problems, where, config.address.houseNumber, "address.houseNumber");
+  config.address.notPlaceBigrams.forEach((p, i) => checkRegex(problems, where, p, `address.notPlaceBigrams[${i}]`, "g"));
+  for (const key of ["trigger", "amount", "range", "from", "upTo"] as const) checkRegex(problems, where, config.budget[key], `budget.${key}`, key === "amount" ? "g" : "");
+  for (const [label, p] of Object.entries(config.genders)) checkRegex(problems, where, p, `genders.${label}`);
+  checkRegex(problems, where, config.sizeLetterPattern, "sizeLetterPattern");
+  checkRegex(problems, where, config.sizeRecoverPattern, "sizeRecoverPattern", "g");
+  checkRegex(problems, where, config.sizeRecoverNegation, "sizeRecoverNegation");
+  checkRegex(problems, where, config.sizeCore, "sizeCore");
+  const expand = (p: string): string => p.split("{core}").join(config.sizeCore);
+  config.sizePatterns.forEach((p, i) => checkRegex(problems, where, expand(p), `sizePatterns[${i}]`));
+  config.sizeTagPatterns.forEach((p, i) => checkRegex(problems, where, p, `sizeTagPatterns[${i}]`));
+  config.sizeBarePatterns.forEach((p, i) => checkRegex(problems, where, p, `sizeBarePatterns[${i}]`));
+  config.apparelSizePatterns.forEach((p, i) => checkRegex(problems, where, p, `apparelSizePatterns[${i}]`));
+  for (const key of ["range", "unitAfter", "notBefore", "footMeasure", "tagWord", "kidsText", "apparelWords", "kidsLine"] as const) {
+    checkRegex(problems, where, config.bareTag[key], `bareTag.${key}`);
+  }
+  config.sizeChart.forEach((row, i) => {
+    if (!(row.tem > 0)) problems.push(`${where}: bang-size.rows[${i}] thieu so tem.`);
+    if (row.size.trim() === "") problems.push(`${where}: bang-size.rows[${i}] thieu size.`);
+  });
+  return problems;
+}
+
+/**
+ * A script may not carry one shop's number (deposit rate, lead time, a price): those live in the shop
+ * profile and reach the sentence through `{banHang.…}` placeholders. Same rule as the agent blocks.
+ */
+export function checkScriptTexts(texts: ScriptTexts, where: string): string[] {
+  const problems: string[] = [];
+  for (const [id, entry] of Object.entries(texts.scripts)) {
+    if (entry.reply.trim() === "") { problems.push(`${where}: kich ban "${id}" khong co cau tra loi.`); continue; }
+    const hit = stripDiacritics(entry.reply).match(SHOP_NUMBER_RE);
+    if (hit) problems.push(`${where}: kich ban "${id}" chua con so cua rieng mot shop ("${hit[0].trim()}") — dua vao ho so shop, trong kich ban chi de cho trong {banHang.…}.`);
+  }
+  for (const [reason, text] of Object.entries(texts.hoiLai)) {
+    const hit = stripDiacritics(text).match(SHOP_NUMBER_RE);
+    if (hit) problems.push(`${where}: cau hoi lai "${reason}" chua con so cua rieng mot shop ("${hit[0].trim()}").`);
+  }
+  return problems;
+}
+
+/** Every regex of the matching data must compile; every type rule must name a kind. */
+export function checkMatchingConfig(config: MatchingConfig, where: string): string[] {
+  const problems: string[] = [];
+  checkRegex(problems, where, config.skuLikePattern, "skuLikePattern");
+  for (const [key, p] of Object.entries(config.genderTokens)) checkRegex(problems, where, p, `genderTokens.${key}`);
+  config.types.rules.forEach((rule, i) => {
+    if (rule.kind === "") problems.push(`${where}: typeRules.rules[${i}] thieu loai hang (kind).`);
+    rule.patterns.forEach((p, k) => checkRegex(problems, where, p, `typeRules.rules[${i}].patterns[${k}]`));
+  });
+  checkRegex(problems, where, config.sizes.apparelPrefix, "sizes.apparelPrefix");
+  checkRegex(problems, where, config.sizes.letterSize, "sizes.letterSize");
+  const u = config.uncertain;
+  checkRegex(problems, where, u.specificItem, "uncertain.specificItem");
+  checkRegex(problems, where, u.specificItemDiacritic, "uncertain.specificItemDiacritic", "iu");
+  checkRegex(problems, where, u.specificItemNoun, "uncertain.specificItemNoun");
+  checkRegex(problems, where, u.categoryQuestion, "uncertain.categoryQuestion");
+  checkRegex(problems, where, u.sizeHint, "uncertain.sizeHint");
+  return problems;
+}
+
+/**
+ * Every regex of the reply gate must compile (with `{money}` / `{size}` expanded), and no sentence it
+ * sends may carry one shop's number or name: the gate speaks for every shop of the industry, so a
+ * sentence must say `{tenShop}` / `{site}` / `{tenNguoiPhuTrach}`, never the name of one (stage 6, 25/09/2026).
+ */
+export function checkReplyGateConfig(config: ReplyGateConfig, where: string): string[] {
+  const problems: string[] = [];
+  const loose = config as unknown as Record<string, Record<string, unknown>>;
+  const expand = (p: string): string => p.split("{money}").join(config.payment.money || "x").split("{size}").join("42");
+  for (const [section, fields] of Object.entries(REPLY_GATE_SCHEMA)) {
+    for (const [key, kind] of Object.entries(fields)) {
+      const value = loose[section]?.[key];
+      const at = `${section}.${key}`;
+      switch (kind) {
+        case "re": checkRegex(problems, where, expand(String(value ?? "")), at); break;
+        case "reList": (value as string[]).forEach((p, i) => checkRegex(problems, where, expand(p), `${at}[${i}]`)); break;
+        case "reDiacritic": checkRegex(problems, where, String(value ?? ""), at, "giu"); break;
+        case "reDiacriticList": (value as string[]).forEach((p, i) => checkRegex(problems, where, p, `${at}[${i}]`, "giu")); break;
+        case "text": {
+          const text = String(value ?? "");
+          if (text === "") break;
+          for (const p of checkBlocksFree([{ id: at, loiDan: text }], where)) problems.push(p);
+          break;
+        }
+        default: break;
+      }
+    }
+  }
+  return problems;
+}
+
 /** Collects every problem of a pack. An empty list means the pack is valid. */
 export class PackValidator {
   validate(pack: IndustryPack): string[] {
@@ -55,15 +233,25 @@ export class PackValidator {
     this.checkIntents(pack, axisIds, report);
     this.checkGates(pack, report);
     this.checkAgent(pack, report);
+    if (pack.dialogue !== undefined) for (const p of checkDialogueConfig(pack.dialogue, "khung-hoi-thoai")) report(p);
+    if (pack.intentRules !== undefined) for (const p of checkIntentRules(pack.intentRules, "y-dinh")) report(p);
+    if (pack.entities !== undefined) for (const p of checkEntityConfig(pack.entities, "thuc-the")) report(p);
+    if (pack.scripts !== undefined) for (const p of checkScriptTexts(pack.scripts, "kich-ban")) report(p);
+    if (pack.matching !== undefined) for (const p of checkMatchingConfig(pack.matching, "cham-diem")) report(p);
+    if (pack.replyGate !== undefined) for (const p of checkReplyGateConfig(pack.replyGate, "cong-soat")) report(p);
     return problems;
   }
 
   private checkAgent(pack: IndustryPack, report: (m: string) => void): void {
     const agent = pack.agent;
     if (agent === undefined) return;
-    if (agent.systemPrompt.trim() === "") report("Agent AI thieu luat (`agent.systemPrompt`).");
+    if (agent.khoi.length === 0) report("Agent AI thieu luat (`agent.khoi`).");
+    for (const problem of checkBlocksFree(agent.khoi, "agent.khoi")) report(problem);
     for (const field of ["mustHumanPattern", "handoffReplyPattern"] as const) {
       try { new RegExp(agent[field]); } catch { report(`Agent AI: \`${field}\` khong phai bieu thuc chinh quy hop le.`); }
+    }
+    for (const tool of agent.tools) {
+      if (tool.moTa.trim() === "") report(`Agent AI: cong cu "${tool.name}" thieu mo ta (\`moTa\`) — mo hinh khong biet goi no the nao.`);
     }
   }
 

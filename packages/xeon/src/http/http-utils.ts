@@ -24,13 +24,13 @@ class BodyTooLargeError extends Error {
 }
 
 /** Reads the raw body (at most `MAX_BODY_BYTES`). Signatures such as Meta's are computed over these bytes. */
-export function readRawBody(req: IncomingMessage): Promise<Buffer> {
+export function readRawBody(req: IncomingMessage, maxBytes = MAX_BODY_BYTES): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) { reject(new BodyTooLargeError("body too large")); req.destroy(); return; }
+      if (size > maxBytes) { reject(new BodyTooLargeError("body too large")); req.destroy(); return; }
       chunks.push(chunk);
     });
     req.on("end", () => resolve(Buffer.concat(chunks)));
@@ -42,9 +42,9 @@ export function readRawBody(req: IncomingMessage): Promise<Buffer> {
  * Reads a JSON object body. On a malformed or oversized body the error response is written and
  * `null` is returned, so callers simply stop.
  */
-export async function readJsonObject(req: IncomingMessage, res: ServerResponse): Promise<Record<string, unknown> | null> {
+export async function readJsonObject(req: IncomingMessage, res: ServerResponse, maxBytes = MAX_BODY_BYTES): Promise<Record<string, unknown> | null> {
   try {
-    const raw = await readRawBody(req);
+    const raw = await readRawBody(req, maxBytes);
     const parsed: unknown = raw.length === 0 ? {} : JSON.parse(raw.toString("utf8"));
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
     return parsed as Record<string, unknown>;
@@ -86,7 +86,15 @@ export interface RequestContext {
   path: string;
   ip: string;
   /** Reads the JSON body; writes the error response and returns `null` when invalid. */
-  readJson(): Promise<Record<string, unknown> | null>;
+  readJson(maxBytes?: number): Promise<Record<string, unknown> | null>;
+  /** MÃ VẾT of this request — taken from `x-ma-vet` or minted by the server. */
+  maVet?: string | undefined;
+  /**
+   * Which merchant this request turned out to belong to. A controller sets it once it knows —
+   * derived from the token, never read from the body. The activity log reads it afterwards so one
+   * merchant's flood cannot spend the shared buffer (21/09/2026).
+   */
+  shop?: string | undefined;
 }
 
 /**

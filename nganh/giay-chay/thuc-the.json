@@ -1,0 +1,44 @@
+{
+  "_doc": "TANG 2 — TRICH THUC THE dinh nganh giay chay (chep tu Sales Desk SIZE_CORE_PATTERN, extractExplicitShoeSize, resolveBareJapaneseSize / bareNumberInCustomerText, extractApparelSize, extractNeed, extractFootForm, 22/09/2026). `{core}` trong sizePatterns duoc thay bang `sizeCore` khi nap: nhom 1 = so size, nhom 2 = tu so cua nac 1/3-2/3, nhom 3 = nua size (.5 / ruoi). Bang tem Nhat → size nam o bang-size.json. Khong ghi ten shop / so tien / ngay thang.",
+  "sizeCore": "(3[5-9]|4[0-9]|5[0-2])(?:[\\s-]+([12])[\\s-]*\\/?[\\s-]*3(?!\\d)|(\\.5|\\s+ruoi\\b))?",
+  "sizePatterns": [
+    "\\b(?:size|sz|side|sise|eu|co|so)\\s*{core}\\b",
+    "\\b(?:di|mang|wear|dang di|thuong di|lay|chot|xac nhan)\\s+(?:giay\\s+)?(?:size\\s+|co\\s+)?{core}\\b"
+  ],
+  "sizeTagPatterns": [
+    "\\b(?:size|sz|co|so)\\s*(2[3-9]\\d|3[01]\\d|2[3-9][.,]5)(?!\\d)"
+  ],
+  "sizeBarePatterns": [
+    "\\b(?:size|sz|co)\\s*(2[2-9]|3[0-2])(?![\\d.,/]|\\s*(?:cm|mm|kg|km|k\\b|tr\\b|trieu|nghin|%|tuoi))"
+  ],
+  "apparelSizePatterns": [
+    "\\ba\\s*\\/\\s*(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))",
+    "\\ba(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))"
+  ],
+  "apparelSizePrefix": "A/",
+  "bareTag": {
+    "range": "^(2[2-9]|3[0-2])(\\.5)?$",
+    "maxTem": 29.5,
+    "unitAfter": "(?![\\w.,/]|\\s*(?:cm|mm|kg|km|k\\b|tr\\b|trieu|nghin|ngan|%|tuoi|nam\\b|thang\\b|gio\\b|h\\b|phut|ngay\\b|doi\\b|cai\\b|chiec\\b|d\\b|vnd|usd))",
+    "notBefore": "\\b(so|so nha|ngo|ngach|hem|duong|ngay|mung|thang|nam|khoang|tam|gia|luc|sau|truoc|ma|sdt|so dien thoai|lo|toa|phong)\\s+",
+    "footMeasure": "\\b(ban chan|dai chan|chieu dai|rong chan|be rong|chu vi|chan)\\b(?:\\s+(?:be|dai|rong|toi|minh|em|la|do|khoang|tam|cua|chi|anh|bac|co|nay|:)){0,2}\\s*",
+    "tagWord": "\\b(tem|luoi giay|mac giay|jp)\\b[^0-9]{0,12}",
+    "kidsText": "(tre em|\\bkids?\\b|\\bbe (trai|gai|nha|con|nho|\\d+ tuoi)\\b|cho be\\b|em be\\b|cho chau|cho con\\b|con trai|con gai|hoc sinh cap 1|nhi dong|\\bbe yeu\\b)",
+    "apparelWords": "\\b(ao|quan|tat|vo|balo|ba lo|tui|mu|non|gang tay|ao khoac|jacket|tee|short|legging|bra|vay|dam|hoodie|bo do|backpack|bag|duffel|sackpack|bottle|binh nuoc|cap|hat|beanie|socks?|gloves?|scarf|tights?|pants|jersey)\\b",
+    "kidsLine": "(\\b(k|c|i|j|el k|el c|cf c|cf k|kids?|infant|junior|youth)\\b\\s*$|\\b(kids?|infant|junior|youth)\\b)",
+    "adultMin": 35,
+    "historyDepth": 8
+  },
+  "needs": ["daily", "tempo", "race", "marathon", "half marathon", "easy run", "long run", "running", "chay", "tennis", "pickleball", "pickeball", "di bo", "tap gym"],
+  "footForms": {
+    "wide": ["chan be", "be ngang"],
+    "narrow": ["chan thon"],
+    "high_instep": ["mu cao"],
+    "flat_foot": ["ban chan phang", "flat foot"]
+  },
+  "closingSignals": ["giu size"],
+  "nameNoiseWords": ["giay", "chay", "bo", "running", "chan", "be", "thon"],
+  "address": {
+    "notPlaceBigrams": ["\\bquan\\s+(short|shorts|soc|sooc|dai|ngan|golf|gol|jogger|legging|tight|the thao|tap|ao|nay|do)\\b"]
+  }
+}

@@ -10,7 +10,9 @@
  * Reading it from the body would let merchant A impersonate merchant B and read B's conversations.
  *
  * Three things the brain never does:
- *   - store phone numbers, addresses or purchase history (memory is redacted before writing);
+ *   - carry phone numbers, addresses or purchase history in CONVERSATION MEMORY (redacted before
+ *     writing). Since 21/09/2026 the TURN DOSSIER does keep some of it, on a deadline, so a bug can
+ *     be reproduced — a deliberate operational step, off unless `XEON_HO_SO_THU_MUC` is set;
  *   - call Meta itself (replies go through the landing's inbox);
  *   - move money (no bot tool has a money effect).
  */
@@ -75,6 +77,9 @@ export class InboundController implements RequestController {
       sendJson(res, 400, { ok: false, error: "thieu_tenant_nguoi_hoac_chu" });
       return true;
     }
+    // Tell the activity log whose request this is: the shared buffer is shared FAIRLY, and it can
+    // only do that once it knows which merchant an entry belongs to.
+    ctx.shop = tenant;
     try {
       const message = { ...(body as unknown as InboundMessageBody), tenant };
       const start = Date.now();

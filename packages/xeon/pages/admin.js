@@ -159,6 +159,16 @@
       const modules = await this.api.call("/quan-tri/api/manh");
       this.moduleChoices = modules.manh || [];
       this.renderModuleCheckboxes(byId("cap-manh"), [], "cap-manh");
+      // Ngành lấy từ thư mục `nganh/` trên Xeon: thêm một ngành là thêm một thư mục JSON,
+      // không phải sửa trang này. Không đọc được thì để trống để thấy ngay là thiếu.
+      const nganh = await this.api.call("/quan-tri/api/nganh");
+      const chonNganh = byId("cap-nganh");
+      chonNganh.innerHTML = "";
+      for (const n of nganh.nganh || []) {
+        const o = document.createElement("option");
+        o.value = n.id; o.textContent = n.ten || n.id;
+        chonNganh.append(o);
+      }
       const nextYear = new Date(); nextYear.setFullYear(nextYear.getFullYear() + 1);
       byId("cap-het-han").value = nextYear.toISOString().slice(0, 10);
       if (!me.dangNhap) return this.showLogin();

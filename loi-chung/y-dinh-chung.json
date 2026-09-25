@@ -1,0 +1,337 @@
+{
+  "_doc": "TANG 1 — BO Y DINH dung chung moi nganh (chep tu Sales Desk ai_router.js INTENT_RULES, PAID_MONEY_RE, detectDepositInstruction, isPureGreeting, resolvePaymentConversationFrame va 7 luat hoa giai voi AI, 24/09/2026). Tu khoa la CHU DA BO DAU, khop theo tu tron (hasKeyword). Nganh noi them tu khoa vao `rules` cung ten y dinh trong nganh/<id>/y-dinh.json; danh sach NOI THEM, chu GHI DE khi nganh co khai. Ten 15 y dinh giu nguyen cua Desk. KHONG ghi ten shop, so tien, ngay thang o day.",
+  "rules": [
+    {
+      "intent": "complaint_or_human",
+      "confidence": 0.96,
+      "keywords": [
+        "khieu nai",
+        "phan anh",
+        "buc",
+        "hoan tien",
+        "tra tien",
+        "doi nguoi",
+        "gap nguoi",
+        "nhan vien",
+        "sai hang",
+        "bi loi",
+        "hang loi",
+        "hang hong",
+        "giao sai",
+        "gui sai",
+        "khong dung mau",
+        "khong giong",
+        "rach",
+        "loi ay",
+        "loi a"
+      ]
+    },
+    {
+      "intent": "payment_confirmation",
+      "confidence": 0.95,
+      "keywords": [
+        "da chuyen khoan",
+        "da ck",
+        "ck roi",
+        "chuyen khoan roi",
+        "da chuyen tien",
+        "chuyen tien roi",
+        "da thanh toan",
+        "thanh toan roi",
+        "nhan tien chua",
+        "nhan duoc tien chua",
+        "nhan dc tien chua",
+        "check giup tien",
+        "bao tracking",
+        "ma ck",
+        "ma giao dich",
+        "da dat don",
+        "da dat hang roi",
+        "nho xac nhan",
+        "xac nhan giup em don",
+        "xac nhan don giup"
+      ]
+    },
+    {
+      "intent": "send_image",
+      "confidence": 0.9,
+      "keywords": [
+        "gui anh",
+        "hinh nay",
+        "anh nay",
+        "check anh",
+        "nhan dien"
+      ]
+    },
+    {
+      "intent": "deposit_instruction",
+      "confidence": 0.94,
+      "keywords": [
+        "chuyen coc",
+        "coc bao nhieu",
+        "coc the nao",
+        "coc la duoc",
+        "coc la len don",
+        "coc la chay don",
+        "chuyen bao nhieu",
+        "thanh toan truoc bao nhieu"
+      ]
+    },
+    {
+      "intent": "place_order",
+      "confidence": 0.9,
+      "keywords": [
+        "chot",
+        "lay mau",
+        "dat hang",
+        "len don",
+        "minh lay",
+        "ship cho"
+      ]
+    },
+    {
+      "intent": "ask_price",
+      "confidence": 0.88,
+      "keywords": [
+        "gia",
+        "bao nhieu",
+        "bn",
+        "nhieu tien",
+        "price",
+        "sale",
+        "khuyen mai"
+      ]
+    },
+    {
+      "intent": "asks_bank_info",
+      "confidence": 0.93,
+      "keywords": [
+        "de e ck",
+        "de em ck",
+        "de minh ck",
+        "minh ck",
+        "e ck nhe",
+        "ck nhe",
+        "cho xin so tai khoan",
+        "so tai khoan cua shop",
+        "stk cua shop",
+        "cho xin stk",
+        "gui stk",
+        "chuyen khoan the nao",
+        "ck vao dau",
+        "chuyen vao dau",
+        "chuyen tien vao dau",
+        "xin stk",
+        "stk",
+        "so tai khoan",
+        "so tk",
+        "tai khoan ngan hang",
+        "stk nao",
+        "ck stk",
+        "xin tk",
+        "cho xin tk"
+      ]
+    },
+    {
+      "intent": "resell_offer",
+      "confidence": 0.95,
+      "keywords": [
+        "pass ho",
+        "pass lai",
+        "ban lai cho shop",
+        "shop co thu",
+        "thu lai khong",
+        "thu lai ko",
+        "minh muon pass",
+        "pass ho minh",
+        "pass gium",
+        "shop thu ko",
+        "shop thu khong",
+        "muon ban lai"
+      ]
+    },
+    {
+      "intent": "small_talk",
+      "confidence": 0.93,
+      "keywords": [
+        "cam on",
+        "cam on b",
+        "cam on shop",
+        "thanks",
+        "thank you",
+        "tks",
+        "oke ban",
+        "ok ban",
+        "oke shop",
+        "ok shop",
+        "oke a",
+        "ok a",
+        "tiec that",
+        "tiec qua",
+        "tiec ghe"
+      ]
+    },
+    {
+      "intent": "order_howto",
+      "confidence": 0.92,
+      "keywords": [
+        "dat hang tren web",
+        "len do dat hang",
+        "dat tren web",
+        "dat hang the nao",
+        "dat hang o dau",
+        "mua tren web",
+        "order tren web",
+        "dat hang ha"
+      ]
+    },
+    {
+      "intent": "authenticity",
+      "confidence": 0.9,
+      "keywords": [
+        "chinh hang",
+        "hang chinh hang",
+        "hang that khong",
+        "hang fake",
+        "fake khong",
+        "hang auth",
+        "hang chuan khong",
+        "hang real"
+      ]
+    },
+    {
+      "intent": "shipping",
+      "confidence": 0.86,
+      "keywords": [
+        "ship",
+        "giao hang",
+        "van chuyen",
+        "phi giao",
+        "bao lau",
+        "cod"
+      ]
+    },
+    {
+      "intent": "return_exchange",
+      "confidence": 0.86,
+      "keywords": [
+        "doi tra",
+        "tra hang",
+        "doi hang",
+        "bao hanh"
+      ]
+    },
+    {
+      "intent": "product_advice",
+      "confidence": 0.87,
+      "keywords": [
+        "tu van",
+        "hop",
+        "nen chon"
+      ]
+    }
+  ],
+  "transactionalIntents": [
+    "place_order",
+    "asks_bank_info",
+    "payment_confirmation",
+    "ask_size",
+    "ask_price",
+    "shipping"
+  ],
+  "greetingTokens": [
+    "chao",
+    "xin chao",
+    "hello",
+    "hi",
+    "alo",
+    "lo shop",
+    "shop oi",
+    "em oi",
+    "e oi",
+    "ad oi",
+    "ban oi",
+    "b oi",
+    "a oi",
+    "c oi",
+    "chi oi",
+    "anh oi",
+    "co ai khong",
+    "co ai o day khong",
+    "co ai ko",
+    "cho hoi",
+    "cho minh hoi",
+    "minh muon hoi",
+    "muon hoi",
+    "hoi chut",
+    "hoi ti",
+    "hoi xiu",
+    "xin hoi",
+    "how much",
+    "interested",
+    "sir",
+    "hey",
+    "helo",
+    "hii"
+  ],
+  "greetingMaxWords": 6,
+  "paidMoney": "\\b(da|vua|moi) (chuyen|ck|thanh toan|gui|coc|bank|banking)\\b[^.!?]{0,24}(\\d{2,3}\\s?k\\b|\\d{1,3}([.,]\\d{3})+|\\btien\\b|khoan|\\bcoc\\b|\\bstk\\b|so tk|\\btk\\b|day du|du roi)",
+  "paidAboutGoods": "(chuyen (hang|don|kho|phat|sang)|hang (da |chua )?chuyen|da chuyen hang|chuyen size|chuyen mau|xin (lai )?(stk|so tai khoan)|cho xin stk)",
+  "deposit": {
+    "moneyWords": "(coc|chuyen|ck|thanh toan|gui tien)",
+    "pastPayment": "\\b(da|vua|moi)\\s+(ck|coc|chuyen|thanh toan|gui)\\b",
+    "asksCondition": "(phai (khong|ko|k)|dung (khong|ko|k)|duoc (khong|ko|k)|la (duoc|len|chay|xu ly)|bao nhieu|the nao|vao dau|gio|minh chuyen|em chuyen|neu)",
+    "orderTalk": "(don|len don|chay don|xu ly|giu don|giu hang|qr|coc|thanh toan)",
+    "asksAccount": "\\b(gui|cho|xin|bao|doc|nhan) (minh |em |toi |anh |chi |e |t )?(cai )?(so tai khoan|stk|tai khoan|so tk)\\b|\\b(so tai khoan|stk|tai khoan) (shop|ben|cua|nao|gi|la)\\b|\\bstk\\s*\\?"
+  },
+  "paymentFrame": {
+    "moneyTalk": "(ck|chuyen khoan|chuyen tien|thanh toan|coc|gui tien)",
+    "explicitlyAsksBank": "(cho|gui|xin|lay).{0,16}(stk|so tai khoan|so tk|tai khoan ngan hang)|\\b(stk|so tai khoan|so tk) (nao|dau|cua shop)\\b",
+    "pastPayment": [
+      "\\b(da|vua|moi)\\s+(ck|coc|chuyen|chuyen khoan|chuyen tien|thanh toan|gui tien)\\b",
+      "\\b(ck|coc|chuyen khoan|chuyen tien|thanh toan|gui tien)\\b[^!?]{0,40}\\b(roi|roi ma|hom truoc)\\b",
+      "\\b(ck|coc|chuyen khoan|chuyen tien|thanh toan|gui tien)\\s+truoc\\b[^!?]{0,32}\\b(roi|roi ma)\\b"
+    ],
+    "dispute": "(thu them|thu du|thu ca|sao.{0,24}thu|khong tru|chua tru|tinh sai|tien coc.{0,20}(dau|chua tru)|khieu nai|thac mac.{0,20}(tien|cod)|doi soat|cod.{0,20}(sai|them|du))",
+    "receiptSeen": "bien lai|giao dich|chuyen khoan \\d|\\[anh: bien lai",
+    "collected": "(thu them|shipper|cod|thu du|thu ca)",
+    "historyDepth": 10
+  },
+  "reconcile": {
+    "scriptOverrideIntents": [
+      "small_talk",
+      "order_howto",
+      "asks_bank_info",
+      "authenticity"
+    ],
+    "scriptOverrideUnlessRequest": [
+      "small_talk",
+      "authenticity"
+    ],
+    "carriesRequest": [
+      "[?？]",
+      "(bao truoc|bao giup|bao lai|nho |giup minh|giup em|khi nao|luc nao|may gio|dat|giu|gui|check|kiem tra|con |gia)"
+    ],
+    "smallTalkMaxWords": 6,
+    "nudge": "^(ban oi|b oi|shop oi|e oi|em oi|alo|\\?+|\\.{2,})",
+    "pageAsked": "(\\?|chu a|a nhi|nhi\\s*$|khong a|k a|ko a|dung khong|dc khong|(^|\\s)(ko|khong|k|chua)\\s*$)",
+    "shortAnswerToPage": "^(da |dạ )?(vang|vâng|ok|oke|okie|ko|khong|k|co|có|rồi|roi)( e| em| a| ạ| shop| b| bạn| anh| chị)?\\s*[.!]?$",
+    "bareAck": "^(da |dạ |a |à |u |ừ |uhm |ok(e|ie|ay)?[, ]*)?(vang|vâng|ok|oke|okie|okay|duoc|được|dung roi|đúng rồi|dung r|đúng r|chuan|chuẩn|rồi|roi|uh|ừ|ừm|uhm|ok bac|ok bác)( e| em| a| ạ| shop| b| bạn| anh| chị| bác| nhé| nha| nhe| ban)*\\s*[.!~]*$",
+    "thanks": "(cam on|thanks|tks)",
+    "pageSaidPaid": "(nhan duoc thong tin thanh toan|bien lai chuyen khoan|e nhan roi|em nhan roi|da nhan duoc (tien|ck|chuyen khoan)|nhan duoc anh chuyen khoan)",
+    "customerReceiptImage": "\\[ảnh: biên lai|\\[anh: bien lai",
+    "buysMore": "(dat them|lay them|them 1|them mot|doi nay nua|mua them)",
+    "asksForPhotos": "(xin them hinh|xin them anh|cho xin hinh|cho xin anh|gui hinh|gui anh|co anh nao|xem anh|anh that|anh mat sau|anh chi tiet|hinh that)",
+    "adviceRequest": "(tu van|nen chon|chon giup|goi y|mau nao|doi nao|phu hop)",
+    "paymentContextCustomer": "\\b(da tt|da thanh toan|da ck|da chuyen|chuyen khoan|ck roi|gui nhe|minh gui|e gui|em gui|stk|so tai khoan|techcombank|vietcombank|mb bank|bidv|da coc|vua coc|coc roi)\\b",
+    "paymentContextPage": "(\\bstk\\b|so tai khoan|techcombank|vietcombank|mb bank|bidv|vietinbank|quet (ma )?qr|noi dung (ck|chuyen khoan))",
+    "sadPhrase": "(tiec (that|qua|ghe|the)|buon (that|qua))",
+    "policyQuestion": "(doi (size|tra|hang)|hoan (tien|hang|coc)|bao hanh|tra lai)",
+    "shippingFee": "(phi ship|phi giao|phi van chuyen|ship bao nhieu|ship het|freeship|mien ship|ship bn)",
+    "policyQuestionForm": "(\\b(co|duoc|cho)\\b[^?]{0,30}\\b(bao hanh|doi tra|doi size|doi hang|tra hang|hoan (tien|coc))\\b[^?]{0,30}\\b(khong|ko|k|the nao|nhu the nao|bao lau|ra sao|bao nhieu)\\b|\\b(bao hanh|doi tra|doi size|doi hang|tra hang|hoan (tien|coc))\\b[^?]{0,30}\\b(the nao|nhu the nao|bao lau|ra sao|bao nhieu|khong a|ko a|khong shop|ko shop)\\b|\\b(chinh sach|dieu kien) (bao hanh|doi tra|doi size|ship|giao hang)\\b)",
+    "returnExchangeReal": "\\b(muon|cho|xin|can|de) (minh |em |toi |tui )?(doi (size|hang|sang|lai|cai|mau|qua|giay|\\d)|tra lai|tra hang|hoan (tien|hang)|doi\\s*$)|\\btra lai\\b|\\b(nhan|mua|dat) (hang|giay|duoc)[^.]{0,40}\\b(bi|loi|hong|sai|rach|bung|khong vua|chat|rong)\\b|\\b(hang|giay) (bi|loi|hong|sai)\\b",
+    "_policyDoc": "25/09/2026 (kb2-08): policyQuestionForm = cau HOI ve chinh sach → policy_question (agent + cong cu chinh_sach); returnExchangeReal = doi/tra THAT (hang trong tay) → nguoi that. Cau doi size cua DON da dat (thuc-the.orderTalk) khong phai return thật: di nhanh don.",
+    "impatience": "\\b(tra loi )?(cham|lau) (qua|the|vay|ghe)\\b|\\bsao (lau|cham) (the|vay)\\b|\\b(co|ban) (ban |con )?(khong|ko|k) thi (bao|noi)\\b|\\bcho (lau|mai)\\b|\\bkhong (ai )?(tra loi|rep)\\b|\\bcó ai không\\b",
+    "_impatienceDoc": "25/09/2026 (kb2-15): khach giuc / buc vi cham — KHONG phai khieu nai hang: agent xin loi ngan (kich-ban-chung hoiLai.xinLoiCho) roi tra loi viec."
+  }
+}

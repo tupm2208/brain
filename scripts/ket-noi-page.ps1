@@ -1,17 +1,30 @@
-# ket-noi-page.ps1 — Chạy 1 lần để:
-#   1. Đăng ký landing (https://landing.toprun.site) cho shop toprun
-#   2. Kết nối Fanpage 649128068789611 vào shop toprun
+﻿# ket-noi-page.ps1 — Chạy 1 lần để:
+#   1. Đăng ký landing cho shop theo license key
+#   2. Kết nối Fanpage vào shop đó
 #
-# Yêu cầu: Xeon phải đang chạy tại https://brain.toprun.site
+# Mọi giá trị (key, token Fanpage, địa chỉ) đọc từ bo-nao/.env, mục KET_NOI_* — KHÔNG ghi vào script này.
+#   powershell -ExecutionPolicy Bypass -File scripts\ket-noi-page.ps1 [-EnvFile duong\toi\.env]
+# Yêu cầu: Xeon phải đang chạy tại KET_NOI_XEON
+
+param([string]$EnvFile = (Join-Path (Split-Path -Parent $PSScriptRoot) ".env"))
 
 $ErrorActionPreference = "Stop"
 
-$XEON        = "https://brain.toprun.site"
-$KEY         = "TR-5WF7-R3FD-2PSL-WZHU"
-$LANDING_URL = "https://landing.toprun.site"
-$PAGE_ID     = "649128068789611"
-$PAGE_NAME   = "TopRun"
-$PAGE_TOKEN  = "EAAUCMhzGJoMBSfCE8mZBZAwU1ZCJTmq8oRbiifmXb4qNWrKBOstEGz3UR5uaqPU3Ea7J4GYoZBbW4Ns6qFZCVq7mAhL8FrNCtJqaAnABbixNmcp2NQvZBZBL60PKt50lwkRwcuFyxiQZABn2gQXgRy2UAcsaDZCP70tTBPtyn4F2wkJF8XMIOUoKKb25JWUDGJbMjRoqhxwZDZD"
+function Doc-Env([string]$Ten) {
+  $dong = Get-Content -LiteralPath $EnvFile -Encoding UTF8 | Where-Object { $_ -match ("^\s*" + [regex]::Escape($Ten) + "\s*=") } | Select-Object -First 1
+  if (-not $dong) { return "" }
+  return (($dong -split "=", 2)[1]).Trim().Trim('"').Trim("'")
+}
+
+if (-not (Test-Path -LiteralPath $EnvFile)) { Write-Host "Khong thay $EnvFile" -ForegroundColor Red; exit 1 }
+$XEON        = Doc-Env "KET_NOI_XEON"
+$KEY         = Doc-Env "KET_NOI_LICENSE_KEY"
+$LANDING_URL = Doc-Env "KET_NOI_LANDING_URL"
+$PAGE_ID     = Doc-Env "KET_NOI_PAGE_ID"
+$PAGE_NAME   = Doc-Env "KET_NOI_PAGE_NAME"
+$PAGE_TOKEN  = Doc-Env "KET_NOI_PAGE_TOKEN"
+$thieu = @("KET_NOI_XEON", "KET_NOI_LICENSE_KEY", "KET_NOI_LANDING_URL", "KET_NOI_PAGE_ID", "KET_NOI_PAGE_TOKEN") | Where-Object { -not (Doc-Env $_) }
+if ($thieu) { Write-Host "Thieu trong ${EnvFile}: $($thieu -join ', ')" -ForegroundColor Red; exit 1 }
 
 Write-Host "`n=== Ket noi Fanpage vao Xeon ===" -ForegroundColor Cyan
 

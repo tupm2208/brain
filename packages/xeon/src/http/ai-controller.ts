@@ -13,9 +13,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AiDeskService, DeskResult } from "../ai/ai-desk";
 import { cleanPricing, type PriceTable } from "../ai/price-table";
+import { readOpenAiUsage } from "../agent/chat-model";
 import type { UsageLedger } from "../ai/usage-ledger";
 import { constantTimeEqual } from "../license/key-format";
 import type { LicenseService } from "../license/license-service";
+import type { AgentId } from "../ai/usage-context";
 import { PATHS } from "../protocol";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
@@ -33,7 +35,14 @@ export interface AiControllerOptions {
   logger: Logger;
 }
 
-const AI_PATHS = new Set<string>([PATHS.aiDraft, PATHS.aiSandbox, PATHS.aiAnalyze, PATHS.aiKnowledge, PATHS.aiImage, PATHS.aiTokens, PATHS.aiPricing]);
+const AI_PATHS = new Set<string>([PATHS.aiDraft, PATHS.aiSandbox, PATHS.aiWebAdvisor, PATHS.aiAnalyze, PATHS.aiKnowledge, PATHS.aiImage, PATHS.aiTokens, PATHS.aiUsageReport, PATHS.aiPricing, PATHS.aiProfileTemplate, PATHS.aiPromptPreview]);
+
+/**
+ * The agents a LANDING may report a call for. Only the two the landing genuinely runs on its own
+ * key: a merchant must not be able to write rows that look like the bot answering customers, or
+ * its own token book stops meaning anything.
+ */
+const REPORTABLE_AGENTS = new Set<AgentId>(["tag_scan", "stock_image"]);
 
 const text = (v: unknown, n = 2000): string => String(v ?? "").trim().slice(0, n);
 
@@ -66,15 +75,21 @@ export class AiController implements RequestController {
           if (!maHoiThoai) { sendJson(res, 400, { ok: false, error: "thieu_ma_hoi_thoai" }); return true; }
           return this.reply(res, await this.options.desk.draft({ tenant: shop, maHoiThoai, kenh: text(body["kenh"], 40) || maHoiThoai.split(":")[0] || "facebook", cheDo: text(body["cheDo"], 16), nguon: text(body["nguon"], 16) }));
         }
-        case PATHS.aiSandbox: {
+        case PATHS.aiSandbox:
+        case PATHS.aiWebAdvisor: {
           const chu = text(body["chu"]);
           if (!chu) { sendJson(res, 400, { ok: false, error: "thieu_chu", message: "Nhập tin nhắn khách." }); return true; }
           const lichSu = (Array.isArray(body["lichSu"]) ? body["lichSu"] : []).slice(-30).map((m) => {
             const o = m !== null && typeof m === "object" ? (m as Record<string, unknown>) : {};
             return { ai: o["ai"] === "khach" ? "khach" : "shop", chu: text(o["chu"]) };
           }).filter((m) => m.chu !== "");
-          return this.reply(res, await this.options.desk.sandbox({ tenant: shop, lichSu, chu }));
+          // Same machinery, two purposes: a shop trying the bot out, and a visitor on the shop's site.
+          const mucDich = ctx.path === PATHS.aiWebAdvisor ? "web" as const : "demo" as const;
+          const anh = (Array.isArray(body["anh"]) ? body["anh"] : []).map((a) => String(a ?? "")).filter((a) => /^https:\/\//i.test(a)).slice(0, 4);
+          return this.reply(res, await this.options.desk.sandbox({ tenant: shop, lichSu, chu, mucDich, anh }));
         }
+        case PATHS.aiProfileTemplate: return this.reply(res, await this.options.desk.profileTemplate({ tenant: shop }));
+        case PATHS.aiPromptPreview: return this.reply(res, await this.options.desk.promptPreview({ tenant: shop }));
         case PATHS.aiAnalyze: {
           const hoiThoai = (Array.isArray(body["hoiThoai"]) ? body["hoiThoai"] : []).slice(0, 60).map((c) => {
             const o = c !== null && typeof c === "object" ? (c as Record<string, unknown>) : {};
@@ -100,6 +115,24 @@ export class AiController implements RequestController {
         case PATHS.aiTokens: {
           const summary = this.options.ledger.summarize({ shop, days: Number(body["soNgay"]) || 7, channel: text(body["kenh"], 20), model: text(body["model"], 120), now: this.options.clock.now() });
           sendJson(res, 200, { ok: true, soToken: summary });
+          return true;
+        }
+        case PATHS.aiUsageReport: {
+          const viec = text(body["viec"], 40) as AgentId;
+          if (!REPORTABLE_AGENTS.has(viec)) {
+            sendJson(res, 400, { ok: false, error: "viec_khong_ghi_duoc", message: `Landing chỉ ghi được lượt của ${[...REPORTABLE_AGENTS].join(", ")}.` });
+            return true;
+          }
+          const model = text(body["model"], 120);
+          if (!model) { sendJson(res, 400, { ok: false, error: "thieu_model", message: "Thiếu tên model của lượt gọi." }); return true; }
+          // The raw `usage` block of the gateway travels verbatim: reading it (the gateway counts
+          // reasoning tokens outside `completion_tokens`) and pricing it stay in ONE place.
+          const row = this.options.ledger.record({
+            context: { shop, agent: viec, channel: text(body["kenh"], 40) || "kho", conversationId: text(body["maHoiThoai"], 191) },
+            model, ok: body["ok"] !== false, usage: readOpenAiUsage(body["soLieu"]),
+            error: text(body["loi"], 160) || undefined, at: this.options.clock.now()
+          });
+          sendJson(res, 200, { ok: true, daGhi: row !== null, ...(row ? { chiPhiVnd: row.costVnd } : {}) });
           return true;
         }
         case PATHS.aiPricing: {

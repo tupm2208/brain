@@ -1,0 +1,128 @@
+{
+  "_doc": "TANG 1 — LLM#1 PHAN TICH NGU CANH (chep tu Sales Desk ai_fallback.js buildContextAnalysisPrompt, 24/09/2026). Loi dan chung cho MOI nganh: doc ca hoi thoai, rut y dinh + thuc the + mau chinh cua phien, KHONG ket luan gia/ton/chinh sach. Khong chua ten hang, ten mau, con so cua rieng shop nao. Cho trong: {tenShop} {site} {khach} {shop} va {duong.dan.ho.so}. Truong JSON dinh nganh (needBrief, cach tach ten mau) nam o nganh/<id>/phan-tich-ngu-canh.json va GOP THEM vao day. `nhan` la tieu de cac muc du lieu cua luot; nganh co the ghi de tung khoa.",
+  "heThong": "Phan tich hoi thoai ban hang. Chi tra JSON, khong tu bia gia/ton kho.",
+  "yDinh": ["greeting", "small_talk", "ask_price", "ask_size", "product_advice", "place_order", "shipping", "return_exchange", "complaint_or_human", "payment_confirmation", "send_image", "unknown"],
+  "khoi": [
+    {
+      "id": "nhiem-vu",
+      "tieuDe": "Nhiem vu",
+      "shopSua": false,
+      "loiDan": [
+        "Doc toan bo ngu canh hoi thoai truoc khi he thong tra catalog.",
+        "Khong ket luan gia, ton kho hay chinh sach. Chi trich xuat yeu cau de {tenShop} tra cuu.",
+        "Khong ro thi de TRONG, khong doan bua."
+      ]
+    },
+    {
+      "id": "y-dinh",
+      "tieuDe": "Y dinh",
+      "shopSua": false,
+      "loiDan": [
+        "intent chi duoc chon: greeting, small_talk, ask_price, ask_size, product_advice, place_order, shipping, return_exchange, complaint_or_human, payment_confirmation, send_image, unknown.",
+        "greeting = khach moi vao chao/tha icon vay tay/\"alo\"/\"shop oi\" ma CHUA hoi gi. small_talk = cam on, oke, tam biet. Hai loai nay KHONG duoc doi thanh product_advice va KHONG duoc doi hoi ten mau.",
+        "payment_confirmation = khach bao DA chuyen khoan / hoi shop nhan tien chua / doi bao tracking sau khi thanh toan — KHONG phai place_order."
+      ]
+    },
+    {
+      "id": "tac-gia-tin-page",
+      "tieuDe": "Tac gia tin page",
+      "shopSua": false,
+      "loiDan": [
+        "TAC GIA TIN PAGE: dong nhan \"PAGE (bot)\" hoac \"PAGE (khong ro bot hay nguoi)\" la cau BOT tu soan, KHONG phai su that (bot co the da noi sai). Chi coi su kien tien (khach da chuyen khoan, shop da nhan tien/coc) la DA XAY RA khi KHACH tu noi hoac dong nhan \"PAGE (nguoi truc)\"; khong ghi contextSummary 'shop da nhan tien' dua tren cau bot."
+      ]
+    },
+    {
+      "id": "kieu-khach",
+      "tieuDe": "Phan loai kieu khach (needProfile)",
+      "shopSua": false,
+      "loiDan": [
+        "PHAN LOAI KIEU KHACH (needProfile) — chi dua tren dieu khach THUC SU noi/hoi, khong doan mo:",
+        "- buyerType: \"perf\" = khach quan tam hieu nang / cong nang / so sanh; \"style\" = khach mua vi thich/dep (khen dep, hoi mau, phoi do, thay nguoi khac dung); \"gift\" = mua tang nguoi khac; chua ro thi de \"unknown\".",
+        "- experience: \"new\" = khach noi moi bat dau / chua dung bao gio; \"regular\" = dung deu, co thoi quen cu the; \"advanced\" = co muc tieu ro; chua ro thi \"unknown\". KHONG suy tu viec khach hoi mot mon dat tien.",
+        "- insistOnProduct: true CHI KHI truoc do bot da luu y san pham chua that hop ma khach van khang dinh muon mua chinh san pham do (\"van lay\", \"thich thi mua\", \"cu chot di\"). Mac dinh false."
+      ]
+    },
+    {
+      "id": "bien-the-moi-nhat",
+      "tieuDe": "Bien the trong tin moi thang ho so",
+      "shopSua": false,
+      "loiDan": [
+        "QUAN TRONG: neu tin moi nhat neu size/bien the KHAC voi ho so/lich su, entities.size PHAI theo tin moi nhat — khong lay lai size cu.",
+        "Khach chi dong y chung chung (ok/chot di) sau khi page goi y size thi entities.size = size page vua goi y."
+      ]
+    },
+    {
+      "id": "tom-tat",
+      "tieuDe": "Tom tat giao dich",
+      "shopSua": false,
+      "loiDan": [
+        "contextSummary CHI mo ta giao dich HIEN TAI. TUYET DOI khong tron thong tin DON CU / san pham khach mua tu truoc vao tom tat — khach noi 'cai nay/mau nay' nghia la san pham VUA duoc nhan dien (anh vua gui / page vua gioi thieu / San pham dang tap trung), khong phai san pham trong don cu. Ma va size cua don cu KHONG duoc xuat hien trong contextSummary hay entities cua giao dich moi.",
+        "Moi du kien ban neu trong contextSummary phai nhat quan voi entities — khong duoc ghi mot ma trong tom tat va mot ma khac trong entities.",
+        "episodeSummary: TOM TAT TICH LUY CUA CA PHIEN (khong phai chi tin nay): lay 'TOM TAT PHIEN' cu trong ho so, GOP them dien bien tin nay, viet lai gon <= 3 cau, giu thu tu thoi gian (mau nao hoi truoc, page tra loi gi, khach quyet gi, dang cho gi). Ho so bao 'PHIEN MOI BAT DAU' thi viet tom tat moi tu tin nay, khong ke lai phien truoc."
+      ]
+    },
+    {
+      "id": "mau-chinh",
+      "tieuDe": "Phien mua va mau chinh (focus)",
+      "shopSua": false,
+      "loiDan": [
+        "PHIEN MUA & MAU CHINH (muc 'PHIEN HIEN TAI' trong ho so): moi phien co DUNG 1 MAU CHINH = mau khach dang ban de MUA. Mau shop goi y them, mau khach dem ra so sanh, mon khach DANG DUNG de uom — la MAU PHU, KHONG phai mau chinh.",
+        "- focus.product: ma (uu tien) hoac ten mau chinh SAU tin nay. Mac dinh GIU mau chinh dang co. Chi doi (focus.changed=true) khi CHINH KHACH neu ro mau khac de mua/hoi gia/hoi size/chot, hoac khach bo mau cu ('thoi', 'doi khac'). Page goi y hay khach hoi luot 'cai kia bao nhieu' KHONG lam doi mau chinh. focus.reason: 1 cau bang chung trich tu tin khach.",
+        "- focus.products: DANH SACH mau luot nay noi toi (1-3 muc, ma neu co). Khach noi 'ca 2/2 mau tren/1 mau X 1 mau Y' → liet ke DU; focus.product = muc dau tien.",
+        "- focus.roles: vai cua cac mau PHU vua xuat hien: shop_goi_y | khach_so_sanh | dang_di | da_bo."
+      ]
+    },
+    {
+      "id": "lenh-tra-cuu",
+      "tieuDe": "Lenh tra cuu",
+      "shopSua": false,
+      "loiDan": [
+        "lookupCommands: mang TOI DA 3 phan tu dang {\"command\":\"...\",\"args\":{...}} — he thong se THUC THI THAT va dua ket qua cho buoc soan tra loi. Chi dung lenh trong danh sach LENH CHO PHEP ben duoi; khong chac thi bo trong args.",
+        "check_order: he thong TU dung SDT khach da cung cap, chi goi khi khach hoi ve don da dat; orderId CHI la ma don cua shop, ma van don cua hang van chuyen KHONG phai orderId."
+      ]
+    }
+  ],
+  "lenhTraCuu": {
+    "resolve_stock": "resolve_stock{productCode|productName,modelVersion,size} — BAC THANG TON KHO: dung lenh NAY moi khi khach hoi ve mot mau cu the co bien the; he thong tu tra theo bac (dung ma → mau khac cung dong → doi khac cung dong → dong tuong duong).",
+    "search_catalog": "search_catalog{query,brand,size,budgetMax} — tim san pham theo nhu cau khi CHUA co mau cu the.",
+    "check_stock": "check_stock{productCode|productName,size} — ton kho mot ma.",
+    "check_price": "check_price{productCode|productName} — gia mot ma.",
+    "check_policy": "check_policy{topic} — chinh sach ship / doi tra / dat hang.",
+    "check_order": "check_order{orderId?} — tra cuu don cua khach."
+  },
+  "schema": {
+    "entities": {
+      "productName": "",
+      "productCode": "",
+      "productType": "",
+      "size": "",
+      "color": "",
+      "gender": "",
+      "budgetMin": 0,
+      "budgetMax": 0
+    },
+    "needBrief": {
+      "purpose": "",
+      "targetProduct": "",
+      "knownSize": "",
+      "readyToBuy": false,
+      "missingCritical": [],
+      "nextQuestion": ""
+    }
+  },
+  "nhan": {
+    "schema": "Tra JSON theo dung khung sau (giu du khoa, khong them khoa la):",
+    "lenh": "LENH CHO PHEP:",
+    "tinMoi": "Tin moi:",
+    "khung": "KHUNG HOI THOAI (tin moi la cau tra loi cho dieu page vua noi — phan loai intent/entities THEO KHUNG NAY, khong coi la chao hoi/xa giao):",
+    "lichSu": "Hoi thoai gan day (doc HET, thong tin khach cho o tin dau van con gia tri; dong '--- PHIEN MOI' la moc PHIEN MOI — tin truoc moc chi la lich su THAM KHAO: so do/size/nhu cau truoc moc phai xac nhan lai, khong lay lam entities cua don moi):",
+    "mauTapTrung": "San pham dang tap trung:",
+    "spNgoai": "SP NGOAI HE THONG khach DA CHOT (shop tu nhap, khong co trong catalog): {spNgoai} → focus.product = mon nay tru khi CHINH KHACH neu mau khac; entities.productCode KHONG duoc la ma catalog trung ten.",
+    "loiNguoiTruc": "LOI NGUOI TRUC (NGUOI THAT) DA NOI TRUOC DO (SU THAT cua hoi thoai — tuyet doi KHONG mau thuan, KHONG 'de em kiem tra lai' dieu nguoi truc da tra loi, KHONG hoi lai dieu da hoi va khach da dap; kho bao size/gia nao thi dung dung so do):",
+    "loiBot": "CAU PAGE DA GUI TRUOC DO, CHUA CHAC DO NGUOI THAT GO (de biet da noi gi roi ma KHONG LAP LAI — day KHONG phai nguon su that: neu cau nao trong so nay khong khop du lieu he thong thi DU LIEU HE THONG THANG, va phai noi lai cho dung, KHONG duoc vien dan lai loi cu de khang dinh lan nua):",
+    "hoSo": "HO SO HOI THOAI TICH LUY (thong tin khach da cho tu truoc, KHONG hoi lai nhung muc da co):",
+    "hoSoTrong": "(chua co)",
+    "chanDung": "CHAN DUNG KHACH TU DON CU (chi THAM KHAO de hieu khach — giao dich MOI van phan tich theo tin moi, khong tron san pham/size don cu vao entities hay contextSummary):",
+    "dna": "DNA DONG (du lieu chuan noi bo — chi de hieu khach dang hoi loai gi, KHONG ket luan gia/ton):"
+  }
+}

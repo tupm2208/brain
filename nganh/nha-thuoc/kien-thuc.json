@@ -1,0 +1,30 @@
+{
+  "id": "nha-thuoc",
+  "name": "Nhà thuốc",
+  "tradeWords": "thuốc và thực phẩm chức năng",
+  "families": [
+    {
+      "id": "other",
+      "label": "Loại khác"
+    }
+  ],
+  "purposeRank": {},
+  "lineLabels": {
+    "purpose": {},
+    "plate": {},
+    "level": {}
+  },
+  "kit": {
+    "versionedModels": [],
+    "brandPrefixes": [],
+    "defaultCategory": "thuoc",
+    "familyPatterns": [],
+    "researchPrompts": {},
+    "evaluationRows": {}
+  },
+  "referenceRules": [],
+  "fitFinder": {
+    "customerInputs": [],
+    "lineProfileFields": []
+  }
+}

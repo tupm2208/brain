@@ -1,0 +1,994 @@
+{
+  "id": "giay-chay",
+  "name": "Giày chạy & đồ thể thao",
+  "tradeWords": "giày chạy bộ",
+  "families": [
+    {
+      "id": "running",
+      "label": "Running"
+    },
+    {
+      "id": "pickleball",
+      "label": "Pickleball"
+    },
+    {
+      "id": "other",
+      "label": "Loại khác"
+    }
+  ],
+  "generalPrompt": [
+    "Bạn là chuyên gia nghiên cứu sản phẩm cho shop.",
+    "",
+    "Hãy nghiên cứu dòng sản phẩm {{profileName}} của thương hiệu {{brand}}.",
+    "Dữ liệu shop đang có:",
+    "{{existingData}}",
+    "",
+    "Các phần còn thiếu cần ưu tiên:",
+    "{{missingFields}}",
+    "",
+    "Yêu cầu:",
+    "- Ưu tiên nguồn hãng và các nguồn review uy tín.",
+    "- Không bịa thông số. Ghi rõ khi chưa xác minh.",
+    "- Trả lời bằng tiếng Việt, có tiêu đề rõ cho thông số, công nghệ, chấm điểm /10, ai nên mua, ai không nên mua, FAQ và kết luận.",
+    "- Nội dung phải đủ chi tiết để tự tách vào các bảng sản phẩm mẫu."
+  ],
+  "fitFinder": {
+    "customerInputs": [
+      "Cấu trúc vòm chân",
+      "Độ rộng bàn chân / mu chân",
+      "Chiều dài/rộng chân đo thực tế",
+      "Chiều cao, cân nặng",
+      "Tốc độ chạy hiện tại",
+      "Cự ly thường chạy",
+      "Mục tiêu sử dụng",
+      "Vấn đề đang gặp: đau gối, đau cổ chân, đau gan bàn chân...",
+      "Đôi giày đang đi vừa hoặc không vừa",
+      "Cảm giác mong muốn: êm, nhẹ, ổn định, tốc độ..."
+    ],
+    "lineProfileFields": [
+      "Mục đích phù hợp",
+      "Độ êm",
+      "Độ ổn định",
+      "Độ phản hồi",
+      "Form ngang",
+      "Hỗ trợ vòm chân",
+      "Khoảng pace/cự ly phù hợp",
+      "Cảnh báo không nên tư vấn",
+      "Ghi chú size/fit"
+    ]
+  },
+  "lineLabels": {
+    "purpose": {
+      "race_carbon": "giày đua carbon (race)",
+      "super_trainer": "super trainer (tập dài + nhanh)",
+      "tempo": "tempo/tập tốc độ",
+      "daily": "daily trainer (chạy hằng ngày)",
+      "max_cushion": "siêu êm (chạy nhẹ/đi bộ/đứng lâu)",
+      "stability": "ổn định/hỗ trợ vòm chân",
+      "budget_daily": "daily giá mềm",
+      "short_race": "đua cự ly ngắn 5K-10K",
+      "trail": "chạy trail/đường đất",
+      "casual": "lifestyle/đi chơi — KHÔNG phải giày chạy"
+    },
+    "plate": {
+      "carbon": "tấm carbon",
+      "energy_rods": "thanh Energy Rods",
+      "nylon": "tấm nylon dẻo",
+      "none": "không có tấm trợ lực"
+    },
+    "level": {
+      "beginner_ok": "mới chạy cũng dùng tốt",
+      "intermediate": "nên có nền tảng chạy cơ bản",
+      "advanced": "dành cho người chạy lâu năm/có mục tiêu race"
+    }
+  },
+  "purposeRank": {
+    "daily": 0,
+    "max_cushion": 1,
+    "stability": 1,
+    "tempo": 2,
+    "budget_daily": 3
+  },
+  "kit": {
+    "versionedModels": [
+      "adios pro",
+      "adios",
+      "boston",
+      "pegasus",
+      "novablast",
+      "kayano",
+      "clifton",
+      "vaporfly",
+      "speedgoat"
+    ],
+    "brandPrefixes": [
+      "adidas",
+      "nike",
+      "asics",
+      "hoka",
+      "puma",
+      "new-balance",
+      "saucony",
+      "brooks",
+      "on-running",
+      "mizuno"
+    ],
+    "defaultCategory": "running_shoes",
+    "familyPatterns": [
+      {
+        "id": "pickleball",
+        "pattern": "\\bpickleball\\b"
+      },
+      {
+        "id": "running",
+        "pattern": "\\b(?:running|run|trail|trainer|race|tempo|marathon|daily|stability|cushion)\\b"
+      }
+    ],
+    "researchPrompts": {
+      "running": "nghien-cuu.md"
+    },
+    "evaluationRows": {
+      "classification": [
+        [
+          "Độ êm",
+          "comfort",
+          "Mức bảo vệ và dễ chịu khi chạy/đi trong thời gian dài."
+        ],
+        [
+          "Độ nảy",
+          "bounce",
+          "Khả năng phản hồi khi tăng nhịp và chuyển bước."
+        ],
+        [
+          "Độ ổn định",
+          "stability",
+          "Mức kiểm soát khi tiếp đất, chuyển hướng hoặc chạy mệt."
+        ],
+        [
+          "Độ linh hoạt",
+          "flexibility",
+          "Khả năng uốn/chuyển động tự nhiên của bàn chân."
+        ],
+        [
+          "Độ thoáng khí",
+          "breathability",
+          "Mức thoát nhiệt của upper khi dùng lâu."
+        ],
+        [
+          "Độ bền",
+          "durability",
+          "Độ bền upper/outsole theo mục đích sử dụng chính."
+        ],
+        [
+          "Độ bám đường",
+          "grip",
+          "Độ bám trên bề mặt phù hợp với nhóm giày."
+        ],
+        [
+          "Hoàn trả năng lượng",
+          "energyReturn",
+          "Cảm giác trả lực và tiết kiệm sức khi chạy đúng nhịp."
+        ]
+      ],
+      "weight": [
+        [
+          "Dưới 55kg",
+          "",
+          "Foam có đủ nâng đỡ không, có bị thiếu lực nén không."
+        ],
+        [
+          "55-70kg",
+          "",
+          "Vùng trọng lượng thường dễ khai thác foam và độ nảy."
+        ],
+        [
+          "70-85kg",
+          "",
+          "Đánh giá độ lún đế và ổn định khi chạy mệt."
+        ],
+        [
+          "Trên 85kg",
+          "",
+          "Cần kiểm tra nguy cơ lún đế và mất ổn định ngang."
+        ]
+      ],
+      "pace": [
+        [
+          "Pace >7:00",
+          "",
+          "Có phát huy hết khả năng không, có dư công nghệ không."
+        ],
+        [
+          "Pace 6:00-7:00",
+          "",
+          "Có dễ dùng và đáng tiền ở pace chậm-vừa không."
+        ],
+        [
+          "Pace 5:00-6:00",
+          "",
+          "Mức phát huy độ nảy, chuyển bước và độ êm."
+        ],
+        [
+          "Pace 4:00-5:00",
+          "",
+          "Vùng hiệu quả cho bài tempo/race pace."
+        ],
+        [
+          "Pace <4:00",
+          "",
+          "So với giày race chuyên dụng có còn tối ưu không."
+        ]
+      ],
+      "distance": [
+        [
+          "5K",
+          "",
+          "Độ bảo vệ chân, chuyển bước và cảm giác cuối buổi."
+        ],
+        [
+          "10K",
+          "",
+          "Mức tiêu hao cơ bắp và khả năng duy trì form."
+        ],
+        [
+          "21K",
+          "",
+          "Độ thoải mái cuối buổi và bảo vệ khi chạy dài."
+        ],
+        [
+          "42K",
+          "",
+          "Khả năng duy trì form và giảm mỏi ở marathon."
+        ],
+        [
+          "Ultra",
+          "",
+          "Độ bảo vệ dài giờ và ổn định ở cự ly rất dài."
+        ]
+      ],
+      "level": [
+        [
+          "Người mới chạy",
+          "beginner",
+          "Có dễ làm quen không, có đòi hỏi kỹ thuật không."
+        ],
+        [
+          "Runner phong trào",
+          "daily",
+          "Mức phù hợp với người chạy đều để tập hằng tuần."
+        ],
+        [
+          "Runner bán chuyên",
+          "speed",
+          "Khả năng khai thác công nghệ và bài chất lượng."
+        ],
+        [
+          "Runner thành tích",
+          "race",
+          "Hiệu quả khi dùng cho bài thành tích hoặc race."
+        ]
+      ],
+      "footType": [
+        [
+          "Chân hẹp",
+          "",
+          "Độ ôm chân, không gian mũi và khóa gót."
+        ],
+        [
+          "Chân trung bình",
+          "",
+          "Nhóm fit tiêu chuẩn để ưu tiên tư vấn."
+        ],
+        [
+          "Chân bè",
+          "wideFoot",
+          "Không gian ngang/toe box và rủi ro ép mũi."
+        ],
+        [
+          "Bàn chân dày",
+          "",
+          "Áp lực upper/dây và chiều cao khoang giày."
+        ],
+        [
+          "Mu bàn chân cao",
+          "",
+          "Khả năng nới dây, khóa gót và tránh cấn mu."
+        ],
+        [
+          "Ngón chân xòe",
+          "",
+          "Không gian toe box cho ngón xòe khi chạy dài."
+        ]
+      ],
+      "purpose": [
+        [
+          "Daily Trainer",
+          "daily",
+          "Dùng cho tập hằng ngày."
+        ],
+        [
+          "Easy Run",
+          "comfort",
+          "Dùng cho buổi nhẹ, chậm, phục hồi."
+        ],
+        [
+          "Long Run",
+          "longRun",
+          "Bảo vệ chân và duy trì cảm giác cuối buổi."
+        ],
+        [
+          "Tempo Run",
+          "speed",
+          "Mục đích chạy nhanh có kiểm soát."
+        ],
+        [
+          "Interval",
+          "speed",
+          "Bài tốc độ ngắn, cần nhẹ và phản hồi."
+        ],
+        [
+          "Race Day",
+          "race",
+          "Dùng cho ngày thi đấu hoặc bài thành tích."
+        ],
+        [
+          "Recovery Run",
+          "comfort",
+          "Dùng cho buổi hồi phục rất chậm."
+        ],
+        [
+          "Walking",
+          "",
+          "Đi bộ, đi cả ngày có đáng tiền không."
+        ],
+        [
+          "Gym",
+          "",
+          "Độ ổn định cho bài tạ/di chuyển ngang."
+        ],
+        [
+          "Pickleball",
+          "",
+          "Không dùng giày running thay giày court nếu chơi thường xuyên."
+        ],
+        [
+          "Travel",
+          "",
+          "Đi du lịch, đi lâu, cần thoải mái cả ngày."
+        ]
+      ]
+    }
+  },
+  "referenceRules": [
+    {
+      "keywords": [
+        "pegasus"
+      ],
+      "category": "daily_trainer",
+      "useCases": [
+        "daily_run",
+        "beginner",
+        "5k_10k"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 5,
+        "longRun": 4,
+        "speed": 3,
+        "comfort": 4,
+        "stability": 3,
+        "value": 4
+      }
+    },
+    {
+      "keywords": [
+        "vomero"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "recovery"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 4,
+        "longRun": 5,
+        "comfort": 5,
+        "stability": 3
+      }
+    },
+    {
+      "keywords": [
+        "infinity",
+        "structure"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "daily_run",
+        "stability",
+        "beginner"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "stability": 5,
+        "comfort": 4
+      }
+    },
+    {
+      "keywords": [
+        "vaporfly",
+        "alphafly"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "marathon",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 4,
+        "stability": 2,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "streakfly",
+        "zoom fly"
+      ],
+      "category": "speed_trainer",
+      "useCases": [
+        "speed",
+        "race_support"
+      ],
+      "scores": {
+        "speed": 5,
+        "race": 4,
+        "daily": 2,
+        "beginner": 2
+      }
+    },
+    {
+      "keywords": [
+        "adios pro",
+        "prime x"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "marathon",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 4,
+        "stability": 2,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "evo sl",
+        "adizero evo"
+      ],
+      "category": "lightweight_speed_daily",
+      "useCases": [
+        "daily_run",
+        "tempo",
+        "speed",
+        "5k_10k"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 3,
+        "longRun": 3,
+        "speed": 5,
+        "race": 3,
+        "stability": 2,
+        "comfort": 4,
+        "value": 4
+      }
+    },
+    {
+      "keywords": [
+        "takumi sen"
+      ],
+      "category": "short_race",
+      "useCases": [
+        "race_5k_10k",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 2,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "boston"
+      ],
+      "category": "tempo_super_trainer",
+      "useCases": [
+        "tempo",
+        "speed",
+        "long_run"
+      ],
+      "scores": {
+        "daily": 3,
+        "speed": 4,
+        "longRun": 4,
+        "race": 3,
+        "stability": 3
+      }
+    },
+    {
+      "keywords": [
+        "ultraboost",
+        "supernova"
+      ],
+      "category": "daily_trainer",
+      "useCases": [
+        "daily_run",
+        "beginner"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "comfort": 4,
+        "speed": 2,
+        "value": 3
+      }
+    },
+    {
+      "keywords": [
+        "novablast"
+      ],
+      "category": "responsive_daily",
+      "useCases": [
+        "daily_run",
+        "tempo_light",
+        "5k_10k"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 4,
+        "speed": 4,
+        "longRun": 4,
+        "comfort": 4
+      }
+    },
+    {
+      "keywords": [
+        "superblast"
+      ],
+      "category": "super_trainer",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "tempo"
+      ],
+      "scores": {
+        "daily": 5,
+        "speed": 4,
+        "longRun": 5,
+        "comfort": 5,
+        "beginner": 3
+      }
+    },
+    {
+      "keywords": [
+        "nimbus"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "recovery"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 5,
+        "comfort": 5,
+        "longRun": 5,
+        "stability": 3
+      }
+    },
+    {
+      "keywords": [
+        "cumulus"
+      ],
+      "category": "daily_trainer",
+      "useCases": [
+        "daily_run",
+        "beginner",
+        "5k_10k"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 5,
+        "comfort": 4,
+        "longRun": 4,
+        "value": 4
+      }
+    },
+    {
+      "keywords": [
+        "kayano",
+        "gt-2000",
+        "gt 2000"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run",
+        "long_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "stability": 5,
+        "comfort": 4,
+        "longRun": 4
+      }
+    },
+    {
+      "keywords": [
+        "metaspeed"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 4,
+        "stability": 2,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "clifton"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "beginner",
+        "long_run"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 5,
+        "comfort": 5,
+        "longRun": 4,
+        "stability": 3
+      }
+    },
+    {
+      "keywords": [
+        "bondi"
+      ],
+      "category": "recovery_max_cushion",
+      "useCases": [
+        "recovery",
+        "walking",
+        "easy_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "comfort": 5,
+        "speed": 1,
+        "stability": 4
+      }
+    },
+    {
+      "keywords": [
+        "mach"
+      ],
+      "category": "tempo_daily",
+      "useCases": [
+        "daily_run",
+        "tempo",
+        "5k_10k"
+      ],
+      "scores": {
+        "daily": 4,
+        "speed": 4,
+        "beginner": 3,
+        "comfort": 4,
+        "longRun": 3
+      }
+    },
+    {
+      "keywords": [
+        "arahi",
+        "gaviota"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "stability": 5,
+        "comfort": 4
+      }
+    },
+    {
+      "keywords": [
+        "speedgoat",
+        "challenger"
+      ],
+      "category": "trail",
+      "useCases": [
+        "trail",
+        "mixed_terrain"
+      ],
+      "scores": {
+        "trail": 5,
+        "stability": 4,
+        "comfort": 4,
+        "daily": 2
+      }
+    },
+    {
+      "keywords": [
+        "endorphin speed"
+      ],
+      "category": "tempo_super_trainer",
+      "useCases": [
+        "tempo",
+        "speed",
+        "race_support"
+      ],
+      "scores": {
+        "speed": 5,
+        "race": 4,
+        "daily": 3,
+        "longRun": 4,
+        "beginner": 2
+      }
+    },
+    {
+      "keywords": [
+        "endorphin pro",
+        "endorphin elite"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 4,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "triumph"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "recovery"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 4,
+        "comfort": 5,
+        "longRun": 5
+      }
+    },
+    {
+      "keywords": [
+        "guide",
+        "hurricane"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "stability": 5,
+        "comfort": 4,
+        "beginner": 4
+      }
+    },
+    {
+      "keywords": [
+        "1080"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "long_run",
+        "recovery"
+      ],
+      "scores": {
+        "daily": 5,
+        "beginner": 4,
+        "comfort": 5,
+        "longRun": 5
+      }
+    },
+    {
+      "keywords": [
+        "rebel"
+      ],
+      "category": "tempo_daily",
+      "useCases": [
+        "tempo",
+        "speed",
+        "5k_10k"
+      ],
+      "scores": {
+        "speed": 4,
+        "daily": 4,
+        "beginner": 3,
+        "comfort": 4
+      }
+    },
+    {
+      "keywords": [
+        "sc elite",
+        "fuelcell elite"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "longRun": 4,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "more"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "recovery",
+        "long_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "comfort": 5,
+        "longRun": 4
+      }
+    },
+    {
+      "keywords": [
+        "860"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "stability": 5,
+        "beginner": 4
+      }
+    },
+    {
+      "keywords": [
+        "cloudmonster"
+      ],
+      "category": "max_cushion_daily",
+      "useCases": [
+        "daily_run",
+        "long_run"
+      ],
+      "scores": {
+        "daily": 4,
+        "comfort": 4,
+        "longRun": 4,
+        "beginner": 3
+      }
+    },
+    {
+      "keywords": [
+        "cloudsurfer",
+        "cloudrunner"
+      ],
+      "category": "daily_trainer",
+      "useCases": [
+        "daily_run",
+        "beginner"
+      ],
+      "scores": {
+        "daily": 4,
+        "beginner": 4,
+        "comfort": 4,
+        "stability": 3
+      }
+    },
+    {
+      "keywords": [
+        "cloudboom"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "speed"
+      ],
+      "scores": {
+        "race": 5,
+        "speed": 5,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "trail"
+      ],
+      "category": "trail",
+      "useCases": [
+        "trail",
+        "mixed_terrain"
+      ],
+      "scores": {
+        "trail": 4,
+        "stability": 4,
+        "comfort": 3
+      }
+    },
+    {
+      "keywords": [
+        "carbon",
+        "pro"
+      ],
+      "category": "race",
+      "useCases": [
+        "race",
+        "speed"
+      ],
+      "scores": {
+        "race": 4,
+        "speed": 4,
+        "beginner": 1
+      }
+    },
+    {
+      "keywords": [
+        "stability",
+        "support"
+      ],
+      "category": "stability_daily",
+      "useCases": [
+        "stability",
+        "daily_run"
+      ],
+      "scores": {
+        "stability": 4,
+        "daily": 3,
+        "beginner": 3
+      }
+    }
+  ]
+}

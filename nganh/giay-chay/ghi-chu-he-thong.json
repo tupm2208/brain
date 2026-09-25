@@ -1,0 +1,22 @@
+{
+  "_doc": "TANG 2 — loi DINH NGANH giay chay cua ghi chu he thong (ghi de tung khoa trong loi-chung/ghi-chu-he-thong.json). Giu nguyen loi Desk server.js de so sanh: size, tra_kho, mon the thao, tem cm he Nhat. Khong co con so rieng cua shop.",
+  "blocks": {
+    "DA_TIM_THAY": "HE THONG DA TIM THAY TRONG KHO theo ten khach nhac (that, dung ma):\n{danhSach}\nCac ma nay DANG DAT DUOC — TUYET DOI KHONG noi \"chua co / chua dat duoc / hang chua mo ban\" voi chung. Can size cu the thi goi tra_kho theo MA (args.ma) roi moi bao con/het size.",
+    "DA_TIM_THAY.bienThe": " — size con: {bienThe}",
+    "MAU_KHAC": "KHACH HOI MAU/SIZE KHAC cua {ten} ({ma}){bienTheHoi}. DANH SACH THAT (da loc dung size/gioi, KHONG goi tra_kho lai, KHONG them ma ngoai danh sach, KHONG noi \"chi co mau nay\"):\n{danhSach}{linkLoc}",
+    "MAU_KHAC.bienTheHoi": " size {bienThe}",
+    "MAU_KHAC.dong": "• {ten} ({ma}){gia}{doiTac} — size con: {bienThe}",
+    "MAU_KHAC.doiTac": " — hàng đối tác, order thêm ngày",
+    "MAU_KHAC.linkLoc": "\nKET THUC bang dung 1 dong: \"{Khach} xem đủ các màu/size còn hàng tại: {link}\" (link NGUYEN VAN).",
+    "PHO_THONG": "NHU CAU PHO THONG (di hoc/di lam/di choi/da nang/the duc nhe — khach KHONG nhac mon cu the): goi tra_kho voi muc_dich=\"{mucDich}\"{bienThe}{gioiTinh} (ten de rong). TUYET DOI khong goi y giay tennis/pickleball/padel/golf/bong da/bong ro. Goi khach la \"{khach}\", KHONG goi \"minh\".{nhom}",
+    "PHO_THONG.bienThe": ", size=\"{bienThe}\"",
+    "MON": "KHACH HOI THANG MON \"{mon}\" — shop CO ban mon nay ({so} mau con hang). Goi tra_kho voi muc_dich=\"{mucDich}\" (ten de rong){bienThe} roi tu van tren ket qua that. CAM tra loi \"ben em khong ban / chua co dong nay\" hay \"nha em chi chuyen giay chay bo, sneaker\".",
+    "MON.bienThe": ", size=\"{bienThe}\"",
+    "LOAI_HANG": "KHACH HOI LOAI HANG ({loai}) — shop CO ban tren web {site} du kho san khong con. Goi tra_kho voi \"ten\" dung chu khach noi (vi du \"quan dai\", \"ao khoac\"){bienThe} roi tu van tren ket qua that. Neu tra_kho khong ra mau dung y khach thi KET bang dung 1 dong: \"{Khach} xem các mẫu tại: {link}\" (link NGUYEN VAN). CAM tra loi \"ben em khong ban / chua co loai nay\".",
+    "LOAI_HANG.bienThe": ", size=\"{bienThe}\"",
+    "SIZE_TEM": "SIZE CUA KHACH (tang 1 da tinh bang BANG CHUAN — nguon DUY NHAT, CAM tu tinh lai): {nhan}.{bareJp} Goi tra_kho voi size=\"{bienThe}\". Khi nhac lai phai ghi dung cap theo bang: size {bienThe}{tem}; CAM ghi so cm cua size khac canh size nay.",
+    "SIZE_TEM.bareJp": " Khach go \"size {goc}\" khong kem cm = so cm TEM he Nhat, KHONG phai dai chan — khong cong 0,5/1,5cm.",
+    "SIZE_TEM.tem": " (tem {tem}cm)",
+    "DON_DOI_SIZE": "DON CUA KHACH{maDon} — DOI SIZE: {ketLuan}. {ghiChu}"
+  }
+}

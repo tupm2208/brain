@@ -15,6 +15,8 @@ export * from "./pii";
 export * from "./tools";
 export * from "./modules";
 export * from "./entitlements";
+export * from "./shop-profile";
+export * from "./inbox";
 
 import { assertModuleGraph } from "./modules";
 import { assertToolsSafeForBot } from "./tools";

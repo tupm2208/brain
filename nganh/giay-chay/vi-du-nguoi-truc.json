@@ -1,0 +1,521 @@
+{
+  "_doc": "TANG 2 — VI DU CAU NGUOI TRUC THAT theo tinh huong (chep tu Sales Desk knowledge/07-training/human-reply-examples.json, 24/09/2026). k = khach noi, n = nguoi truc dap. Bot hoc DO DAI + GIONG + xung ho, KHONG chep so lieu/san pham. Ten rieng, SDT, dia chi va con so cua rieng shop da thay bang cho trong {banHang.thoiGianOrder} {banHang.tiLeCoc} hoac [tên]/[số điện thoại]/[địa chỉ]. Nhom: hoi_size_ton, hoi_gia, chot_dat, tu_van, ship_thoi_gian, thanh_toan, chao_hoi, het_hang, doi_tra (DraftWriter chon nhom theo y dinh, xem loi-chung/soan-nhap.json nhomViDu).",
+  "hoi_size_ton": [
+    {
+      "k": "Mình lấy Size 40 nha",
+      "n": "OK a ạ"
+    },
+    {
+      "k": "E còn sz42 ko? Để A đôi này",
+      "n": "Dạ còn a nhé"
+    },
+    {
+      "k": "Đôi này còn ko ạ",
+      "n": "đôi này hết a ạ"
+    },
+    {
+      "k": "Size 41 bạn ạ",
+      "n": "Dài 25cm chị nhỉ"
+    },
+    {
+      "k": "size 42.5",
+      "n": "a chạy mức độ nào ạ"
+    },
+    {
+      "k": "Boston 13 còn sale k ạ shop",
+      "n": "Đang sale 2190K bác ạ"
+    },
+    {
+      "k": "a tưởng size  nhật",
+      "n": "dạ đây là size asia a ạ"
+    },
+    {
+      "k": "Cho a lấy một áo này size M form Á đi em",
+      "n": "áo này size M hết hàng a ạ"
+    },
+    {
+      "k": "Đôi này có phải tăng size k hay đi đúng size vậy",
+      "n": "a đang chạy bằng giày nào ạ?"
+    },
+    {
+      "k": "size 42",
+      "n": "dạ đặt khoảng {banHang.thoiGianOrder} a nhận ạ"
+    },
+    {
+      "k": "Em đag đi đôi đen này size 38 vừa in ạ",
+      "n": "à lên 38 2/3 là dài thêm 0.5cm nữa"
+    },
+    {
+      "k": "Còn màu khác ko em",
+      "n": "chị có chờ order 1-2 tuần được không ạ"
+    },
+    {
+      "k": "Pegasus 41 size 41 ko shop",
+      "n": "size 41 e đang còn màu này sale 1690K a nhé"
+    },
+    {
+      "k": "Pro 3 thì ang mang size 42",
+      "n": "dạ con này chắc sẽ theo form pro 3 hơn là pro 4 a ạ"
+    }
+  ],
+  "hoi_gia": [
+    {
+      "k": "bên mình giày chính hãng hộp giấy đầy đủ hả b",
+      "n": "dạ vâng ạ"
+    },
+    {
+      "k": "Ck bao nhiêu e ngỉ",
+      "n": "Ck 400K a nhé"
+    },
+    {
+      "k": "Shop có đôi giày nào màu hồng kg?",
+      "n": "a hỏi size nào ạ"
+    },
+    {
+      "k": "Giá bao nhiêu ạ",
+      "n": "Màu đó e ko có a ạ"
+    },
+    {
+      "k": "đôi này a check còn giá này , sz này ko?",
+      "n": "đôi này hết hàng a ạ"
+    },
+    {
+      "k": "Mình xin giá vomero 18 size 44,5 nhé",
+      "n": "e còn màu này 2190K a ạ"
+    },
+    {
+      "k": "Giày này size 39 order tầm mấy ngày có vậy shop?",
+      "n": "mẫu này không có 39 chị ạ"
+    },
+    {
+      "k": "giờ ck bao nhiêu e",
+      "n": "a CK cả cũng đc e free ship"
+    },
+    {
+      "k": "e ở hải dương e cần giầy ship luôn đc ko hả a",
+      "n": "bác tìm giày gì đấy, size nào"
+    },
+    {
+      "k": "Alo shop có giày li ning elite 6 màu hồng size 37.5",
+      "n": "dạ hiện hãng này e chưa làm bác ạ"
+    },
+    {
+      "k": "Size chị gửi là giày tây, sandal, dép mang hằng ngày nè",
+      "n": "chị mua cho các bạn đi học chị nhỉ"
+    },
+    {
+      "k": "Ý là mình sợ form giày nó lhacs",
+      "n": "còn mu bàn chân bình thường thì ko sợ"
+    },
+    {
+      "k": "Cho em xin giá mafate 5 và speedgoat 6 được không ạ? Size 11.5 US",
+      "n": "Dạ trên hình e đệ có ghi tên và giá bán đấy ạ"
+    },
+    {
+      "k": "có thời gian mà run đâu chế.đi làm ngoài sân chân cẳng ngon rồi 🤣",
+      "n": "ở là hỏi xem dạng giày này e có chưa ấy mà, để xem size"
+    }
+  ],
+  "chot_dat": [
+    {
+      "k": "Mình lấy Size 40 nha",
+      "n": "OK a ạ"
+    },
+    {
+      "k": "Ok anh vậy để em bán hộ chứ họ thích lắm mà nó rộng đi nnấc gót",
+      "n": "hức. buồn thế"
+    },
+    {
+      "k": "Chốt cậu ơi",
+      "n": "ý chị là màu nào"
+    },
+    {
+      "k": "Lấy anh đôi này nhé",
+      "n": "dạ a lấy size nào ạ"
+    },
+    {
+      "k": "ok",
+      "n": "để e check lại xem nha"
+    },
+    {
+      "k": "ok",
+      "n": "E gửi QR cho a dễ Ck nhé"
+    },
+    {
+      "k": "OK em",
+      "n": "bên kho báo còn hàng chị nhé"
+    },
+    {
+      "k": "Đặt cho tớ",
+      "n": "Thường chị mặc áo adidas size gì"
+    },
+    {
+      "k": "Chốt",
+      "n": "vâng a ạ, e gửi phiếu đặt hàng a điền giúp e nhé"
+    },
+    {
+      "k": "ok",
+      "n": "Có hàng e sẽ gọi điện xác nhận để ck nha"
+    },
+    {
+      "k": "Ok nha",
+      "n": "vì form chân của a có thể hơi dày hoặc hơi bè"
+    },
+    {
+      "k": "lấy a 1 cái nhé",
+      "n": "Dạ áo này hàng order không hỗ trợ đổi trả bác nhé"
+    },
+    {
+      "k": "ok",
+      "n": "e sẽ điều hàng từ kho hãng ship thẳng cho a nhé"
+    }
+  ],
+  "tu_van": [
+    {
+      "k": "Đoi này tập zum vs pilate dc đúng k",
+      "n": "dạ được a ạ"
+    },
+    {
+      "k": "Ko biết đế tập sàn gỗ có trơn ko",
+      "n": "3 đôi đều thấp"
+    },
+    {
+      "k": "Shop tư vấn nhé",
+      "n": "bác chờ e xíu nhé"
+    },
+    {
+      "k": "Dạ, tầm pace 6:30 cho 10km",
+      "n": "a chạy lâu chưa nhỉ?"
+    },
+    {
+      "k": "thấy anh cũng mặc quần chạy bộ, mà còn mặc quần shorts ngoài luôn @@",
+      "n": "vâng e mặc L này ok này"
+    },
+    {
+      "k": "Mình có mẫu nào có màu khác cho nam ko tu vấn thêm mình với",
+      "n": "Nhu cầu bác chạy thế nào ạ"
+    },
+    {
+      "k": "Mình qtam giày chạy bộ adidas cỡ 40",
+      "n": "a hỏi đôi primeX màu trắng à"
+    },
+    {
+      "k": "Hi Shop. Bữa hôm Shop nói tầm 20 hoặc 21/7 là nhận được hàng. Tuy nhiên hôm nay ",
+      "n": "A vẫn chưa nhận được đơn này ạ"
+    },
+    {
+      "k": "tư vấn giúp e đôi nào chạy được giá vừa với ạ",
+      "n": "dạ chị chạy tộc độ và cự ly nào ạ"
+    },
+    {
+      "k": "Mình đang chạy pegasus 39 của shop được 2 năm hơn, thấy oke\n\nĐang rảnh muốn ngắm",
+      "n": "A mua trong khoảng bao nhiêu tiền ạ"
+    },
+    {
+      "k": "Em k có mua nhiều giầy tập nên muốn tìm đôi chạy hằng ngày, có thể dùng lr cuối ",
+      "n": "Chị đang chạy bằng đôi nào, size nào a"
+    },
+    {
+      "k": "Chạy bộ b à",
+      "n": "a đang chạy bằng đôi nào size 43-44 a nhỉ"
+    },
+    {
+      "k": "nữ mới tập chạy ạ",
+      "n": "dạ nữ mới tập thì chưa nên tập bằng boston 13"
+    },
+    {
+      "k": "Shop tư vấn mình nên chọn size nào với ạ",
+      "n": "dạ thường thì chân này chắc đi size 42 2/3 là vừa a ạ"
+    }
+  ],
+  "ship_thoi_gian": [
+    {
+      "k": "ship code em nhé",
+      "n": "ok a ạ"
+    },
+    {
+      "k": "E báo ship đi",
+      "n": "vâng ok chị"
+    },
+    {
+      "k": "Giao trưa nay rồi",
+      "n": "à là a nhận rồi à"
+    },
+    {
+      "k": "Ship c về địa chỉ sau:\n[tên] [số điện thoại]\n[địa chỉ]",
+      "n": "Dạ chiều e ship nhé"
+    },
+    {
+      "k": "cho em hỏi là order adidas Nhật shop order trong bao lâu ạ",
+      "n": "a đang hỏi giày nào ạ"
+    },
+    {
+      "k": "vậy a tính tổng lại cả ship là bnhiu rồi e ck anh nhé!",
+      "n": "e free ship cho bác nhé"
+    },
+    {
+      "k": "Ship qua Phường Phú Thạnh, TPHCM luôn là giá nhiêu nè",
+      "n": "dạ thêm khoảng 30-40K a ạ"
+    },
+    {
+      "k": "Ko ship cho a à",
+      "n": "dạ e báo kho ship sau 8h tối"
+    },
+    {
+      "k": "E thắc mắc là sao phí ship phải trả thêm 22k ạ?",
+      "n": "Để e hoàn tiền ship cho a nhé"
+    },
+    {
+      "k": "Tí c ck nhé cho c xin lại stk. Tối hay mai ship hả em",
+      "n": "của chị là 1290K+30K ship chị ạ"
+    },
+    {
+      "k": "Mk cũng lấy 1 đôi tương tự màu trắng. Chạy mấy ngày bung miếng ép cao su ra luôn",
+      "n": "Dạ thế ạ. Chắc cũng giống nhau á ạ"
+    },
+    {
+      "k": "Ship code nhé",
+      "n": "vâng đơn của chị là 790+40K ship chị nhé"
+    },
+    {
+      "k": "Thôi đợi đơn kia ship tớ 1 thể",
+      "n": "Nếu mà chị thanh toán trước thì chị ck luôn nhé"
+    },
+    {
+      "k": "Bác gừi ship cho mình nhé",
+      "n": "Dạ e vừa ra ngoài 1 lúc, lát e về e gọi ship cho bác nha"
+    }
+  ],
+  "thanh_toan": [
+    {
+      "k": "Có phải cọc k bạn",
+      "n": "Dạ có ạ"
+    },
+    {
+      "k": "Sen 10 có màu all black ko bạn?",
+      "n": "Ko có bác ạ"
+    },
+    {
+      "k": "Check kho đi nhé rồi báo anh",
+      "n": "A hỏi size nào"
+    },
+    {
+      "k": "Mk chuyển cọc chốt nhé",
+      "n": "Hên xiu là sao ạ"
+    },
+    {
+      "k": "Check giúp mình khi nào nhận hàng. Thanks",
+      "n": "dạ a chờ e chút nhé"
+    },
+    {
+      "k": "Mình gửi ảnh ck",
+      "n": "dạ e nhận rồi e cảm ơn"
+    },
+    {
+      "k": "Mình ck rồi nhé",
+      "n": "dạ e nhận rồi e cảm ơn a"
+    },
+    {
+      "k": "Cho mình xin stk với số tiền nha",
+      "n": "Dạ đơn này bác Ck 500K nha"
+    },
+    {
+      "k": "Hi shop. Đôi giày mình đặt giá 1390k và mình thanh toán trước 700k thì còn 690k.",
+      "n": "dạ để e xem lại e sửa tiền ạ"
+    },
+    {
+      "k": "Mình check lại với bên kho chưa bạn",
+      "n": "dạ có hàng e mua cho a rồi nhé"
+    },
+    {
+      "k": "e ck trước, bác làm đơn 0 đ giúp e",
+      "n": "đơn của bác là 690+30K ship bác nhé"
+    },
+    {
+      "k": "Gửi em stk nhé",
+      "n": "dạ để e chờ bên kho hãng xác nhận dã nhé"
+    },
+    {
+      "k": "em check lấy anh 1 cái size S của Asenal này nhé",
+      "n": "là a dặt 3 cái kia với thêm 1 cái arsenal nữa à"
+    },
+    {
+      "k": "nếu đặt đc trên web thì k thấy cọc {banHang.tiLeCoc}% ?",
+      "n": "Bác điền vào phiếu e gửi là đúng nhất, cọc bao nhiêu phiếu tự tính bác nhé"
+    }
+  ],
+  "chao_hoi": [
+    {
+      "k": "Alo",
+      "n": "vâng a ơi"
+    },
+    {
+      "k": "Hi",
+      "n": "e chào bác"
+    },
+    {
+      "k": "Alo shop ơi",
+      "n": "vâng chị ơi"
+    },
+    {
+      "k": "Alo shop",
+      "n": "e sẵn cái nậy"
+    },
+    {
+      "k": "Em ơi em có mẫu giầy nào nhẹ. Đế thấp để tập aerobic ko ạ",
+      "n": "Chi đi size nào"
+    },
+    {
+      "k": "Shop ơi, giờ boston còn order đc giá 1tr9 ko shop",
+      "n": "bác tìm size nào ạ"
+    },
+    {
+      "k": "Alo bác, Pro 4 sale 70% có size nào thế bác",
+      "n": "Còn 36 và 36.5 bác ạ"
+    },
+    {
+      "k": "Shop ơi có sz43 k?",
+      "n": "dạ mã này ko có 43 a ạ"
+    },
+    {
+      "k": "bạn ơi tôi hỏi đôi takumi sen 11 tôi mua đi vừa chân nhưng shop có bán tất mỏng ",
+      "n": "dạ tất mỏng e không có a ạ"
+    },
+    {
+      "k": "Em ơi mãi ko ship giày cho chị à",
+      "n": "đơn này ship từ hôm đó rồi m"
+    },
+    {
+      "k": "e ơi có đôi nào phù hợp chạy nước rút 100m 200m trong sân vân động ko",
+      "n": "dạ mấy dòng này e không có a ạ"
+    },
+    {
+      "k": "Hix, dạ, để em tham khảo đôi khác, em chân 36,5 ạ",
+      "n": "chị đang đi giày nào size 36.5?"
+    },
+    {
+      "k": "Hic! Ko thấy",
+      "n": "a mở link không xem được hay sao ạ"
+    },
+    {
+      "k": "Em ơi chị chọn 2 đôi này",
+      "n": "Chương trình sale này là không đổi trả chị nha"
+    }
+  ],
+  "het_hang": [
+    {
+      "k": "Đôi này có 38 k shop",
+      "n": "Ko còn chị ạ"
+    },
+    {
+      "k": "Hình nhue sz M nhỉ",
+      "n": "áo này hết size a ạ"
+    },
+    {
+      "k": "Cho chị hỏi đôi trên bảng size như bên dưới đúng ko em?",
+      "n": "đôi này hết rồi chị ạ"
+    },
+    {
+      "k": "Chân em dài 23.5cm",
+      "n": "dạ hàng này e hết rồi ạ"
+    },
+    {
+      "k": "cho e xem thêm. ảnh này với ạ",
+      "n": "Giờ e ko còn lưu trên máy"
+    },
+    {
+      "k": "Mình chỉ vừa 39 thôi, cảm ơn shop",
+      "n": "a ơi cái áo hết hàng a nhé"
+    },
+    {
+      "k": "Ship đến địa chỉ này thì tầm khi nào mình nhận được hàng ạ",
+      "n": "đôi nyaf ko còn size 39 a ạ"
+    },
+    {
+      "k": "Pro 4 có đúng mấy đôi ý sale b nhỉ",
+      "n": "dạ còn màu trắng mà hết size"
+    },
+    {
+      "k": "ko thì loại này size 39 có không?",
+      "n": "dạ pegasus hiện e hết size a ạ"
+    },
+    {
+      "k": "còn sz39.5 k",
+      "n": "Dạ hiện thì dòng đó hết rồi a ạ"
+    },
+    {
+      "k": "Đôi này size 40 có k bác?",
+      "n": "dạ đôi này hiện hết size 40 bác ạ"
+    },
+    {
+      "k": "36 và 39 anh ạ",
+      "n": "hic thế thì size này e hết rồi chị ạ"
+    },
+    {
+      "k": "mẫu kiểu này này bạn",
+      "n": "dạ boston 9 ra 7 năm rồi giờ không còn a ạ"
+    },
+    {
+      "k": "size 43",
+      "n": "có màu này nữa a ạ mà giá hôm nay không còn 790K"
+    }
+  ],
+  "doi_tra": [
+    {
+      "k": "Mình tính mua đôi size 42.5",
+      "n": "E còn 1 đôi"
+    },
+    {
+      "k": "Hàng new là được còn lỗi thì vẫn được gửi lại chứ phải ko?",
+      "n": "dạ vâng hàng mới ạ"
+    },
+    {
+      "k": "Bên b bảo hành keo k b",
+      "n": "Dạ không bảo hành ạ nhé"
+    },
+    {
+      "k": "Web lỗi r",
+      "n": "thế à. chị chụp giúp e xem"
+    },
+    {
+      "k": "Thế giờ anh đặt trên này luôn hay sao hay em kiểm tra lại còn hàng k",
+      "n": "vâng a đặt luôn trên web nhé"
+    },
+    {
+      "k": "Có đôi trail cho nữ nào size 36 không shop?",
+      "n": "dạ nữ trail size 36 e không có ạ"
+    },
+    {
+      "k": "Mình có thể đổi size to hơn k?",
+      "n": "dạ hàng này lại không đổi được chị ạ"
+    },
+    {
+      "k": "Mình đang chạy size 42.2/3, qua Puma có phải đổi size?",
+      "n": "tất cả các dòng a đều đi sizd này cả à"
+    },
+    {
+      "k": "giờ em cọc thì phải đợi hàng khoảng bnhieu ngày ạ",
+      "n": "dạ thường thì khoảng {banHang.thoiGianOrder} có bác nhé"
+    },
+    {
+      "k": "Ok shop nhé. Thử k vừa có đổi size luôn cho ship được k shop nhỉ",
+      "n": "Dạ hàng này e ko hỗ trợ thử luôn hoàn hàng ạ"
+    },
+    {
+      "k": "Đổi size dc ko em",
+      "n": "dạ chương trình sale này khôn đổi size được chị ạ"
+    },
+    {
+      "k": "Sorry shop. E ko lấy nữa ak. E cảm ơn shop nhiều. Xin lỗi đã làm phiền đến shop",
+      "n": "dạ . A theo dõi có mẫu nào ưng a lại bảo e ship a nha"
+    },
+    {
+      "k": "Có bảo hành ko b",
+      "n": "dạ hàng sale không bảo hành anh ạ, Chỉ cam kết chính hãng ạ"
+    },
+    {
+      "k": "Shop đăng bán thì còn đôi size 40 không ạ",
+      "n": "ko còn a ạ. cái này e cho lên bài kế hoạch trước nên là nó ko update"
+    }
+  ]
+}

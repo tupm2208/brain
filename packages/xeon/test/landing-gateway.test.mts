@@ -6,6 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import "./industries.mts";
 import {
   BrainService, DEFAULT_TOOL_LIST, LandingGateway, LicenseLedger, LicenseService, MemoryLogger, OFFLINE_HOLD_MS,
   TOOL_LIST_TTL_MS, generateSigningKey, type FetchLike
@@ -49,7 +50,8 @@ function fakeLanding({ tools = ["catalog.search", "stock.lookup", "catalog.count
 
 function buildGateway({ landing = fakeLanding(), time = { now: T0 } }: { landing?: ReturnType<typeof fakeLanding>; time?: { now: number } } = {}) {
   const logger = new MemoryLogger();
-  const gateway = new LandingGateway({ origin: "https://shop.vn/", ticket: () => "ve-dich-vu", fetch: landing.fetch, logger, clock: { now: () => new Date(time.now) } });
+  // Ngủ giả: phần gọi lại chờ 400ms + 1200ms thật, bài kiểm tra không việc gì phải ngồi đợi.
+  const gateway = new LandingGateway({ origin: "https://shop.vn/", ticket: () => "ve-dich-vu", fetch: landing.fetch, logger, clock: { now: () => new Date(time.now) }, sleep: async () => undefined });
   return { gateway, time, logger, landing };
 }
 
@@ -154,4 +156,65 @@ test("licensed brain: memory goes through the landing (not RAM), and a pack/tool
   assert.ok(logger.warnings.some((m) => /landing khong mo/.test(m) && /policy\.get/.test(m)), `the mismatch must be reported: ${logger.warnings.join(" | ")}`);
   await brain.handleInbound({ tenant: "toprun", kenh: "facebook", nguoi: "k1", chu: "còn không", maHoiThoai: "facebook:k1" });
   assert.equal(logger.warnings.filter((m) => /landing khong mo/.test(m)).length, 1, "reported once");
+});
+
+test("nghen mot cu roi thong: loi goi chi doc duoc goi lai, khong tut xuong danh sach lui", async () => {
+  // Đúng sự cố 21/09/2026: bộ não hỏi danh sách công cụ, Cloudflare treo một nhịp. Trước đây một
+  // cú hỏng là agent bị bỏ qua cả lượt; giờ nó gọi lại và lấy được danh sách thật.
+  let lan = 0;
+  const landing = fakeLanding({ failing: (p) => p === "/api/bo-nao/cong-cu" && ++lan === 1 });
+  const { gateway, logger } = buildGateway({ landing });
+
+  const list = await gateway.refreshToolList();
+
+  assert.ok(list.includes("policy.get"), "lần gọi lại lấy được danh sách thật");
+  assert.equal(gateway.toolListConfirmed(), true);
+  assert.equal(landing.calls.filter((c) => c.path === "/api/bo-nao/cong-cu").length, 2, "gọi hai lần: hỏng rồi gọi lại");
+  assert.ok(logger.warnings.some((m) => /goi lai/.test(m)), "có ghi lại là đã gọi lại");
+  assert.ok(!logger.warnings.some((m) => /tam dung ban lui/.test(m)), "không tụt xuống danh sách lui nữa");
+});
+
+test("hong ca ba lan: van tut xuong danh sach lui, va noi ro", async () => {
+  const landing = fakeLanding({ failing: (p) => p === "/api/bo-nao/cong-cu" });
+  const { gateway, logger } = buildGateway({ landing });
+
+  await gateway.refreshToolList();
+
+  assert.deepEqual(gateway.tools.available(), DEFAULT_TOOL_LIST);
+  assert.equal(gateway.toolListConfirmed(), false);
+  assert.equal(landing.calls.length, 3, "thử ba lần rồi mới chịu thua");
+  assert.ok(logger.warnings.some((m) => /tam dung ban lui/.test(m)));
+});
+
+test("ma 520 cua Cloudflare cung duoc goi lai; tra loi 400 that su thi khong", async () => {
+  const goi: string[] = [];
+  const dap = (status: number, payload: unknown) => ({ ok: status < 300, status, json: async () => payload });
+  let lanCongCu = 0;
+  const fetch: FetchLike = async (url, init) => {
+    const u = new URL(url);
+    goi.push(`${init.method || "GET"} ${u.pathname}`);
+    if (u.pathname === "/api/bo-nao/cong-cu" && (init.method || "GET") === "GET") return dap(200, { ok: true, congCu: ["catalog.search", "stock.lookup", "catalog.find", "conversation.recent"] });
+    const ten = String((JSON.parse(init.body || "{}") as Record<string, unknown>)["ten"] ?? "");
+    if (ten === "stock.lookup") return ++lanCongCu === 1 ? dap(520, {}) : dap(200, { ok: true, data: { rows: [] } });
+    return dap(400, { ok: false, error: "cong_cu_khong_co" });
+  };
+  const gateway = new LandingGateway({ origin: "https://shop.vn", ticket: () => "ve", fetch, logger: new MemoryLogger(), clock: { now: () => new Date(T0) }, sleep: async () => undefined });
+  await gateway.refreshToolList();
+
+  const tot = await gateway.tools.call("stock.lookup", { code: "DV1" } as never);
+  assert.equal(tot.ok, true, "520 là hạ tầng — gọi lại thì được");
+  assert.equal(goi.filter((g) => g === "POST /api/bo-nao/cong-cu").length, 2);
+
+  const xau = await gateway.tools.call("policy.get", {} as never);
+  assert.equal(xau.ok, false);
+  assert.equal(goi.filter((g) => g === "POST /api/bo-nao/cong-cu").length, 3, "400 là câu trả lời thật của landing — không gọi lại");
+});
+
+test("gui tin cho khach KHONG bao gio goi lai", async () => {
+  // Gửi lại một tin đã tới nơi là khách đọc hai lần cùng một câu. Thà hỏng còn hơn.
+  const landing = fakeLanding({ failing: (p) => p === "/api/hop-thu/gui" });
+  const { gateway } = buildGateway({ landing });
+
+  await assert.rejects(() => gateway.sendReply({ nguoi: "k1", chu: "Dạ em nghe bác ạ." }));
+  assert.equal(landing.calls.filter((c) => c.path === "/api/hop-thu/gui").length, 1, "đúng một lần, không gửi lại");
 });

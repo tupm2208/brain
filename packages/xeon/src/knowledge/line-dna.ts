@@ -133,14 +133,37 @@ export function fitScore(line: LineDna, pb: string | null, db: string | null): n
   return Math.min(p, d) + (p + d) / 100;
 }
 
-const PURPOSE_RANK: Record<string, number> = { daily: 0, max_cushion: 1, stability: 1, tempo: 2, budget_daily: 3 };
-const rankOf = (purpose: string): number => PURPOSE_RANK[purpose] ?? 4;
+/**
+ * How a line's purpose breaks a tie between two equally fitting lines: the lower rank is offered
+ * first. The numbers are INDUSTRY knowledge (a shoe shop offers a daily trainer before a race
+ * shoe), so they come from `kien-thuc.json`; an industry that declares none ranks every purpose
+ * the same and the fit score alone decides.
+ */
+export type PurposeRank = Record<string, number>;
+
+/** Human labels of the coded fields, used when a line is described to the model. */
+export interface LineLabels {
+  purpose: Record<string, string>;
+  plate: Record<string, string>;
+  level: Record<string, string>;
+}
+
+const NO_LABELS: LineLabels = { purpose: {}, plate: {}, level: {} };
 
 export class LineKnowledge {
   private readonly lines: LineDna[];
 
-  constructor(lines: readonly LineDna[], private readonly labels: { purpose: Record<string, string>; plate: Record<string, string>; level: Record<string, string> } = { purpose: {}, plate: {}, level: {} }) {
+  constructor(
+    lines: readonly LineDna[],
+    private readonly labels: LineLabels = NO_LABELS,
+    private readonly purposeRank: PurposeRank = {}
+  ) {
     this.lines = lines.filter((l) => l && typeof l.id === "string" && l.id !== "");
+  }
+
+  /** Unknown purposes sort last, so an industry that declares no ranking keeps the score order. */
+  private rankOf(purpose: string): number {
+    return this.purposeRank[purpose] ?? Number.MAX_SAFE_INTEGER;
   }
 
   size(): number {
@@ -213,7 +236,7 @@ export class LineKnowledge {
       if (s === null || s < 3) continue;
       scored.push({ id: line.id, name: line.name, brand: line.brand ?? "", score: Math.round(s * 100) / 100, priceTier: Number(line.priceTier ?? 0), note: line.note ?? "", plate: line.plate ?? "", purpose: line.purpose ?? "" });
     }
-    scored.sort((a, b) => b.score - a.score || rankOf(a.purpose) - rankOf(b.purpose));
+    scored.sort((a, b) => b.score - a.score || this.rankOf(a.purpose) - this.rankOf(b.purpose));
     const picks = scored.slice(0, limit);
     if (limit >= 3 && picks.length === limit && !picks.some((p) => p.purpose === "budget_daily")) {
       const budget = scored.find((p) => p.purpose === "budget_daily");

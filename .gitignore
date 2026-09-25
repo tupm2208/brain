@@ -17,3 +17,6 @@ dist/
 # Sổ license + khoá ký: dữ liệu chạy, SAO LƯU riêng, không vào git
 du-lieu/
 *.log
+
+# Ho so luot (21/09/2026): co du lieu khach that, co han giu. KHONG BAO GIO vao git.
+logs/

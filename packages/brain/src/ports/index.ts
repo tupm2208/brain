@@ -9,6 +9,8 @@
 import type {
   CatalogItemLite, ConversationId, LinkError, TenantId, ToolInput, ToolName, ToolOutput
 } from "@sp/contract";
+import type { Episode, PastEpisode } from "../engine/episode";
+import type { Ledger } from "../engine/ledger";
 
 export type ToolResult<K extends ToolName> =
   | { ok: true; tool: K; data: ToolOutput<K> }
@@ -94,6 +96,17 @@ export interface ConversationState {
   /** Phone number the customer TYPED in this conversation. Never taken from any other source. */
   phoneGivenInConversation?: string | undefined;
   handedOff?: boolean | undefined;
+  // ---- Tier 1 of Sales Desk (24/09/2026): structured memory beside the flat fields above.
+  /** The conversation ledger: every product mentioned, accumulated over the whole conversation. */
+  ledger?: Ledger | undefined;
+  /** The soft shopping episode: the main item and the side items with their roles. */
+  episode?: Episode | null | undefined;
+  /** Closed episodes, newest last (at most `PAST_EPISODE_LIMIT`). */
+  episodesPast?: PastEpisode[] | undefined;
+  /** Labels of recognised customer images by message id ("[ảnh: JP9252 Adizero Boston 13]"). */
+  imageLabels?: Record<string, string> | undefined;
+  /** The bot already asked this customer back once in this conversation (Desk's "asked before" mark). */
+  askedBackBefore?: boolean | undefined;
 }
 
 export interface MemoryPort {

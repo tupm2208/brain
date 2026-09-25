@@ -14,8 +14,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 /** Agents (Desk's `AGENTS` table, Xeon's subset). Wire values: the Token AI screen groups on them. */
 export const AGENTS = {
   bot_l2: { label: "Bot trả lời khách", group: "tra_loi_khach" },
+  context_analysis: { label: "Phân tích ngữ cảnh (LLM#1)", group: "tra_loi_khach" },
+  draft_l3: { label: "Soạn nháp dự phòng (LLM#3)", group: "tra_loi_khach" },
+  verify_match: { label: "Xác nhận mẫu (LLM#2)", group: "tra_loi_khach" },
   ai_draft: { label: "Nháp gợi ý cho người trực", group: "tra_loi_khach" },
   image_match: { label: "Đọc ảnh khách gửi", group: "tra_loi_khach" },
+  web_advisor: { label: "Trợ lý AI trên web", group: "tra_loi_khach" },
   external_product_vision: { label: "Đọc ảnh hàng ngoài catalog", group: "tra_loi_khach" },
   sandbox: { label: "Demo AI (hộp cát)", group: "training" },
   training: { label: "Phân tích hội thoại lưu trữ", group: "training" },
@@ -24,6 +28,7 @@ export const AGENTS = {
   content_review: { label: "Phản biện bài (ba người chấm)", group: "content" },
   content_optimize: { label: "Tối ưu bài theo góp ý", group: "content" },
   content_trend: { label: "Nghiên cứu xu hướng", group: "content" },
+  content_profile: { label: "Hiểu lời shop kể về cách làm content", group: "content" },
   knowledge_research: { label: "Nghiên cứu sản phẩm mẫu", group: "training" },
   tag_scan: { label: "Đọc tem quét kho", group: "kho" },
   stock_image: { label: "Đọc ảnh tồn đối tác", group: "kho" },
@@ -38,7 +43,7 @@ export const GROUP_LABELS: Record<string, string> = {
 
 /** Channel groups as the screen filters them (Desk `CHANNEL_GROUPS`). */
 export const CHANNEL_LABELS: Record<string, string> = {
-  fanpage: "Fanpage", zalo: "Zalo nhóm", personal: "FB cá nhân", comment: "Bình luận", demo: "Demo AI"
+  fanpage: "Fanpage", zalo: "Zalo nhóm", personal: "FB cá nhân", comment: "Bình luận", demo: "Demo AI", web: "Khách trên web"
 };
 
 /** The landing's channel names mapped to the screen's channel groups. */
@@ -48,6 +53,7 @@ export function channelGroup(channel: string): string {
   if (channel === "zalo") return "zalo";
   if (channel === "fb-ca-nhan") return "personal";
   if (channel === "demo") return "demo";
+  if (channel === "web") return "web";
   return "";
 }
 

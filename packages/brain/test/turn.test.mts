@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as B from "@sp/brain";
 import type { CatalogItemLite, ItemId } from "@sp/contract";
-import { BOSTON, CONV, PARA, T0, TENANT, ask, clonePack, fakePorts, pharmacyRow as HL, row } from "./fixtures.mts";
+import { ask, BOSTON, clonePack, CONV, fakePorts, PARA, pharmacyPack, pharmacyRow as HL, row, runningShoesPack, T0, TENANT } from "./fixtures.mts";
 
 const minutes = (n: number): Date => new Date(T0.getTime() + n * 60_000);
 const hours = (n: number): Date => new Date(T0.getTime() + n * 3600_000);
@@ -312,7 +312,7 @@ test("a fetched policy reaches the customer", async () => {
 });
 
 test("one blocked sentence does not mute the whole episode", async () => {
-  const bad = clonePack(B.runningShoesPack);
+  const bad = clonePack(runningShoesPack);
   bad.intents = bad.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Giá 999999 ạ." } : i);
   const f = fakePorts();
 
@@ -355,7 +355,7 @@ test("a ten-digit order id is not read as a phone number", async () => {
 });
 
 test("a template with an empty placeholder is never sent", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.intents = pack.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Giá {songay} ạ." } : i);
   const f = fakePorts();
   const r = await B.handleTurn(pack, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13 gia bao nhieu" });
@@ -389,7 +389,7 @@ test("an OPTIONAL axis must not disable the gate of a REQUIRED axis", async () =
 });
 
 test("placeholders NAMED BY THE PACK are guarded too", async () => {
-  const pack = clonePack(B.pharmacyPack);
+  const pack = clonePack(pharmacyPack);
   pack.intents = pack.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Còn {ton} hộp {quycach} ạ." } : i);
   const f = fakePorts({
     items: [PARA],
@@ -420,7 +420,7 @@ test("a truncated stock result asserts nothing", async () => {
 });
 
 test("tools taking an ItemId receive the ItemId, not the merchant code", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.intents.push({
     id: "hoi_order", name: "Hoi hang order", keywords: ["order", "bao lau ve"],
     requiredSlots: ["item"], tools: ["purchase.eta"],
@@ -457,7 +457,7 @@ test("a disabled module's tool is NOT called by the engine", async () => {
 });
 
 test("a blocked sentence is NOT sent", async () => {
-  const bad = clonePack(B.runningShoesPack);
+  const bad = clonePack(runningShoesPack);
   bad.intents = bad.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Giá {gia} ạ. Bên em bảo hành trọn đời ạ." } : i);
   const f = fakePorts();
   const r = await B.handleTurn(bad, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13 gia bao nhieu" });
@@ -549,7 +549,7 @@ test("the customer's message text is NOT stored on Xeon", async () => {
 });
 
 test("the industry's OWN gate really blocks, independent of the handoff intent", async () => {
-  const pack = clonePack(B.pharmacyPack);
+  const pack = clonePack(pharmacyPack);
   pack.intents = pack.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Ngày uống 2 viên ạ." } : i);
   const f = fakePorts({
     items: [PARA],
@@ -569,7 +569,7 @@ test("two models with equal scores: no guessing", async () => {
 });
 
 test("a stock sentence with an empty placeholder is never sent", async () => {
-  const pack = clonePack(B.pharmacyPack);
+  const pack = clonePack(pharmacyPack);
   pack.templates["in_stock"] = "Còn {ton} hộp {quycach} ạ.";
   const f = fakePorts({
     items: [PARA],
@@ -584,7 +584,7 @@ test("a stock sentence with an empty placeholder is never sent", async () => {
 // ===========================================================================
 
 test("a forbidden phrase in the ASK-BACK sentence never reaches the customer", async () => {
-  const bad = clonePack(B.runningShoesPack);
+  const bad = clonePack(runningShoesPack);
   bad.templates["ask_item"] = "{khach} cho {shop} xin mã mẫu ạ, bên em bảo hành trọn đời ạ.";
   const f = fakePorts();
   const r = await B.handleTurn(bad, f.ports, { tenant: TENANT, conversationId: CONV, text: "con size 42 khong shop" });
@@ -592,7 +592,7 @@ test("a forbidden phrase in the ASK-BACK sentence never reaches the customer", a
 });
 
 test("a forbidden phrase in the HANDOFF sentence never reaches the customer", async () => {
-  const bad = clonePack(B.pharmacyPack);
+  const bad = clonePack(pharmacyPack);
   bad.templates["handoff"] = "{shop} chuyển dược sĩ ạ, thuốc này chữa khỏi hoàn toàn ạ.";
   const f = fakePorts({ items: [PARA] });
   const r = await B.handleTurn(bad, f.ports, { tenant: TENANT, conversationId: CONV, text: "thuoc nay uong may vien mot ngay" });
@@ -601,7 +601,7 @@ test("a forbidden phrase in the HANDOFF sentence never reaches the customer", as
 });
 
 test("an ask-back sentence with an empty placeholder is not sent", async () => {
-  const bad = clonePack(B.runningShoesPack);
+  const bad = clonePack(runningShoesPack);
   bad.templates["ask_item"] = "{khach} cho {shop} xin mã mẫu, bên em còn {ton} đôi ạ.";
   const f = fakePorts();
   const r = await B.handleTurn(bad, f.ports, { tenant: TENANT, conversationId: CONV, text: "con size 42 khong shop" });
@@ -609,7 +609,7 @@ test("an ask-back sentence with an empty placeholder is not sent", async () => {
 });
 
 test("a product code containing digits is not an invented number", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.intents = pack.intents.map((i) => i.id === "hoi_gia" ? { ...i, template: "Mẫu {mon} giá {gia} ạ." } : i);
   const f = fakePorts({ rows: [row("42", 3)] });
   const r = await B.handleTurn(pack, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13 gia bao nhieu" });
@@ -685,7 +685,7 @@ test("text WRITTEN BY THE MERCHANT also passes the industry gate", async () => {
   // The validator forces pack templates to carry diacritics, but cannot force what the merchant
   // types into the policy table, and that text is inserted verbatim into the reply.
   const f = fakePorts({ items: [PARA], policy: "Thuoc nay uong 2 vien moi ngay, ngay 3 lan a." });
-  const pack = clonePack(B.pharmacyPack);
+  const pack = clonePack(pharmacyPack);
   pack.intents.push({
     id: "hoi_chinh_sach", name: "Hoi chinh sach", keywords: ["doi tra", "chinh sach"],
     requiredSlots: ["topic"], tools: ["policy.get"],
@@ -707,7 +707,7 @@ test("numbers inside an order status count as sourced", async () => {
 });
 
 test("a pack-specific placeholder renders its value", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.extraValues = { camket: "hàng có sẵn tại kho" };
   pack.templates["in_stock"] = "Còn {ton} đôi {truc} {size}, giá {gia} ạ, {camket} ạ.";
   const f = fakePorts();
@@ -717,7 +717,7 @@ test("a pack-specific placeholder renders its value", async () => {
 });
 
 test("an empty warehouse name means the sentence is not sent", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.templates["in_stock"] = "Còn {ton} đôi {truc} {size} tại {kho}, giá {gia} ạ.";
   const f = fakePorts({
     rows: [{ itemId: "i1", variantId: "v", variantLabel: "42", warehouseId: "w1", warehouseName: "", qty: 3, price: 3190000 }] as never
@@ -788,7 +788,7 @@ test("a bare number matching NO label is not guessed", async () => {
 });
 
 test("without intentWhenItemNamed, naming an item is only a greeting", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   delete pack.intentWhenItemNamed;
   const f = fakePorts({ rows: [row("42", 3)] });
   const r = await B.handleTurn(pack, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13" });
@@ -1055,7 +1055,7 @@ test("an OPTIONAL axis filtering to nothing drops the filter: NEVER 'out of stoc
 });
 
 test("valid numbers are computed on the SAME string as the pack pattern: an alias cannot split the decision", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.lexicon.aliases = { ...pack.lexicon.aliases, sz: "size" };
   const f = fakePorts({ rows: [row("42", 3), row("43", 6)] });
   await B.handleTurn(pack, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13 con size 42 khong" });
@@ -1124,7 +1124,7 @@ test("two bare numbers on a unit axis: unresolved, and the old pin is removed to
 });
 
 test("an alias turning WORDS into a NUMBER: the pack pattern sees that number", async () => {
-  const pack = clonePack(B.runningShoesPack);
+  const pack = clonePack(runningShoesPack);
   pack.lexicon.aliases = { ...pack.lexicon.aliases, "bon hai": "42" };
   const f = fakePorts({ rows: [row("42", 3), row("43", 6)] });
   const r = await B.handleTurn(pack, f.ports, { tenant: TENANT, conversationId: CONV, text: "adizero boston 13 con size bon hai khong" });

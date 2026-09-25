@@ -3,8 +3,73 @@
  * and a few catalog items. The engine is deterministic, so it can be tested completely.
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import * as B from "@sp/brain";
 import type { CatalogItemLite, ConversationId, ItemId, StockRow, TenantId, ToolName, VariantId, WarehouseId } from "@sp/contract";
+
+/**
+ * The packs are JSON on disk since 21/09/2026 and the core may not read files, so the tests
+ * install their own source. It reads the SHIPPED folder, not a fixture: a test passing against an
+ * invented pack while the real one is broken is worse than no test. `@sp/xeon` owns the real
+ * reader, but the brain's tests must not depend on it, so this is a deliberate 15-line twin.
+ */
+const INDUSTRY_DIRECTORY = ((): string => {
+  // Walks up from wherever the runner was started (repo root or a package folder). `import.meta`
+  // would be shorter but the test type-check compiles these files as CommonJS.
+  let dir = process.cwd();
+  for (let up = 0; up < 6; up += 1) {
+    const candidate = path.join(dir, "nganh");
+    if (fs.existsSync(candidate)) return candidate;
+    dir = path.dirname(dir);
+  }
+  throw new Error("Khong tim thay thu muc `nganh/` tu " + process.cwd());
+})();
+
+const readIndustryFile = (id: string, file: string): unknown => {
+  const full = path.join(INDUSTRY_DIRECTORY, id, file);
+  return fs.existsSync(full) ? JSON.parse(fs.readFileSync(full, "utf8")) : null;
+};
+
+const readCommonFile = (file: string): unknown => {
+  const full = path.join(INDUSTRY_DIRECTORY, "..", "loi-chung", file);
+  return fs.existsSync(full) ? JSON.parse(fs.readFileSync(full, "utf8")) : null;
+};
+
+B.usePackSource({
+  ids: () => fs.readdirSync(INDUSTRY_DIRECTORY, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name),
+  read: (id) => {
+    const rules = readIndustryFile(id, "bo-luat.json");
+    if (rules === null) return null;
+    const agent = readIndustryFile(id, "agent.json");
+    const dialogue = readIndustryFile(id, "khung-hoi-thoai.json");
+    const systemNote = readIndustryFile(id, "ghi-chu-he-thong.json");
+    const intentRules = readIndustryFile(id, "y-dinh.json");
+    const entities = readIndustryFile(id, "thuc-the.json");
+    const sizeChart = readIndustryFile(id, "bang-size.json");
+    const scripts = readIndustryFile(id, "kich-ban.json");
+    const matching = readIndustryFile(id, "cham-diem.json");
+    const replyGate = readIndustryFile(id, "cong-soat.json");
+    return {
+      rules,
+      ...(agent === null ? {} : { agent }),
+      ...(dialogue === null ? {} : { dialogue }),
+      ...(systemNote === null ? {} : { systemNote }),
+      ...(intentRules === null ? {} : { intentRules }),
+      ...(entities === null ? {} : { entities }),
+      ...(sizeChart === null ? {} : { sizeChart }),
+      ...(scripts === null ? {} : { scripts }),
+      ...(matching === null ? {} : { matching }),
+      ...(replyGate === null ? {} : { replyGate })
+    };
+  },
+  common: () => readCommonFile("agent-chung.json"),
+  commonFile: (name) => readCommonFile(`${name}.json`)
+});
+
+/** The two industries that ship, loaded from the folder above. */
+export const runningShoesPack = B.loadPack("giay-chay");
+export const pharmacyPack = B.loadPack("nha-thuoc");
 
 export const TENANT = "t1" as TenantId;
 export const CONV = "c1" as ConversationId;
@@ -115,7 +180,7 @@ export const clonePack = (pack: B.IndustryPack): B.IndustryPack => JSON.parse(JS
 
 /** Baseline gate input a test can override. */
 export const gateInput = (over: Partial<B.GateInput> = {}): B.GateInput => ({
-  pack: B.runningShoesPack,
+  pack: runningShoesPack,
   state: { tenant: TENANT, conversationId: CONV, turns: [] },
   now: T0, draft: "", facts: [], intent: null,
   itemIdentified: true, wouldAskBack: false, online: true, catalogSize: 1200,

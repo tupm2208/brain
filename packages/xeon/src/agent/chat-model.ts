@@ -61,10 +61,22 @@ export type ChatOutcome =
   /** `transient`: worth calling again (empty answer, 5xx, 429, timeout, network). False: a wrong key or request — retrying cannot help. */
   | { ok: false; viSao: string; transient: boolean };
 
+/**
+ * Per-call knobs. Desk used two settings on the same gateway: the level-2 agent at temperature 0.4,
+ * and the context analysis / catalog check at temperature 0 with `response_format: json_object`.
+ */
+export interface ChatCallOptions {
+  timeoutMs?: number | undefined;
+  /** Sampling temperature; the agent's 0.4 when absent. */
+  temperature?: number | undefined;
+  /** Ask the gateway for a JSON object (OpenAI `response_format`); gateways that ignore it still get a JSON prompt. */
+  json?: boolean | undefined;
+}
+
 export interface ChatModelPort {
   /** Whether a model is configured. False = the agent is off and the rule engine answers alone. */
   ready(): boolean;
-  complete(messages: ChatMessage[], options?: { timeoutMs?: number | undefined }): Promise<ChatOutcome>;
+  complete(messages: ChatMessage[], options?: ChatCallOptions): Promise<ChatOutcome>;
 }
 
 /** The port when no model is configured. */
@@ -97,7 +109,10 @@ export interface OpenAiCompatChatModelOptions {
   fetch?: typeof fetch | undefined;
 }
 
-/** `POST {baseUrl}/chat/completions`, non-streaming, temperature 0.4 (Desk's setting). */
+/** The agent's sampling temperature (Desk's level-2 setting). */
+const DEFAULT_TEMPERATURE = 0.4;
+
+/** `POST {baseUrl}/chat/completions`, non-streaming. */
 export class OpenAiCompatChatModel implements ChatModelPort {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -117,13 +132,17 @@ export class OpenAiCompatChatModel implements ChatModelPort {
     return this.baseUrl !== "" && this.apiKey !== "";
   }
 
-  async complete(messages: ChatMessage[], options: { timeoutMs?: number | undefined } = {}): Promise<ChatOutcome> {
+  async complete(messages: ChatMessage[], options: ChatCallOptions = {}): Promise<ChatOutcome> {
     if (!this.ready()) return noChatModel.complete(messages, options);
     try {
       const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model: this.model, messages: messages.map(toWireMessage), stream: false, temperature: 0.4 }),
+        body: JSON.stringify({
+          model: this.model, messages: messages.map(toWireMessage), stream: false,
+          temperature: options.temperature ?? DEFAULT_TEMPERATURE,
+          ...(options.json ? { response_format: { type: "json_object" } } : {})
+        }),
         signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_CHAT_TIMEOUT_MS)
       });
       const body = (await response.json().catch(() => ({}))) as { choices?: { message?: { content?: unknown } }[]; model?: unknown; usage?: unknown };

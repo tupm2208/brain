@@ -1,0 +1,52 @@
+{
+  "_doc": "TANG 2 — phan DINH NGANH (giay chay) cua cong soat sau nhap (chep Sales Desk enforceReplyEvidence / enforcePolicyClaims, 25/09/2026): cach noi CON/HET hang va size (don vi 'doi'), size nac le (41 1/3), bao hanh / 'bao check' / '100% chinh hang', size quy tu cm phai theo bang-size.json, goi lai chinh doi dang di, hang khac, cau an toan theo chu de. Duoc GHEP vao loi-chung/cong-soat-chung.json (danh sach noi them, chu ghi de). Cho trong: {ten} {ma} {size} {ton} {gia} {link} {cm} {doiDangDi} + {khach}/{Khach}/{shop}/{tenNguoiPhuTrach}.",
+  "warranty": {
+    "_doc": "'bao check', 'bao hanh tron doi', 'doi tra thoai mai', '100% chinh hang' khong co trong loi nguoi truc / chinh sach / cam ket hang cua ho so → cat cum, giu phan con lai. `cut` chay tren cau GOC co dau.",
+    "detect": "(,?\\s*(va )?bao (check|test|kiem tra)[^.,!?\\n]*|,?\\s*bao hanh (tron doi|vinh vien|1 doi 1)[^.,!?\\n]*|,?\\s*(doi tra|doi size) thoai mai[^.,!?\\n]*|,?\\s*cam ket[^.,!?\\n]{0,30}(vinh vien|tron doi)[^.,!?\\n]*)",
+    "sourceWords": ["bao check", "tron doi"],
+    "cut": [
+      ",?\\s*(và |va )?[Bb]ao (check|test|kiểm tra|kiem tra)[^.,!?\\n]*",
+      ",?\\s*[Bb]ảo hành (trọn đời|vĩnh viễn|1 đổi 1)[^.,!?\\n]*",
+      ",?\\s*(đổi trả|đổi size) thoải mái[^.,!?\\n]*",
+      ",?\\s*cam kết[^.,!?\\n]{0,30}(vĩnh viễn|trọn đời)[^.,!?\\n]*"
+    ],
+    "fallback": "Dạ phần bảo hành để em kiểm tra chính sách rồi báo {khach} ngay ạ.",
+    "percentAuthenticity": "100\\s*%\\s*chinh hang",
+    "percentSource": "100\\s*%"
+  },
+  "evidence": {
+    "_doc": "Khang dinh ton kho khi chua ro mau; noi nguoc su that ton kho (ca hai chieu); size nac le; goi lai doi dang di. {size} trong saysOut/saysIn = size khach hoi (da escape).",
+    "stockAssert": "(con hang|het hang|con size|het size|chi con|con (cac |may |nhieu )?mau|con san|(?<!chua )(?<!khong )co san|(?<!chua )(?<!khong )co (cac |may |nhieu )?(mau|dong|loai)|con \\d+ doi|nhieu mau|het mau|tam het|het cac mau|van con|con du|ben em san |dang san (mau|hang)| san (mau|hang|doi) |khong co( san)?[^,.!?]{0,20}size \\d|size \\d[^,.!?]{0,25}(khong co|het roi|het hang)|khong co (dep|giay|mau|hang|ao|quan)[^,.!?]{0,15}(roi|a$|a |nua)|nhieu phoi mau|nhieu (mau|ban) (lam|de|khac))",
+    "saysOut": [
+      "het[^,.!?]{0,30}(size )?{size}",
+      "(size )?{size}[^,.!?]{0,30}het",
+      "(chua co san|chua ve hang|chua co hang|la hang order|hang order chu|phai order)"
+    ],
+    "saysIn": [
+      "con[^,.!?]{0,30}(size )?{size}",
+      "(size )?{size}[^,.!?]{0,30}con( hang| \\d+ doi)?",
+      "van con|co san|ben em san |san mau nay"
+    ],
+    "inStockReply": "Dạ mẫu {ten} ({ma}) size {size} bên em còn {ton} đôi{gia} ạ. {Khach} lấy đôi này em lên đơn nhé?",
+    "outOfStockReply": "Dạ mẫu {ten} size {size} bên em hết rồi ạ, để em kiểm tra các mẫu khác còn size này rồi báo {khach} ngay nhé.",
+    "outOfStockColorsReply": "Dạ để em kiểm tra các màu còn hàng của mẫu này rồi báo {khach} ngay nhé ạ.",
+    "colorsAsked": "(mau nao|mau khac|con mau|mau gi)",
+    "topicReply": "Dạ {khach} cho em xin tên mẫu hoặc mã sản phẩm trên tem/hộp để em kiểm tra chính xác giúp mình ạ.",
+    "topicColorsReply": "Dạ để em kiểm tra các màu còn hàng của mẫu này rồi báo {khach} ngay nhé ạ.",
+    "discovery": "(ma nao|mau nao|doi nao|giay nao|dep nao|nao k(o|hong)?(\\s|$)|goi y|gioi thieu|gui .{0,12}xem|cho .{0,10}xem|minh xem|xem vai|vai doi)",
+    "discoveryLinkReply": "Dạ {khach} xem giúp em các mẫu đang có theo nhu cầu tại đây nhé: {link} — ưng mẫu nào {khach} gửi em kiểm tra tồn và giá chính xác ạ.",
+    "discoveryAskReply": "Dạ {khach} đang cần đôi dùng để chạy bộ hay đi chơi, size bao nhiêu để em gửi vài mẫu phù hợp ạ?",
+    "wantsDifferent": "(doi khac|mau khac|thay doi|doi moi|them 1 doi|them mot doi|khac (voi|ngoai))",
+    "recommendVerbs": "(ben em (co|san)|goi y|phu hop|rat hop|hop (voi|lam)|em chan|chot|lay|nen (di|chon))",
+    "brandStop": ["nike", "adidas", "asics", "puma", "hoka", "mizuno", "saucony", "brooks", "new balance"],
+    "currentShoeReply": "Dạ ngoài đôi {doiDangDi} mình đang đi, để em chọn thêm 1-2 mẫu khác cùng tầm giá phù hợp rồi gửi {khach} xem nhé ạ."
+  },
+  "sizeChart": {
+    "_doc": "Khach cho dai chan (cm) ma bot phan size: size phai theo bang-size.json (nac gan nhat ± 1 nac) hoac do khach/nguoi truc/kho da noi. Co bang ma sai so → sua so (size_chart_fix); khong co bang → hoi hang de tra bang.",
+    "customerCm": "(?<![\\d.])(\\d{2}(?:[.,]\\d)?)\\s*cm",
+    "sizeInReply": "(?:size|di|lay|chon|len|xuong)\\s*(?:(?:la|chuan|khoang|tam|eu)\\s*)*(3[5-9]|4[0-9])(\\s*[12]\\s*\\/?\\s*3|[.,]5)?",
+    "mentionsSize": "size\\s*\\d{2}|\\d\\s*cm",
+    "hedge": "(de em (doi chieu|kiem tra)|bang size)",
+    "askBack": "Dạ chân {cm}cm thì {khach} cho em biết {khach} đang xem mẫu của hãng nào để em ướm đúng bảng size của hãng đó ạ. Nếu tiện, {khach} cho em thêm đôi đang đi vừa chân là mẫu nào, size bao nhiêu nhé."
+  }
+}

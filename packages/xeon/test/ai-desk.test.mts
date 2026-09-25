@@ -6,6 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import "./industries.mts";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -133,10 +134,13 @@ test("DRAFT: the reply and every step come back, NOTHING is sent, memory is not 
   assert.equal(r.nguonTraLoi, "agent");
   assert.equal(r.choPhepTuGui, false, "suggest mode: a person sends");
   assert.doesNotMatch(r.tinKhach, /0912345678/, "the customer's phone never comes back in the trace");
-  assert.deepEqual(r.dauVet.map((s) => s.loai), ["doc", "doc", "cong-cu", "quyet-dinh"]);
-  assert.match(r.dauVet[2]!.chiTiet, /Boston 13[\s\S]*JP9252/, "the tool step shows what was asked and what came back");
+  // The same pipeline as the live door: the thread, the router's decision, the shop's knowledge, the tool, the verdict.
+  assert.deepEqual(r.dauVet.map((s) => s.loai), ["doc", "quyet-dinh", "doc", "cong-cu", "quyet-dinh", "quyet-dinh"], "…and what would go WITH the reply (Giai đoạn 7)");
+  assert.match(r.dauVet[5]!.chiTiet, /landing chen cau chao/, "the opening reply carries the landing's greeting");
+  assert.match(r.dauVet[1]!.chiTiet, /agent_draft \(ask_size_needs_catalog\)/);
+  assert.match(r.dauVet[3]!.chiTiet, /Boston 13[\s\S]*JP9252/, "the tool step shows what was asked and what came back");
   assert.ok(!landing.calls.some((c) => c.path === "/api/hop-thu/gui"), "a draft is never sent");
-  assert.ok(!landing.calls.some((c) => c.path.startsWith("/api/bo-nao/tri-nho/")), "the agent path does not touch memory");
+  assert.ok(!landing.calls.some((c) => c.path.startsWith("/api/bo-nao/tri-nho/") && c.body !== null), "memory is read for the ground of the turn, never written by a draft");
   const findCall = landing.calls.find((c) => c.body?.["ten"] === "catalog.find")!;
   assert.equal(findCall.body!["input"]["chi_hang_san"], true, "partner goods paused: the finder is told in-stock only");
   const system = model.seen[0]![0]!.content;
@@ -167,6 +171,15 @@ test("DRAFT modes: an AUTOMATIC request for a conversation that is off is skippe
   const handoff = await refund.desk.draft({ tenant: "toprun", maHoiThoai: "facebook:k1", kenh: "facebook", cheDo: "auto", nguon: "nguoi" });
   assert.equal(handoff.ok && handoff.canNguoi, true);
   assert.equal(handoff.ok && handoff.traLoi, "");
+  assert.equal(handoff.ok && handoff.hanhDong, "human_handoff");
+  assert.ok(!refund.landing.calls.some((c) => c.path === "/api/hop-thu/can-nguoi"), "a draft never calls a person");
+  // A greeting is the router's script: no model, a sentence the person can send as is.
+  const greet = await setup([{ chieu: "den", boi: "khach", chu: "chào shop", soAnh: 0, luc: "2026-09-17T02:59:00.000Z" }], scriptedModel(["{\"reply\":\"x\"}"]));
+  const scripted = await greet.desk.draft({ tenant: "toprun", maHoiThoai: "facebook:k1", kenh: "facebook", cheDo: "auto", nguon: "nguoi" });
+  assert.equal(scripted.ok && scripted.traLoi, "Dạ em nghe ạ, bác đang tìm mẫu nào để em hỗ trợ ạ?");
+  assert.equal(scripted.ok && scripted.nguonTraLoi, "may-luat");
+  assert.equal(scripted.ok && scripted.hanhDong, "script_reply");
+  assert.ok(!greet.landing.calls.some((c) => c.path === "/api/hop-thu/gui" || c.path === "/api/hop-thu/can-nguoi"));
 });
 
 test("readOnlyTools: a tool that writes is refused even when the landing opens it", async () => {
@@ -197,6 +210,18 @@ test("SANDBOX: a made-up conversation, throwaway memory, never sent, ledger row 
   assert.match(model.seen[0]![1]!.content, /KHACH: shop ơi[\s\S]*PAGE \(nguoi truc\): dạ em nghe[\s\S]*KHACH: tìm giày chạy 42/);
   assert.ok(!landing.calls.some((c) => c.path === "/api/hop-thu/gui" || c.body?.["ten"] === "conversation.recent"));
   assert.equal(usage.rows("toprun", 0, 1e14)[0]!.channel, "demo");
+});
+
+test("WEB ADVISOR: the same machinery for a visitor on the shop's site — own ledger row, still sends nothing", async () => {
+  const model = scriptedModel(["{\"reply\":\"Dạ mẫu này bên em còn size 42 ạ.\"}"]);
+  const { desk, landing, usage } = await setup([], model);
+  const r = await desk.sandbox({ tenant: "toprun", lichSu: [], chu: "còn size 42 không shop", mucDich: "web" });
+  assert.equal(r.ok && r.traLoi, "Dạ mẫu này bên em còn size 42 ạ.");
+  // Nothing is sent, and no real conversation is read: a website visitor has none.
+  assert.ok(!landing.calls.some((c) => c.path === "/api/hop-thu/gui" || c.body?.["ten"] === "conversation.recent"));
+  const row = usage.rows("toprun", 0, 1e14)[0]!;
+  assert.equal(row.channel, "web", "the token screen must be able to tell web traffic from Demo AI");
+  assert.equal(row.agent, "web_advisor");
 });
 
 test("ANALYZE: personal data is stripped once more before the model sees it; output is cleaned; no model = 503", async () => {
@@ -294,6 +319,37 @@ test("TOKEN LEDGER over the door: a shop sees ONLY its own rows; sums per day / 
   assert.equal(bad.status, 400);
   const stranger = await ask("POST", "/ai/token", {}, "ma-la");
   assert.equal(stranger.status, 401);
+});
+
+test("REPORTED TOKENS (/ai/ghi-token): a scan the landing paid for itself lands in the shop's book; only the landing's own agents; the gateway's usage block is read here", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "xeon-ghi-token-"));
+  const { ask, tokenOne, tokenTwo } = await setup([], scriptedModel([]), { dataDirectory: dir });
+
+  const written = await ask("POST", "/ai/ghi-token", {
+    viec: "tag_scan", kenh: "kho", maHoiThoai: "quet-tem:dt1", model: "ag/gemini-3.7-flash-low", ok: true,
+    // The gateway's own block, verbatim: reasoning OUTSIDE completion, as only Xeon knows to read.
+    soLieu: { prompt_tokens: 2000, completion_tokens: 40, reasoning_tokens: 600 }
+  }, tokenOne);
+  assert.equal(written.status, 200, JSON.stringify(written.body));
+  assert.equal(written.body["daGhi"], true);
+
+  const failed = await ask("POST", "/ai/ghi-token", { viec: "tag_scan", model: "ag/gemini-3.7-flash-low", ok: false, loi: "HTTP 500" }, tokenOne);
+  assert.equal(failed.status, 200, JSON.stringify(failed.body));
+
+  const book = await ask("POST", "/ai/token", { soNgay: 7 }, tokenOne);
+  const s = book.body["soToken"];
+  assert.equal(s.totals.calls, 2, "both the good scan and the one the gateway charged for but botched");
+  assert.equal(s.totals.failedCalls, 1, "a scan that came back wrong is still money spent");
+  assert.equal(s.totals.outputTokens, 640, "reasoning counted outside completion, as this gateway reports it");
+  assert.deepEqual(s.byGroup.map((g: Body) => g.group), ["kho"], "label scans read as warehouse work, not as answering customers");
+
+  const forged = await ask("POST", "/ai/ghi-token", { viec: "bot_l2", model: "claude-opus-5", ok: true }, tokenOne);
+  assert.equal(forged.status, 400, "a landing cannot write rows that look like the bot answering customers");
+  const noModel = await ask("POST", "/ai/ghi-token", { viec: "tag_scan", ok: true }, tokenOne);
+  assert.equal(noModel.status, 400);
+  const stranger = await ask("POST", "/ai/ghi-token", { viec: "tag_scan", model: "x", ok: true }, "ma-la");
+  assert.equal(stranger.status, 401);
+  assert.equal((await ask("POST", "/ai/token", { soNgay: 7 }, tokenTwo)).body["soToken"].totals.calls, 0, "another shop's book is untouched");
 });
 
 test("renderKnowledge: nothing = empty; a huge library is capped", () => {

@@ -4,6 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import "./industries.mts";
 import {
   BrainService, HealthController, InboundController, LicenseController, LicenseLedger, LicenseService, ManualClock,
   MemoryLogger, createXeonServer, generateSigningKey, verifyTicket, type InboundMessageBody, type InboundResult

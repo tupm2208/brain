@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as B from "@sp/brain";
 import type { CatalogItem } from "@sp/contract";
-import { TENANT, ask, clonePack, fakePorts, row } from "./fixtures.mts";
+import { ask, clonePack, fakePorts, row, runningShoesPack, TENANT } from "./fixtures.mts";
 
 /** A catalog item with string ids; the cast stands in for the branded ids the real loader would carry. */
 const item = (over: Record<string, unknown> = {}): CatalogItem => ({
@@ -18,10 +18,10 @@ const item = (over: Record<string, unknown> = {}): CatalogItem => ({
 
 test("catalog: loading passes the DECISION 3 guard on the RECEIVING end; a phone number rejects the WHOLE load and the old catalog stays", async () => {
   const catalog = B.createInMemoryCatalog();
-  catalog.load(TENANT, B.runningShoesPack, [item()]);
+  catalog.load(TENANT, runningShoesPack, [item()]);
   assert.equal(await catalog.size(TENANT), 1);
   assert.throws(
-    () => catalog.load(TENANT, B.runningShoesPack, [item({ id: "i2", code: "OK" }),
+    () => catalog.load(TENANT, runningShoesPack, [item({ id: "i2", code: "OK" }),
       item({ id: "i3", code: "X", attributes: { note: "Chị Lan 0968411655" } })]),
     /QUYET DINH 3/
   );
@@ -31,15 +31,15 @@ test("catalog: loading passes the DECISION 3 guard on the RECEIVING end; a phone
 
 test("catalog: another merchant's item, or two items with one id, rejects the whole load", () => {
   const catalog = B.createInMemoryCatalog();
-  assert.throws(() => catalog.load(TENANT, B.runningShoesPack, [item(), item({ id: "i2", tenant: "shopB" })]), /shop "shopB"/);
-  assert.throws(() => catalog.load(TENANT, B.runningShoesPack, [item(), item({ code: "KHAC" })]), /cung ma "i1"/);
+  assert.throws(() => catalog.load(TENANT, runningShoesPack, [item(), item({ id: "i2", tenant: "shopB" })]), /shop "shopB"/);
+  assert.throws(() => catalog.load(TENANT, runningShoesPack, [item(), item({ code: "KHAC" })]), /cung ma "i1"/);
   assert.equal(catalog.fillerWordCollisions(TENANT).length, 0);
 });
 
 test("catalog: filler collisions are REPORTED and logged, the load still succeeds (the fault is in the pack, not the merchant)", async () => {
   const lines: string[] = [];
   const catalog = B.createInMemoryCatalog({ log: (line) => lines.push(line) });
-  const bad = clonePack(B.runningShoesPack);
+  const bad = clonePack(runningShoesPack);
   bad.lexicon.fillerWords = [...bad.lexicon.fillerWords!, "moi"];
   const result = catalog.load(TENANT, bad, [item(), item({ id: "i2", code: "GM1", name: "Giày mọi da bò" })]);
   assert.deepEqual(result, { itemCount: 2, fillerWordCollisions: ["moi"] });
@@ -48,7 +48,7 @@ test("catalog: filler collisions are REPORTED and logged, the load still succeed
   assert.match(lines[0]!, /\[muc-luc\] t1: .*"giay-chay".*: moi/);
   assert.equal(await catalog.size(TENANT), 2, "One item name cost the merchant the whole catalog.");
   // Reload with the fixed pack: no collisions, and the old list is gone.
-  const clean = catalog.load(TENANT, B.runningShoesPack, [item({ id: "i2", code: "GM1", name: "Giày mọi da bò" })]);
+  const clean = catalog.load(TENANT, runningShoesPack, [item({ id: "i2", code: "GM1", name: "Giày mọi da bò" })]);
   assert.deepEqual(clean, { itemCount: 1, fillerWordCollisions: [] });
   assert.deepEqual(catalog.fillerWordCollisions(TENANT), []);
   assert.equal(lines.length, 1);
@@ -56,13 +56,13 @@ test("catalog: filler collisions are REPORTED and logged, the load still succeed
 
 test("catalog: search ranks by coverage, ties keep warehouse order, respects the limit, and never crosses merchants", async () => {
   const catalog = B.createInMemoryCatalog();
-  catalog.load(TENANT, B.runningShoesPack, [
+  catalog.load(TENANT, runningShoesPack, [
     item({ id: "i1", code: "A1", name: "Pegasus 41" }),
     item({ id: "i2", code: "A2", name: "Pegasus 40" }),
     item({ id: "i3", code: "A3", name: "Adizero Boston 13", variants: [] }),
     item({ id: "i4", code: "A4", name: "Pegasus 41 Premium" })
   ]);
-  catalog.load("shopB" as never, B.runningShoesPack, [item({ tenant: "shopB", id: "i1", code: "B1", name: "Pegasus 41" })]);
+  catalog.load("shopB" as never, runningShoesPack, [item({ tenant: "shopB", id: "i1", code: "B1", name: "Pegasus 41" })]);
   const r = await catalog.search(TENANT, "pegasus 41 con khong", 10);
   assert.deepEqual(r.map((x) => x.code), ["A1", "A4", "A2"], "A1 full match; A4 and A2 partial, A4 first because 2/3 > 1/2.");
   assert.deepEqual((await catalog.search(TENANT, "pegasus", 10)).map((x) => x.code), ["A1", "A2", "A4"], "Ties keep warehouse order.");
@@ -83,14 +83,14 @@ test("catalog: search ranks by coverage, ties keep warehouse order, respects the
   assert.equal(await catalog.size(TENANT), 0);
   assert.equal(await catalog.size("shopB" as never), 1);
   // Search by CODE (merchants type codes every day), and `url` travels with the compact form.
-  catalog.load(TENANT, B.runningShoesPack, [item({ id: "i1", code: "A1", name: "Pegasus 41", url: "https://shop/a1" }),
+  catalog.load(TENANT, runningShoesPack, [item({ id: "i1", code: "A1", name: "Pegasus 41", url: "https://shop/a1" }),
     item({ id: "i2", code: "A2", name: "Pegasus 40" })]);
   const byCode = await catalog.search(TENANT, "con a2 khong", 5);
   assert.deepEqual(byCode.map((x) => x.code), ["A2"]);
   assert.equal((await catalog.search(TENANT, "pegasus 41", 1))[0]!.url, "https://shop/a1");
   // Coverage is measured on the ITEM NAME, not the query: a short fully covered name outranks a
   // long partially covered one, the same direction as the merchant server's search.
-  catalog.load(TENANT, B.runningShoesPack, [item({ id: "i1", code: "D1", name: "Pegasus 41 Premium Gore Tex" }),
+  catalog.load(TENANT, runningShoesPack, [item({ id: "i1", code: "D1", name: "Pegasus 41 Premium Gore Tex" }),
     item({ id: "i2", code: "D2", name: "Pegasus" })]);
   assert.deepEqual((await catalog.search(TENANT, "pegasus 41 con khong", 5)).map((x) => x.code), ["D2", "D1"],
     "D2 (2 tokens, 1/2 covered) must come before D1 (6 tokens, 2/6 covered).");
@@ -98,7 +98,7 @@ test("catalog: search ranks by coverage, ties keep warehouse order, respects the
 
 test("catalog: the engine recognises items through the REAL catalog, not only the test fake", async () => {
   const catalog = B.createInMemoryCatalog();
-  catalog.load(TENANT, B.runningShoesPack, [item(), item({ id: "i2", code: "PG41", name: "Pegasus 41" })]);
+  catalog.load(TENANT, runningShoesPack, [item(), item({ id: "i2", code: "PG41", name: "Pegasus 41" })]);
   const f = fakePorts({ rows: [row("42", 3)] });
   f.ports.catalog = catalog;
   const r = await ask(f.ports, "adizero boston 13 con size 42 khong");

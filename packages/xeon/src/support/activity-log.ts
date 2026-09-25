@@ -48,36 +48,108 @@ export interface ActivityEntry {
   tomTat?: string;
   /** Truncated body / payload for deeper debugging. */
   chiTiet?: unknown;
+  /** MÃ VẾT: the same id on both sides of a call, so one incident is one search (21/09/2026). */
+  vet?: string;
 }
 
 export const DEFAULT_CAPACITY = 500;
 /** Individual `chiTiet` values are truncated to this many characters. */
 export const DETAIL_MAX_CHARS = 2_000;
+/**
+ * Entries ONE merchant may record per minute. Past it its entries are dropped and a single line
+ * says how many — one landing in a retry storm must not spend the whole buffer (21/09/2026).
+ */
+export const DEFAULT_SHOP_RATE_PER_MINUTE = 240;
+/** Entries with no merchant (health, admin, unknown routes) share this bucket. */
+const NO_SHOP = "\u0000khong-shop";
+const MINUTE_MS = 60_000;
+
+interface ShopRate {
+  windowStart: number;
+  count: number;
+  dropped: number;
+}
 
 export class ActivityLog {
   private readonly buffer: ActivityEntry[] = [];
   private readonly capacity: number;
   private readonly clock: Clock;
+  private readonly ratePerMinute: number;
+  /** How many entries each merchant currently holds in the buffer — used for fair eviction. */
+  private readonly held = new Map<string, number>();
+  private readonly rates = new Map<string, ShopRate>();
   private seq = 0;
 
-  constructor(options: { capacity?: number; clock: Clock }) {
+  constructor(options: { capacity?: number; clock: Clock; ratePerMinute?: number }) {
     this.capacity = options.capacity ?? DEFAULT_CAPACITY;
     this.clock = options.clock;
+    this.ratePerMinute = options.ratePerMinute ?? DEFAULT_SHOP_RATE_PER_MINUTE;
   }
 
-  /** Records one event. Returns the entry (useful for setting `status` / `ms` after the fact). */
-  add(fields: Omit<ActivityEntry, "stt" | "luc">): ActivityEntry {
+  /**
+   * Records one event. Returns the entry, or `null` when the merchant is over its rate and the
+   * entry was dropped.
+   *
+   * ONE XEON SERVES MANY MERCHANTS, so the buffer is shared but NOT first-come-first-served: a
+   * merchant having a bad hour used to push every other merchant's evidence out within seconds.
+   * Two guards now: a per-merchant rate, and eviction that takes from whoever holds the most.
+   */
+  add(fields: Omit<ActivityEntry, "stt" | "luc">): ActivityEntry | null {
+    const now = this.clock.now();
+    const key = fields.shop ?? NO_SHOP;
+    const dropped = this.overRate(key, now.getTime());
+    if (dropped !== null) {
+      // Say it once per window, then stay quiet: the note must not itself become the flood.
+      if (dropped === 1) this.push({ stt: ++this.seq, luc: now.toISOString(), huong: "internal", loai: "http", ...(fields.shop !== undefined ? { shop: fields.shop } : {}), tomTat: `vượt mức ${this.ratePerMinute} mục/phút — đang bỏ bớt mục của shop này` });
+      return null;
+    }
     const entry: ActivityEntry = {
       stt: ++this.seq,
-      luc: this.clock.now().toISOString(),
+      luc: now.toISOString(),
       ...fields,
     };
     if (entry.chiTiet !== undefined) {
       entry.chiTiet = truncateDetail(entry.chiTiet);
     }
-    this.buffer.push(entry);
-    if (this.buffer.length > this.capacity) this.buffer.shift();
+    this.push(entry);
     return entry;
+  }
+
+  /** Whether this merchant has spent its minute. Returns the running dropped count, or `null`. */
+  private overRate(key: string, nowMs: number): number | null {
+    const rate = this.rates.get(key);
+    if (rate === undefined || nowMs - rate.windowStart >= MINUTE_MS) {
+      this.rates.set(key, { windowStart: nowMs, count: 1, dropped: 0 });
+      return null;
+    }
+    if (rate.count < this.ratePerMinute) { rate.count += 1; return null; }
+    rate.dropped += 1;
+    return rate.dropped;
+  }
+
+  /** Appends, then makes room by taking from whoever currently holds the most. */
+  private push(entry: ActivityEntry): void {
+    this.buffer.push(entry);
+    this.held.set(entry.shop ?? NO_SHOP, (this.held.get(entry.shop ?? NO_SHOP) ?? 0) + 1);
+    while (this.buffer.length > this.capacity) this.evictFromLargest();
+  }
+
+  /**
+   * Drops the oldest entry of the merchant holding the most of the buffer — NOT the globally
+   * oldest. With many landings, plain FIFO means the noisiest shop silently erases every other
+   * shop's evidence, which is the opposite of what the buffer is for.
+   */
+  private evictFromLargest(): void {
+    let biggest = NO_SHOP;
+    let most = -1;
+    for (const [key, count] of this.held) if (count > most) { most = count; biggest = key; }
+    const at = this.buffer.findIndex((e) => (e.shop ?? NO_SHOP) === biggest);
+    const index = at < 0 ? 0 : at;
+    const [gone] = this.buffer.splice(index, 1);
+    if (gone === undefined) return;
+    const key = gone.shop ?? NO_SHOP;
+    const left = (this.held.get(key) ?? 1) - 1;
+    if (left <= 0) this.held.delete(key); else this.held.set(key, left);
   }
 
   /**
@@ -86,8 +158,9 @@ export class ActivityLog {
    * @param n      How many entries (default: all).
    * @param loai   Comma-separated kinds to include (default: all).
    * @param since  Only entries with `stt` strictly greater than this.
+   * @param shop   Only one merchant's entries.
    */
-  recent(options: { n?: number; loai?: string; since?: number } = {}): ActivityEntry[] {
+  recent(options: { n?: number; loai?: string; since?: number; shop?: string } = {}): ActivityEntry[] {
     let list = [...this.buffer];
     if (options.since !== undefined && options.since > 0) {
       list = list.filter((e) => e.stt > options.since!);
@@ -96,9 +169,17 @@ export class ActivityLog {
       const kinds = new Set(options.loai.split(",").map((s) => s.trim()).filter(Boolean));
       if (kinds.size > 0) list = list.filter((e) => kinds.has(e.loai));
     }
+    if (options.shop) list = list.filter((e) => e.shop === options.shop);
     list.reverse();
     if (options.n !== undefined && options.n > 0) list = list.slice(0, options.n);
     return list;
+  }
+
+  /** How much of the buffer each merchant holds, biggest first — the fleet view's raw material. */
+  holdings(): { shop: string; muc: number }[] {
+    return [...this.held.entries()]
+      .map(([shop, muc]) => ({ shop: shop === NO_SHOP ? "" : shop, muc }))
+      .sort((a, b) => b.muc - a.muc);
   }
 
   /** Total events recorded since start (including those that rolled out of the buffer). */

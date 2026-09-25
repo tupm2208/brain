@@ -1,0 +1,22 @@
+[
+  { "ma": "kb2-01", "mucTieu": "Hỏi giá mã cụ thể của toprun.site → giá từ tra_kho, điều kiện theo kho", "lichSu": [], "chu": "cho mình hỏi giá đôi KI0788 size 36 với" },
+  { "ma": "kb2-02", "mucTieu": "Hàng sẵn Dasbui → nói giao ngay, COD (chính sách kho sẵn)", "lichSu": [], "chu": "KI0788 size 36 có sẵn lấy ngay được không hay phải đặt" },
+  { "ma": "kb2-03", "mucTieu": "Chạy HM pace 4:30 → dòng tempo/carbon, kèm lý do, không gợi dòng êm", "lichSu": [], "chu": "mình chạy half marathon pace 4:30, size 42, cần đôi đua, tầm 3-4 triệu" },
+  { "ma": "kb2-04", "mucTieu": "Nữ tennis size 38 → tra theo môn, luật size giày sân", "lichSu": [], "chu": "em nữ chơi tennis, đi giày thể thao size 38, shop có mẫu nào không" },
+  { "ma": "kb2-05", "mucTieu": "Khách nói size 42,5 → hiểu 42 2/3 hệ adidas", "lichSu": [{ "ai": "khach", "chu": "còn adizero boston 12 không" }, { "ai": "shop", "chu": "Dạ Boston 12 bên em đang đặt được ạ, bác đi size bao nhiêu?" }], "chu": "42,5 nhé" },
+  { "ma": "kb2-06", "mucTieu": "Khách gửi tên + SĐT + địa chỉ để chốt → không tự gõ đơn, gửi phiếu", "lichSu": [{ "ai": "khach", "chu": "lấy KI0788 size 36" }, { "ai": "shop", "chu": "Dạ mẫu này hàng sẵn 1.290.000đ ạ" }], "chu": "Nguyễn Văn A, 0912345678, 12 Đội Cấn Ba Đình Hà Nội, gửi cho mình nhé" },
+  { "ma": "kb2-07", "mucTieu": "Đổi size đơn đã đặt, kho chưa mua → theo hồ sơ: đổi được, kiểm tồn, báo người trực", "lichSu": [{ "ai": "shop", "chu": "Dạ em đã nhận đơn Boston 13 size 42 của bác, hàng order 3–7 ngày ạ" }], "chu": "cho mình đổi sang size 43 được không, mình đặt hôm qua" },
+  { "ma": "kb2-08", "mucTieu": "Bảo hành → ô bảo hành đã khai (hàng order không bảo hành)", "lichSu": [], "chu": "giày mua bên shop có bảo hành không" },
+  { "ma": "kb2-09", "mucTieu": "Chính hãng không → không nói 'cam kết chính hãng 100%' (câu cấm), trả lời có nguồn", "lichSu": [], "chu": "hàng bên shop chính hãng không hay fake vậy" },
+  { "ma": "kb2-10", "mucTieu": "Mua 2 đôi xin giảm 10% → không giảm theo hồ sơ", "lichSu": [], "chu": "mình lấy 2 đôi thì giảm 10% được không" },
+  { "ma": "kb2-11", "mucTieu": "Viết không dấu, tiếng lóng → vẫn hiểu, tra kho", "lichSu": [], "chu": "sop oi cn samba og k, sz 41 nam" },
+  { "ma": "kb2-12", "mucTieu": "Tất → bảng size tất, tra kho", "lichSu": [], "chu": "có tất chạy bộ không, mình đi giày 43" },
+  { "ma": "kb2-13", "mucTieu": "So sánh 2 mẫu → theo nhu cầu, không bịa thông số", "lichSu": [], "chu": "boston 12 với adizero sl khác nhau chỗ nào, mình chạy 10k pace 6" },
+  { "ma": "kb2-14", "mucTieu": "Hỏi màu khác của mẫu → tra kho, nói đúng cái có", "lichSu": [{ "ai": "khach", "chu": "samba og size 42" }, { "ai": "shop", "chu": "Dạ Samba OG size 42 bên em đang đặt được ạ" }], "chu": "có màu đen không hay chỉ trắng" },
+  { "ma": "kb2-15", "mucTieu": "Khách bực vì chậm → xin lỗi ngắn, tiếp tục việc, không kể lể", "lichSu": [{ "ai": "khach", "chu": "còn ultraboost 5 size 42 không" }], "chu": "trả lời chậm quá, có bán không thì bảo" },
+  { "ma": "kb2-16", "mucTieu": "Tiếng Anh → trả lời được (tiếng Việt hoặc Anh), vẫn tra kho", "lichSu": [], "chu": "hi, do you have adizero evo sl size 42?" },
+  { "ma": "kb2-17", "mucTieu": "Giờ mở cửa / địa chỉ shop (chưa khai) → không bịa, gọi người", "lichSu": [], "chu": "shop ở đâu, mấy giờ mở cửa để mình qua thử" },
+  { "ma": "kb2-18", "mucTieu": "Giày trẻ em → tra kho, bảng size tất K không dùng", "lichSu": [], "chu": "có giày cho bé 8 tuổi không" },
+  { "ma": "kb2-19", "mucTieu": "Chùm tin: hỏi mẫu rồi bồi thêm size → gộp ngữ cảnh", "lichSu": [{ "ai": "khach", "chu": "shop ơi" }, { "ai": "khach", "chu": "còn supernova rise không" }], "chu": "size 41 1/3 nhé" },
+  { "ma": "kb2-20", "mucTieu": "Xin số tài khoản → gọi tai_khoan_shop, đọc đúng số", "lichSu": [{ "ai": "shop", "chu": "Dạ hàng order bác cọc 20% giúp em ạ" }], "chu": "gửi mình số tài khoản để chuyển cọc" }
+]

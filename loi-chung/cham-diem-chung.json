@@ -1,0 +1,60 @@
+{
+  "_doc": "TANG 1 — cham diem ung vien catalog + cong 'chua ro mau thi hoi lai' + su that ton kho (chep Sales Desk scoreProduct / retrieveCatalog / uncertainProductReason / buildStockFacts, 25/09/2026). Phan CHUNG moi nganh: trong so diem, nguong giu ung vien, luat doc nhan size, cau chu su that ton kho. Nganh ghi de tung khoa trong nganh/<id>/cham-diem.json (danh sach noi them, chu/so/khoa ghi de).",
+  "weights": {
+    "_doc": "Diem cong khi khop tung chieu. Chep nguyen so cua Desk: ma dung +90 (mien moi cong loai), ma mot phan +55, dong +45, doi so +30 (thieu doi so -15), hang +25, loai hang +10, ten y het +80, ten nam tron trong cau khach +55, cau khach nam trong ten +55, nhieu tu trung +40, mot tu hiem +22 / mot tu thuong +12, co size hoi +16 (tu van +24), mau +14, nhu cau +18, kho nha +8 / doi tac +1.",
+    "codeExact": 90,
+    "codePartial": 55,
+    "line": 45,
+    "version": 30,
+    "versionMissing": -15,
+    "brand": 25,
+    "type": 10,
+    "nameExact": 80,
+    "nameWithin": 55,
+    "nameContains": 55,
+    "nameStrong": 40,
+    "namePartialRare": 22,
+    "namePartial": 12,
+    "size": 16,
+    "sizeAdvice": 24,
+    "color": 14,
+    "need": 18,
+    "own": 8,
+    "partner": 1
+  },
+  "retrieve": {
+    "_doc": "Giu ung vien co diem >= max(minScore, diemCaoNhat - band); toi da `limit` muc sau khi gop ma trung giua cac kho.",
+    "minScore": 25,
+    "band": 8,
+    "limit": 5
+  },
+  "skuLikePattern": "(?:[a-z]{1,3}\\d{4,}|\\d{4,}[a-z]|\\d+[a-z]{1,3}\\d{3,}|\\d{2,}-\\d{2,})",
+  "sizes": {
+    "_doc": "Doc nhan size kho: bo tien to he A cua quan ao ('A/88' = '88', 'A/XL' = 'XL'), XXL = 2XL, so chenh <= tolerance van coi la cung nac (adidas 42 2/3 vs 42.5), so tran >= apparelMin la size quan ao chu khong phai giay.",
+    "apparelPrefix": "^A\\s*\\/?\\s*",
+    "letterSize": "^([0-9]?X{0,4}[SML]|[SML]|OS)$",
+    "tolerance": 0.34,
+    "apparelMin": 60
+  },
+  "uncertain": {
+    "_doc": "Cong 'chua ro mau': y dinh nao la HOI VE MOT MON (phai biet mon), y dinh nao dang NOI VE SAN PHAM (ap cong lech loai hang), im lang bao lau thi tin chi co emoji la 'lac long', anh trong bao nhieu phut con la bang chung.",
+    "askProductIntents": ["place_order", "ask_size", "ask_price", "ask_product_confirmation"],
+    "productTalkIntents": ["product_advice", "send_image", "unknown"],
+    "coldHours": 6,
+    "imageLookbackMinutes": 15,
+    "specificItem": "vua (gioi thieu|dang|post|quang cao|len)|trong (clip|video|bai|anh|hinh|story|tin)|(anh|hinh) (nay|tren|vua|em gui)",
+    "specificItemDiacritic": "(^|[^\\p{L}])(này|đó|kia|ấy)([^\\p{L}]|$)",
+    "specificItemNoun": "\\b(doi|mau|cai|con|chiec|dep|giay|ao|quan|mon|the|ban|em|bo)\\s+(nay|kia|ay)\\b|\\b(doi|cai|con|chiec|dep|giay|ao|quan|mon|the|ban|em)\\s+do\\b",
+    "categoryQuestion": "\\b(co|con)\\s+(ban\\s+)?[^?]{0,40}\\b(khong|ko|k)\\b",
+    "sizeHint": "\\b(size|sz)\\b|\\bso\\s*\\d|\\b\\d{2}([.,]\\d)?\\b|\\b(xs|xl|xxl|2xl|3xl)\\b",
+    "genericItemTokens": ["size", "so", "doi", "mau", "cai", "chiec", "san", "hang", "the", "thao", "moi", "cu", "shop", "ben", "minh", "em", "cho", "co", "khong", "ko", "gia", "bao", "nhieu", "re", "dat", "tot", "nam", "nu", "unisex"]
+  },
+  "texts": {
+    "_doc": "Cau chu trong su that ton kho (doc cho mo hinh, khong gui khach).",
+    "otherKho": "{kho}: {ton} size, giá {gia}",
+    "inStock": "còn",
+    "outOfStock": "hết",
+    "houseKho": "kho nhà",
+    "partnerKho": "kho đối tác"
+  }
+}

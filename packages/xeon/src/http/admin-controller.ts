@@ -27,12 +27,20 @@ import type { LicenseService } from "../license/license-service";
 import { CSRF_HEADER, CSRF_HEADER_VALUE, PATHS } from "../protocol";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
+import type { LibraryStatus, ProductLibrary } from "../product-library/product-library";
+import type { ImageJobQueue } from "../product-library/image-job-queue";
 import { AdminSessionManager } from "./admin-session";
 import { sendJson, type RequestContext, type RequestController } from "./http-utils";
 import { SlidingWindowRateLimiter } from "./rate-limiter";
 import type { StaticPageStore } from "./static-pages";
 
 export const MIN_ADMIN_PASSWORD_LENGTH = 12;
+
+/** An industry as rendered in the "Cấp key mới" dropdown: one entry per folder in `nganh/`. */
+export interface IndustryChoice {
+  id: string;
+  ten: string;
+}
 
 /** A module as rendered in the checkbox list. */
 export interface ModuleChoice {
@@ -48,8 +56,15 @@ export interface AdminControllerOptions {
   sessionSecret?: string | undefined;
   https?: boolean | undefined;
   moduleChoices: ModuleChoice[];
+  /**
+   * The industries on offer, read from disk at start-up. The page used to carry the list in its
+   * HTML, so an industry added as JSON could not be sold until somebody edited the page.
+   */
+  industryChoices?: IndustryChoice[] | undefined;
   clock: Clock;
   logger: Logger;
+  productLibrary?: ProductLibrary | undefined;
+  imageJobs?: ImageJobQueue | undefined;
 }
 
 /** Handles `/quan-tri/*` (administrator) and `/may/*` (key owner). */
@@ -59,10 +74,13 @@ export class AdminController implements RequestController {
   private readonly adminPassword: string;
   private readonly adminEnabled: boolean;
   private readonly moduleChoices: ModuleChoice[];
+  private readonly industryChoices: IndustryChoice[];
   private readonly logger: Logger;
   private readonly sessions: AdminSessionManager;
   private readonly loginLimiter: SlidingWindowRateLimiter;
   private readonly machinePageLimiter: SlidingWindowRateLimiter;
+  private readonly productLibrary: ProductLibrary | undefined;
+  private readonly imageJobs: ImageJobQueue | undefined;
 
   constructor(options: AdminControllerOptions) {
     this.license = options.license;
@@ -70,7 +88,10 @@ export class AdminController implements RequestController {
     this.adminPassword = String(options.adminPassword ?? "");
     this.adminEnabled = this.adminPassword.length >= MIN_ADMIN_PASSWORD_LENGTH;
     this.moduleChoices = options.moduleChoices;
+    this.industryChoices = options.industryChoices ?? [];
     this.logger = options.logger;
+    this.productLibrary = options.productLibrary;
+    this.imageJobs = options.imageJobs;
     if (!this.adminEnabled) this.logger.warn("[quan-tri] XEON_ADMIN_MAT_KHAU thieu hoac ngan hon 12 ky tu — trang quan tri DANG TAT.");
     this.sessions = new AdminSessionManager({ secret: options.sessionSecret, clock: options.clock, secure: options.https, cookiePath: PATHS.admin });
     this.loginLimiter = new SlidingWindowRateLimiter({ limit: 10, windowMs: 15 * 60 * 1000, clock: options.clock });
@@ -96,6 +117,7 @@ export class AdminController implements RequestController {
         return true;
       }
       if (ctx.path === `${base}/api/manh`) { sendJson(res, 200, { ok: true, manh: this.moduleChoices }); return true; }
+      if (ctx.path === `${base}/api/nganh`) { sendJson(res, 200, { ok: true, nganh: this.industryChoices }); return true; }
       if (ctx.path === PATHS.adminLog) return this.handleLog(res, req);
     }
     if (!ctx.path.startsWith(`${base}/api/`)) return false;
@@ -151,6 +173,23 @@ export class AdminController implements RequestController {
           sendJson(res, 200, await this.license.removeMachine({ key: body["key"], mayId: body["mayId"] })); return true;
         case `${base}/api/key/may-truc`:
           sendJson(res, 200, await this.license.setDutyMachine({ key: body["key"], mayId: body["mayId"] })); return true;
+        case `${base}/api/thu-vien/danh-sach`: {
+          if (!this.productLibrary) { sendJson(res, 503, { ok: false, error: "thu_vien_chua_bat" }); return true; }
+          const status = ["verified", "needs_review", "not_found"].includes(String(body["trangThai"])) ? String(body["trangThai"]) as LibraryStatus : undefined;
+          sendJson(res, 200, { ok: true, sanPham: this.productLibrary.list(status) }); return true;
+        }
+        case `${base}/api/thu-vien/duyet`:
+          if (!this.productLibrary) { sendJson(res, 503, { ok: false, error: "thu_vien_chua_bat" }); return true; }
+          sendJson(res, 200, { ok: true, sanPham: this.productLibrary.approve(body["sanPham"], "xeon-admin") }); return true;
+        case `${base}/api/thu-vien/khong-tim-thay`:
+          if (!this.productLibrary) { sendJson(res, 503, { ok: false, error: "thu_vien_chua_bat" }); return true; }
+          sendJson(res, 200, { ok: true, sanPham: this.productLibrary.markNotFound(String(body["ma"] ?? "")) }); return true;
+        case `${base}/api/thu-vien/mau/ghi`:
+          if (!this.productLibrary) { sendJson(res, 503, { ok: false, error: "thu_vien_chua_bat" }); return true; }
+          sendJson(res, 200, { ok: true, mau: this.productLibrary.saveTemplate(body["mau"]) }); return true;
+        case `${base}/api/thu-vien/image-jobs`:
+          if (!this.imageJobs) { sendJson(res, 503, { ok: false, error: "worker_chua_bat" }); return true; }
+          sendJson(res, 200, { ok: true, jobs: this.imageJobs.list() }); return true;
         default:
           sendJson(res, 404, { ok: false, error: "khong_thay" }); return true;
       }

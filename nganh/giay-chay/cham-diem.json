@@ -1,0 +1,56 @@
+{
+  "_doc": "TANG 2 — phan DINH NGANH (giay chay) cua cham diem ung vien catalog: tu nhieu trong ten mau, tu chung khong dinh danh (air/pro/max), doi so de lan voi size (35-52), ten dong ngam dinh hang (adizero = adidas), luat phan loai hang tu ten (giay/dep/ao/quan/...), loai hang khong phai giay (hoi danh muc thi dan link thay vi hoi lai). Duoc GHEP vao loi-chung/cham-diem-chung.json.",
+  "noiseTokens": [
+    "mau", "tim", "muon", "dang", "ban", "nhe", "nha", "the", "thi", "sao", "giay", "nam", "nu", "hang", "doi", "shop", "bac", "size", "gia", "toi",
+    "tr", "tri", "trieu", "tam", "chay", "bo", "running", "hoi", "be", "thon", "vay", "con", "van", "chan", "vang", "nay", "oke", "okie", "chot",
+    "nau", "den", "trang", "xanh", "hong", "xam", "cam", "daily", "tempo", "race", "marathon", "tennis", "pickleball"
+  ],
+  "genericNameTokens": ["air", "pro", "max", "zoom", "run", "low", "mid", "high", "sl", "og", "next", "nature", "classic", "unisex", "giay", "shoes"],
+  "lineGenericTokens": ["pro", "air", "max", "zoom", "run", "low", "mid"],
+  "lineNoiseTokens": ["giay", "chay", "bo", "the", "thao", "nam", "nu", "unisex", "shoes", "shoe", "running", "run", "size", "mau", "ban", "m", "w", "men", "women"],
+  "ambiguousVersion": { "min": 35, "max": 52 },
+  "brandLineHints": {
+    "adidas": ["adizero", "ultraboost", "ultra boost", "supernova", "solarboost", "solar glide", "duramo", "samba", "gazelle", "campus", "superstar", "boston", "takumi", "prime x", "evo sl", "adistar", "terrex"],
+    "nike": ["pegasus", "vaporfly", "alphafly", "zoomx", "zoom fly", "invincible", "structure", "infinity", "air max", "air force", "jordan", "vomero", "streakfly", "winflo", "revolution"],
+    "asics": ["gel-", "gel ", "novablast", "magic speed", "metaspeed", "superblast", "cumulus", "nimbus", "kayano", "gt-2000", "gt 2000", "gt-1000", "noosa", "gelnimbus"],
+    "hoka": ["clifton", "bondi", "mach", "rincon", "arahi", "speedgoat", "rocket x", "cielo", "kawana", "skyward"],
+    "saucony": ["endorphin", "kinvara", "triumph", "guide", "ride", "peregrine", "hurricane"],
+    "new balance": ["fuelcell", "fuel cell", "rebel", "sc elite", "sc trainer", "more v", "880", "1080", "860"],
+    "mizuno": ["wave rider", "wave sky", "wave inspire", "wave rebellion", "neo vista"],
+    "brooks": ["ghost", "glycerin", "adrenaline gts", "hyperion", "launch"],
+    "puma": ["deviate", "velocity nitro", "magnify", "fast-r", "foreverrun"],
+    "on": ["cloudmonster", "cloudsurfer", "cloudflow", "cloudrunner", "cloudboom"]
+  },
+  "genderTokens": {
+    "_doc": "Nhan gioi trong ten mau kho ('ADIZERO BOSTON 13 M' / '... W'), de ban khac mau cung dong khong tron nam/nu.",
+    "M": "\\b(m|nam|men|man|mens)\\b",
+    "W": "\\b(w|nu|women|woman|womens)\\b"
+  },
+  "typeRules": {
+    "_doc": "Phan loai hang tu TEN (khong dau). Chi loai ung vien khi CHUNG MINH duoc no thuoc loai KHAC; ten im lang thi cho qua (cong dao nguoc — Desk Tru 2).",
+    "rules": [
+      { "kind": "dep", "patterns": ["\\bdep\\b", "\\b(slide|slides|sandal|sandals|clog|clogs|mule|thong)\\b", "adilette|flip ?flop|altaswim"] },
+      { "kind": "balo", "patterns": ["\\bba ?lo\\b", "\\b(backpack|bp)\\b"] },
+      { "kind": "tui", "patterns": ["\\btui\\b", "\\b(bag|duffel|tote|sacoche|pouch)\\b"] },
+      { "kind": "tat", "patterns": ["\\b(tat|vo)\\b", "\\b(sock|socks)\\b"] },
+      { "kind": "mu", "patterns": ["\\b(mu|non)\\b", "\\b(cap|hat|beanie|visor)\\b"] },
+      { "kind": "quan", "patterns": ["\\b(quan|vay|chan vay)\\b", "\\b(short|shorts|pant|pants|tight|tights|legging|leggings|jogger|joggers|skirt|jeans)\\b"] },
+      { "kind": "ao", "patterns": ["\\bao\\b", "\\b(tee|t-shirt|tank|jersey|shirt|hoodie|jacket|polo|sweatshirt|windbreaker|jkt|top)\\b"] },
+      { "kind": "giay", "patterns": ["\\bgiay\\b", "\\b(shoe|shoes|sneaker|sneakers|boot|boots|cleat|cleats)\\b"] }
+    ],
+    "aliases": {
+      "_doc": "Tu khach noi → loai hang chuan (khong dau).",
+      "giay": "giay", "sneaker": "giay", "shoes": "giay",
+      "dep": "dep", "slide": "dep", "sandal": "dep",
+      "ao": "ao", "ao gio": "ao", "ao khoac": "ao", "ao thun": "ao", "ao chay": "ao",
+      "quan": "quan", "quan dai": "quan", "quan short": "quan", "quan chay": "quan", "vay": "quan",
+      "balo": "balo", "ba lo": "balo", "tui": "tui", "tat": "tat", "vo": "tat", "mu": "mu", "non": "mu"
+    },
+    "nonPrimaryTypes": ["ao", "quan", "balo", "tui", "tat", "mu"],
+    "primaryTypes": ["giay", "dep"],
+    "labels": { "quan": "Quần áo", "ao": "Quần áo", "balo": "Balo", "tui": "Túi xách", "mu": "Mũ", "tat": "Tất" }
+  },
+  "uncertain": {
+    "genericItemTokens": ["giay", "dep", "chay", "bo", "adidas", "nike", "asics", "hoka", "puma", "mizuno", "saucony", "brooks", "salomon", "new", "balance", "converse", "vans", "skechers", "mlb", "reebok", "fila", "under", "armour", "altra", "topo", "sneaker", "running", "tap", "gym", "di", "slide", "sandal", "quai", "recovery", "lot", "dai", "xo", "ngon", "bit", "hau"]
+  }
+}

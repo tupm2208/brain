@@ -21,7 +21,19 @@ import type { BriefItem, WritingStyle } from "./brief";
 import { styleBlock } from "./content-writer";
 import type { TextModelPort } from "./text-model";
 
+/**
+ * Điểm đạt MẶC ĐỊNH, như Desk chốt 12/09/2026.
+ *
+ * 22/09/2026: đây chỉ còn là mặc định. Điểm đạt là của shop — landing gửi `diemDat` theo hồ sơ
+ * "cách làm content" và tự kiểm lại lần nữa khi nhận kết quả, nên một shop khó tính hơn luôn thắng.
+ */
 export const REVIEW_PASS_SCORE = 7;
+
+/** Kẹp điểm đạt vào 1–10; không gửi gì thì dùng mặc định. */
+export const passMark = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(10, Math.max(1, Math.round(n))) : REVIEW_PASS_SCORE;
+};
 
 /** One post as the judges see it. Field names are wire (the landing sends them). */
 export interface ReviewPost {
@@ -30,6 +42,7 @@ export interface ReviewPost {
   trang?: string | undefined;
   dangBai?: string | undefined;
   huongDan?: string | undefined;
+  chuDe?: string | undefined;
   goc?: string | undefined;
   caption: string;
   chuAnh?: string | undefined;
@@ -153,9 +166,9 @@ function verdictOf(raw: Record<string, unknown> | null): JudgeVerdict {
 }
 
 /** Desk `summarizeReview`: all three ĐẠT and the lowest score ≥ 7 (approved 12/09/2026). */
-export function summarizeReview(review: { chuyenMon: JudgeVerdict; giong: JudgeVerdict; dangBai: JudgeVerdict }): ReviewOutcome {
+export function summarizeReview(review: { chuyenMon: JudgeVerdict; giong: JudgeVerdict; dangBai: JudgeVerdict }, pass = REVIEW_PASS_SCORE): ReviewOutcome {
   const judges: [string, JudgeVerdict][] = [["Chuyên môn", review.chuyenMon], ["Giọng", review.giong], ["Dạng bài", review.dangBai]];
-  const dat = judges.every(([, v]) => v.ketLuan === "ĐẠT") && Math.min(...judges.map(([, v]) => v.diem)) >= REVIEW_PASS_SCORE;
+  const dat = judges.every(([, v]) => v.ketLuan === "ĐẠT") && Math.min(...judges.map(([, v]) => v.diem)) >= pass;
   const ghiChu: string[] = [];
   for (const [who, v] of judges) if (v.tomTat !== "") ghiChu.push(`${who} ${v.diem}/10. ${v.tomTat}`);
   for (const [, v] of judges) {
@@ -166,47 +179,50 @@ export function summarizeReview(review: { chuyenMon: JudgeVerdict; giong: JudgeV
 
 const SYS_JSON = "Trả lời JSON hợp lệ đúng lược đồ, không thêm chữ ngoài JSON.";
 
-export function expertPrompt(post: ReviewPost, knowledge: string): { system: string; user: string } {
+export function expertPrompt(post: ReviewPost, knowledge: string, pass = REVIEW_PASS_SCORE): { system: string; user: string } {
   return {
     system: `Bạn là chuyên gia sản phẩm, kiểm chứng kỹ thuật cho bài bán hàng tiếng Việt. ${SYS_JSON}`,
     user: [
       "SẢN PHẨM TRONG BÀI (dữ liệu shop, đúng tuyệt đối):", productLines(post.mon),
+      text(post.chuDe) === "" ? "" : `\nCHỦ ĐỀ BẮT BUỘC: ${text(post.chuDe, 600)}`,
       knowledge === "" ? "" : `\nKIẾN THỨC NỘI BỘ (tham khảo):\n${knowledge.slice(0, 6000)}`,
       `\nBÀI CẦN KIỂM (${text(post.gio)} ${text(post.trang)}):\n"""${text(post.caption, 9000)}"""`,
-      "\nNhiệm vụ: soi từng câu có thông số hoặc khẳng định kỹ thuật, đối chiếu dữ liệu.",
+      "\nNhiệm vụ: soi từng câu có thông số hoặc khẳng định kỹ thuật, đối chiếu dữ liệu; đồng thời kiểm tra toàn bài có thực sự trả lời đúng CHỦ ĐỀ BẮT BUỘC, không tự đổi sang một chủ đề gần giống.",
       "- \"SAI\" CHỈ dùng khi câu văn TRÁI với dữ liệu sản phẩm hoặc trái sự thật ai cũng kiểm được.",
       "- Thông tin đúng nhưng không có trong dữ liệu → \"KHÔNG KIỂM CHỨNG\", chỉ trừ điểm.",
       "- Bạn KHÔNG được tự đặt thêm luật cấm của shop.",
-      `Trả JSON {score 0-10, verdict ĐẠT|CHƯA ĐẠT, findings[{tag SAI|KHÔNG KIỂM CHỨNG|MƠ HỒ|LOGIC, quote, reason, fix}], summary}. ĐẠT khi score ≥ ${REVIEW_PASS_SCORE} và không có tag SAI.`
+      `Trả JSON {score 0-10, verdict ĐẠT|CHƯA ĐẠT, findings[{tag SAI|KHÔNG KIỂM CHỨNG|MƠ HỒ|LOGIC, quote, reason, fix}], summary}. ĐẠT khi score ≥ ${pass} và không có tag SAI.`
     ].filter((l) => l !== "").join("\n")
   };
 }
 
-export function voicePrompt(post: ReviewPost, ruleErrors: string[], style: WritingStyle | undefined): { system: string; user: string } {
+export function voicePrompt(post: ReviewPost, ruleErrors: string[], style: WritingStyle | undefined, pass = REVIEW_PASS_SCORE): { system: string; user: string } {
   const rules = ruleErrors.map((e) => `- ${text(e, 300)}`).join("\n");
   return {
     system: `Bạn là biên tập viên nội dung, đối chiếu giọng văn bài với phong cách của chủ shop. ${SYS_JSON}`,
     user: [
       styleBlock(style) || "Phong cách shop: người bán hàng thật nói chuyện với khách, có quan điểm riêng, không giọng quảng cáo.",
+      text(post.chuDe) === "" ? "" : `\nCHỦ ĐỀ BẮT BUỘC: ${text(post.chuDe, 600)}`,
       `\nBÀI CẦN CHẤM (${text(post.gio)} ${text(post.trang)}; chữ trên ảnh: "${text(post.chuAnh, 300)}"):\n"""${text(post.caption, 9000)}"""`,
       `\nLỖI LUẬT DO MÁY QUÉT (toàn bộ vi phạm luật cứng của bài):\n${rules || "(máy quét xong, bài KHÔNG vi phạm luật cứng nào)"}`,
       "Bạn chỉ được gắn tag \"VI PHẠM LUẬT\" cho đúng những lỗi trong danh sách máy quét. Việc của bạn là chấm GIỌNG: có giống phong cách shop không, có quan điểm riêng không, có liệt kê máy móc không.",
-      `Trả JSON {score 0-10, verdict, findings[{tag VI PHẠM LUẬT|GIỌNG AI|LOGIC GƯỢNG|DÀI DÒNG|THIẾU QUAN ĐIỂM|HOOK YẾU, quote, reason, fix}], summary}. ĐẠT khi score ≥ ${REVIEW_PASS_SCORE}.`
+      `Trả JSON {score 0-10, verdict, findings[{tag VI PHẠM LUẬT|GIỌNG AI|LOGIC GƯỢNG|DÀI DÒNG|THIẾU QUAN ĐIỂM|HOOK YẾU, quote, reason, fix}], summary}. ĐẠT khi score ≥ ${pass}.`
     ].join("\n")
   };
 }
 
-export function formatPrompt(post: ReviewPost): { system: string; user: string } {
+export function formatPrompt(post: ReviewPost, pass = REVIEW_PASS_SCORE): { system: string; user: string } {
   return {
     system: `Bạn là người duyệt dạng bài đăng Facebook cho shop. ${SYS_JSON}`,
     user: [
       `Dạng bài đã chọn: ${text(post.dangBai)} — ${text(post.huongDan, 600)}`,
+      text(post.chuDe) === "" ? "" : `Chủ đề cụ thể bắt buộc: ${text(post.chuDe, 600)}`,
       text(post.goc) === "" ? "" : `Góc mua: ${text(post.goc)}`,
       `Album = 1 ảnh chữ + card sản phẩm theo thứ tự mã: ${(post.mon ?? []).map((m) => text(m.ma)).join(", ")}. Chữ trên ảnh: "${text(post.chuAnh, 300)}".`,
       "Chữ trên ảnh được RÚT RA TỪ hook nên trùng phần mở đầu hook là ĐÚNG; chỉ lỗi khi nói gần hết hook hoặc chẳng liên quan.",
       `\nBÀI:\n"""${text(post.caption, 9000)}"""`,
-      `\nKiểm: (1) đúng khung dạng bài; (2) hook khớp dạng bài; (3) mã khớp chủ đề và thứ tự; (4) độ dài hợp Facebook; (5) bình luận đầu có link và câu mời: """${text(post.comment, 1000)}""".`,
-      `Trả JSON {score 0-10, verdict, findings[{tag THIẾU KHUNG|HOOK LỆCH|MÃ LỆCH|THỨ TỰ|ĐỘ DÀI|COMMENT, quote, reason, fix}], summary}. ĐẠT khi score ≥ ${REVIEW_PASS_SCORE}. findings CHỈ chứa lỗi cần sửa.`
+      `\nKiểm: (1) nội dung bám đúng chủ đề cụ thể, không đổi phạm vi/hãng/nhu cầu; (2) đúng khung dạng bài; (3) hook nêu một insight hoặc vấn đề cụ thể của khách, tạo khoảng tò mò đủ để dừng đọc, không dùng câu chung chung; (4) chữ trên ảnh nêu bật đúng vấn đề/insight của hook, không chỉ là tên nhóm sản phẩm; (5) mã khớp chủ đề và thứ tự; (6) độ dài hợp Facebook; (7) bình luận đầu có link và câu mời: """${text(post.comment, 1000)}""".`,
+      `Trả JSON {score 0-10, verdict, findings[{tag CHỦ ĐỀ LỆCH|THIẾU KHUNG|HOOK LỆCH|INSIGHT CHUNG|CHỮ ẢNH NHẠT|MÃ LỆCH|THỨ TỰ|ĐỘ DÀI|COMMENT, quote, reason, fix}], summary}. Chủ đề lệch, hook không có insight cụ thể hoặc chữ ảnh không nêu vấn đề thì bắt buộc CHƯA ĐẠT. ĐẠT khi score ≥ ${pass}. findings CHỈ chứa lỗi cần sửa.`
     ].filter((l) => l !== "").join("\n")
   };
 }
@@ -223,11 +239,12 @@ export function fixPrompt(post: ReviewPost, review: ReviewOutcome | null, ruleEr
     user: [
       styleBlock(style),
       "\nSẢN PHẨM TRONG BÀI (không được đổi, không bịa thêm số liệu):", productLines(post.mon),
+      text(post.chuDe) === "" ? "" : `Chủ đề cụ thể phải giữ nguyên: ${text(post.chuDe, 600)}`,
       text(post.goc) === "" ? "" : `Góc mua giữ nguyên: ${text(post.goc)}`,
       `\nBÀI HIỆN TẠI (${text(post.gio)} ${text(post.trang)}):\n"""${text(post.caption, 9000)}"""`,
       `\nGÓP Ý CẦN SỬA:\n${findings.slice(0, 20).map((l, i) => `${i + 1}. ${l}`).join("\n") || "(không có góp ý cụ thể, hãy tự siết lại giọng cho gần phong cách shop)"}`,
       ruleErrors.length === 0 ? "" : `\nLỖI LUẬT MÁY BẮT ĐƯỢC (bắt buộc phải hết):\n${ruleErrors.map((e) => `- ${text(e, 300)}`).join("\n")}`,
-      "\nViết lại bài hoàn chỉnh, giữ chủ đề, dạng bài và bộ sản phẩm. Trả JSON {caption, chuAnh} — chuAnh là chữ in trên ảnh bìa, rút từ hook nhưng ngắn hơn hook."
+      "\nViết lại bài hoàn chỉnh, giữ đúng chủ đề, dạng bài và bộ sản phẩm. Hook phải đánh vào một insight/vấn đề cụ thể của khách và mở ra điều khiến họ tò mò đọc tiếp. chuAnh phải nêu bật vấn đề đó, không dùng nhãn chung chung kiểu tên danh mục. Trả JSON {caption, chuAnh} — chuAnh là chữ in trên ảnh bìa, rút từ hook nhưng ngắn hơn hook."
     ].filter((l) => l !== "").join("\n")
   };
 }
@@ -269,20 +286,21 @@ export class ContentDeskService {
   }
 
   /** "Phản biện": three judges, one verdict. */
-  async review(input: { tenant: string; bai: ReviewPost; loiLuat: string[]; phongCach?: WritingStyle | undefined; kienThuc?: string | undefined }): Promise<ContentDeskResult<ReviewOutcome & { model: string }>> {
+  async review(input: { tenant: string; bai: ReviewPost; loiLuat: string[]; phongCach?: WritingStyle | undefined; kienThuc?: string | undefined; diemDat?: number | undefined }): Promise<ContentDeskResult<ReviewOutcome & { model: string }>> {
     const refused = this.notReady();
     if (refused !== null) return refused;
     if (text(input.bai.caption) === "") return { ok: false, status: 400, error: "bai_rong", message: "Bài chưa có nội dung để phản biện." };
     const postId = text(input.bai.ma, 120);
+    const pass = passMark(input.diemDat);
     const [expert, voice, format] = await Promise.all([
-      this.askJson(input.tenant, "content_review", postId, expertPrompt(input.bai, text(input.kienThuc, 6000)), VERDICT_SCHEMA),
-      this.askJson(input.tenant, "content_review", postId, voicePrompt(input.bai, input.loiLuat, input.phongCach), VERDICT_SCHEMA),
-      this.askJson(input.tenant, "content_review", postId, formatPrompt(input.bai), VERDICT_SCHEMA)
+      this.askJson(input.tenant, "content_review", postId, expertPrompt(input.bai, text(input.kienThuc, 6000), pass), VERDICT_SCHEMA),
+      this.askJson(input.tenant, "content_review", postId, voicePrompt(input.bai, input.loiLuat, input.phongCach, pass), VERDICT_SCHEMA),
+      this.askJson(input.tenant, "content_review", postId, formatPrompt(input.bai, pass), VERDICT_SCHEMA)
     ]);
     const failed = [expert, voice, format].find((r) => !r.ok);
     if (failed !== undefined && !failed.ok) return { ok: false, status: 502, error: "mo_hinh_tu_choi", message: failed.message };
     const pick = (r: typeof expert) => (r.ok ? r.json : null);
-    const outcome = summarizeReview({ chuyenMon: verdictOf(pick(expert)), giong: verdictOf(pick(voice)), dangBai: verdictOf(pick(format)) });
+    const outcome = summarizeReview({ chuyenMon: verdictOf(pick(expert)), giong: verdictOf(pick(voice)), dangBai: verdictOf(pick(format)) }, pass);
     return { ok: true, ...outcome, model: expert.ok ? expert.model : "" };
   }
 

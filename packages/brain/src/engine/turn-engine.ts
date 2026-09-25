@@ -16,7 +16,7 @@ import {
 import type { IndustryPack, PackIntent } from "../pack/types";
 import type { ConversationState, Ports } from "../ports/index";
 import { extractAxis } from "./axis";
-import { appendShopTurn, appendTurn, emptyState, hasRecentImageEvidence } from "./conversation-state";
+import { appendShopTurn, appendTurn, dropFocus, emptyState, hasRecentImageEvidence, isNewEpisode, softEpisodeKeepsFocus } from "./conversation-state";
 import { GateChain, type Fact, type GateOutcome, type GateVerdict } from "./gates";
 import { IntentDetector } from "./intent";
 import { BASE_DATA_VARS, TemplateRenderer, packTemplate, type Rendered } from "./template";
@@ -30,6 +30,12 @@ export interface HandleInput {
   text: string;
   imageCount?: number | undefined;
   at?: string | undefined;
+  /**
+   * The intent the rule router settled on for this message (`ask_size`, `place_order`...), when a
+   * router ran before the engine (25/09/2026). A pack intent that answers it (`routerIntents`, or
+   * the same id) is used instead of keyword scoring; a hint no pack intent answers is ignored.
+   */
+  intentHint?: string | undefined;
 }
 
 export interface HandleResult {
@@ -221,7 +227,9 @@ export class TurnEngine {
     // result only because the key matched.
     const trusted = loaded !== null && loaded.tenant === input.tenant ? loaded : null;
     const base = trusted ?? emptyState(input.tenant, input.conversationId);
-    const state = appendTurn(base, { role: "customer", text: input.text, at, imageCount: input.imageCount }, now);
+    // A cold gap opens a new episode; the focus item is dropped unless the soft episode keeps it.
+    const appended = appendTurn(base, { role: "customer", text: input.text, at, imageCount: input.imageCount }, now);
+    const state = isNewEpisode(base, now) && !softEpisodeKeepsFocus(base) ? dropFocus(appended) : appended;
 
     const normText = this.intents.normalizeWithAliases(input.text);
     const item = await this.items.resolve(input.tenant, normText, state);
@@ -302,7 +310,9 @@ export class TurnEngine {
     const { state, item, slots, normText } = work;
     const itemIdentified = item.itemCode !== null;
 
-    let intent = this.intents.detect(work.input.text);
+    // The router already read the message with the frame and the history in view: its verdict
+    // beats scoring keywords on the sentence alone ("42" after "size bao nhiêu" is a stock question).
+    let intent = this.intents.byHint(work.input.intentHint) ?? this.intents.detect(work.input.text);
     const answeringPrevious =
       intent === null &&
       state.lastAskedSlot !== undefined &&

@@ -68,17 +68,22 @@ export function askedBackWithin(state: ConversationState, now: Date, minutes: nu
   return now.getTime() - t <= minutes * 60_000;
 }
 
-/** Appends a turn, trims old turns, and opens a new episode when the conversation went cold. */
+/**
+ * Appends a turn, trims old turns, and opens a new episode when the conversation went cold.
+ *
+ * Since 24/09/2026 a cold gap NO LONGER drops the focus item here. Desk's audit of 20 real
+ * conversations found two where "đôi này còn không" after a night lost the thread to the hard
+ * 6-hour reset; the SOFT episode (`EpisodeTracker`) decides whether the item survives, and the
+ * engine calls `dropFocus` only when it does not (`softEpisodeKeepsFocus`). The counters that
+ * belong to the cold episode (ask-backs, idling, the handed-off flag, the slot just asked) are
+ * still reset: a terse "42" a day later is not an answer to yesterday's question.
+ */
 export function appendTurn(state: ConversationState, turn: Turn, now: Date): ConversationState {
   const fresh = isNewEpisode(state, now);
   const turns = [...state.turns, turn].slice(-RECENT_TURN_LIMIT);
   const next: ConversationState = { ...state, turns };
   if (fresh) {
     next.episodeStartedAt = turn.at;
-    // New episode: drop the old focus. A customer returning a day later usually wants something else.
-    next.focusItemCode = undefined;
-    next.focusItemId = undefined;
-    next.focusSlots = undefined;
     next.lastAskBackAt = undefined;
     next.askBackCount = undefined;
     next.idleCount = undefined;
@@ -87,6 +92,24 @@ export function appendTurn(state: ConversationState, turn: Turn, now: Date): Con
     next.handedOff = undefined;
   }
   return next;
+}
+
+/** Forgets the focus item and its slots (the hard reset a cold episode used to do by itself). */
+export function dropFocus(state: ConversationState): ConversationState {
+  return { ...state, focusItemCode: undefined, focusItemId: undefined, focusSlots: undefined };
+}
+
+/**
+ * Whether the soft episode says the focus item survives a cold gap: there is a tracked episode
+ * with a main item that is neither finished (order placed, customer declined) nor dropped. With
+ * no tracked episode the answer is `false`, which is the behaviour before the soft episode.
+ */
+export function softEpisodeKeepsFocus(state: ConversationState): boolean {
+  const e = state.episode;
+  if (e === null || e === undefined || e.focus === null) return false;
+  if (e.stage === "sau_dat" || e.outcome === "tu_choi") return false;
+  const focus = e.focus;
+  return !e.others.some((o) => o.role === "da_bo" && (o.code !== "" ? o.code === focus.code : o.name === focus.name));
 }
 
 /**

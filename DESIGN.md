@@ -24,7 +24,7 @@ làm mẫu ở bộ não trước rồi lan sang landing và OMI. Tài liệu n�
 
 | Mẫu | Ở đâu | Vì sao |
 |---|---|---|
-| Strategy | `ToolHandler` (một lớp mỗi công cụ), `RuleEvaluator` (một lớp mỗi luật cổng), `IndustryPack` (hồ sơ ngành là dữ liệu) | Thêm công cụ / luật / ngành = thêm một lớp hoặc một tệp, không sửa vòng lặp chính |
+| Strategy | `ToolHandler` (một lớp mỗi công cụ), `RuleEvaluator` (một lớp mỗi luật cổng), `IndustryPack` (hồ sơ ngành là **JSON trong `nganh/`**) | Thêm công cụ / luật = thêm một lớp; thêm ngành = thêm một thư mục JSON, không sửa vòng lặp chính |
 | Chain of Responsibility | `GateChain` (chạy mọi luật, lấy phán quyết nặng nhất), chuỗi `RequestController` trong HTTP | Mỗi mắt xích tự quyết có nhận việc không; thứ tự khai rõ ở một chỗ |
 | Facade | `BrainService`, `handleTurn()` | Bên ngoài gọi một cửa, không phải biết TurnEngine ghép từ gì |
 | Repository | `LicenseLedger` | Che cách lưu (JSON ghi nguyên tử, xếp hàng) khỏi luật license |
@@ -75,6 +75,6 @@ Lớp chỉ khi có trạng thái hoặc có nhiều cài đặt thay nhau.
 |---|---|
 | Công cụ bot mới | Khai trong `contract/tools.ts` (bảng `TOOLS` + `ToolMap` + kiểm input/output), viết một `ToolHandler` ở `brain/engine/tool-handlers.ts`, thêm vào `DEFAULT_HANDLERS`. `PackValidator` tự đối chiếu. |
 | Luật cổng mới | Thêm nhánh vào `GateRule`, một lớp `RuleEvaluator`, một dòng trong `EVALUATORS`, độ ưu tiên trong `RULE_PRIORITY`, và bài test "chặn được / không chặn nhầm". |
-| Ngành mới | Một tệp `packs/<nganh>.ts` dạng dữ liệu, một dòng trong `pack/registry.ts`. Không đụng `engine/`. |
+| Ngành mới | Một thư mục `nganh/<nganh>/` gồm các tệp JSON (`nganh/README.md`). Không đụng mã, không dịch lại. |
 | Cửa HTTP mới | Một `RequestController` (hoặc một `case` trong controller sẵn có), khai đường ở `protocol.ts`, bài test qua socket thật. |
 | Cách lưu license khác | Cài lại `LicenseLedger` cùng giao diện `read()/update()`; `LicenseService` không đổi. |

@@ -87,6 +87,7 @@ export class WriteController implements RequestController {
     const outcome = await withUsage({ shop: String(tenant || ""), agent: "content_writer", postId }, () =>
       this.model.complete({ system: prompt.system, user: prompt.user, schema: DRAFT_SCHEMA as unknown as Record<string, unknown> }));
     if (!outcome.ok) {
+      this.logger.warn(`[bo-nao] mo hinh tu choi viet bai: ${outcome.viSao}`);
       sendJson(res, 502, { ok: false, error: "mo_hinh_tu_choi", message: outcome.viSao });
       return true;
     }

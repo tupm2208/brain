@@ -47,12 +47,15 @@ export class AnthropicTextModel implements TextModelPort {
   async complete(request: TextRequest): Promise<TextOutcome> {
     if (!this.configured) return { ok: false, viSao: "Xeon chưa cấu hình mô hình viết bài (thiếu ANTHROPIC_API_KEY)." };
     try {
+      // Only use `thinking` with Claude models — non-Anthropic models behind an OpenAI-compatible
+      // proxy (Gemini, etc.) don't understand the parameter and return a different response shape.
+      const isClaude = /^claude/i.test(this.model);
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
         // Writing to a dozen constraints at once is exactly the kind of work adaptive thinking is
         // for: the model plans the hook, the length and the banned phrases before it writes.
-        thinking: { type: "adaptive" },
+        ...(isClaude ? { thinking: { type: "adaptive" as const } } : {}),
         system: request.system,
         messages: [{ role: "user", content: request.user }],
         ...(request.schema === undefined ? {} : { output_config: { format: { type: "json_schema" as const, schema: request.schema } } })
@@ -65,17 +68,33 @@ export class AnthropicTextModel implements TextModelPort {
         return { ok: false, viSao: "Mô hình từ chối viết bài này. Sửa lại chủ đề hoặc mã hàng rồi thử lại." };
       }
 
-      const text = response.content
-        .filter((block): block is Extract<typeof block, { type: "text" }> => block.type === "text")
-        .map((block) => block.text)
-        .join("")
-        .trim();
+      // Guard: non-Anthropic proxies may return `content` as undefined, a string (OpenAI-compat),
+      // or the standard Anthropic content-block array.  Handle all three.
+      const raw = (response as unknown as Record<string, unknown>).content;
+      let text = "";
+      if (Array.isArray(raw)) {
+        text = (raw as Array<{ type: string; text?: string }>)
+          .map((block) => block.text ?? "")
+          .join("")
+          .trim();
+      } else if (typeof raw === "string") {
+        text = raw.trim();
+      } else if (raw !== null && typeof raw === "object") {
+        text = String((raw as Record<string, unknown>)["text"] ?? "").trim();
+      }
+      const wire = response as unknown as Record<string, unknown>;
+      if (text === "") text = String(wire["output_text"] ?? "").trim();
+      if (text === "" && Array.isArray(wire["choices"])) {
+        const choice = wire["choices"][0] as Record<string, unknown> | undefined;
+        const message = choice?.["message"] as Record<string, unknown> | undefined;
+        text = String(message?.["content"] ?? choice?.["text"] ?? "").trim();
+      }
       if (text === "") return { ok: false, viSao: "Mô hình trả về bài rỗng." };
       // Đ7 token ledger: Anthropic counts cache reads and cache writes OUTSIDE `input_tokens`.
       const usage = response.usage;
       const cacheRead = Number(usage?.cache_read_input_tokens ?? 0) || 0;
       return {
-        ok: true, text, model: response.model,
+        ok: true, text, model: response.model ?? this.model,
         usage: {
           inputTokens: (Number(usage?.input_tokens ?? 0) || 0) + cacheRead + (Number(usage?.cache_creation_input_tokens ?? 0) || 0),
           outputTokens: Number(usage?.output_tokens ?? 0) || 0,

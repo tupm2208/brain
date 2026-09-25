@@ -19,15 +19,15 @@
  * Every model call runs inside `withUsage`, so the token ledger knows shop, agent and conversation.
  */
 
-import { TOOLS, redactPII, type ConversationId, type TenantId, type ToolName } from "@sp/contract";
-import { TurnEngine, stripDiacritics, type MemoryPort, type ToolPort } from "@sp/brain";
+import { redactPII, type ConversationId, type TenantId, type ToolName } from "@sp/contract";
+import { TurnEngine, applyShopProfile, blockFingerprint } from "@sp/brain";
 import type { ChatModelPort } from "../agent/chat-model";
-import { SalesAgent, parseAgentJson, type AgentTrace, type HistoryLine } from "../agent/sales-agent";
-import { AGENT_TOOLS, COMMENT_CHANNEL, type BrainService, type MerchantBinding } from "../brain/brain-service";
+import { composeSystemPrompt, parseAgentJson, systemCapabilities, type AgentTurnInput } from "../agent/sales-agent";
+import type { BrainService } from "../brain/brain-service";
+import { readOnlyTools, type TurnOutcome, type TurnStep } from "../brain/turn-pipeline";
 import { InMemoryConversationMemory } from "../gateway/conversation-memory";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
-import { renderKnowledge } from "./knowledge";
 import { withUsage } from "./usage-context";
 
 /** One step of "AI nghĩ gì", in the order it happened. Field names are wire (the landing stores them, OMI draws them). */
@@ -62,37 +62,42 @@ const ANALYZE_CONVERSATIONS_MAX = 40;
 const ANALYZE_MESSAGES_MAX = 30;
 const MESSAGE_CHARS = 300;
 
-/** Only tools that READ. A draft or a demo must never leave a trace on the shop's data. */
-export function readOnlyTools(inner: ToolPort): ToolPort {
-  return {
-    available: () => inner.available().filter((t) => TOOLS[t]?.effect === "read"),
-    online: () => inner.online(),
-    call: async (tool, input, ctx) => {
-      if (TOOLS[tool]?.effect !== "read") return { ok: false, tool, error: { code: "tool_unknown", message: `Nháp/hộp cát không được gọi "${tool}" (công cụ có ghi).` } };
-      return inner.call(tool, input, ctx);
-    }
-  };
-}
-
-/** A memory that reads the real one and writes nowhere: a draft must not move the conversation's state. */
-function readOnlyMemory(inner: MemoryPort): MemoryPort {
-  return { load: (tenant, id) => inner.load(tenant, id), save: async () => undefined };
-}
-
-function traceSteps(trace: AgentTrace[], from: number): DraftStep[] {
-  return trace.map((t, i) => {
-    if (t.tool) return { buoc: from + i, loai: "cong-cu" as const, ten: t.tool, chiTiet: `${JSON.stringify(t.args ?? {})}${t.result ? ` → ${t.result.slice(0, 300)}` : ""}` };
-    const blocked = String(t.error ?? "").startsWith("chan:");
-    return { buoc: from + i, loai: blocked ? "chan" as const : "loi" as const, ten: blocked ? "Câu bị chặn" : "Lỗi", chiTiet: String(t.error ?? "") };
-  });
-}
-
 export interface AiDeskOptions {
   brain: BrainService;
   /** The (metered) chat model for analysis, proposals and photos. */
   model: ChatModelPort;
   clock: Clock;
   logger: Logger;
+}
+
+/** Desk's own step numbering on top of the pipeline's steps. */
+function numbered(steps: readonly TurnStep[], from = 1): DraftStep[] {
+  return steps.map((s, i) => ({ buoc: from + i, ...s }));
+}
+
+/**
+ * The pipeline's outcome in the draft's wire shape. `nguonTraLoi` keeps its three values: a script
+ * and the engine are both "may-luat" (rules), the agent and LLM#3 are both "agent" (a model); the
+ * steps say which one it was.
+ */
+function fillBody(body: DraftBody, out: TurnOutcome): DraftBody {
+  body.dauVet.push(...numbered(out.steps, body.dauVet.length + 1));
+  body.traLoi = out.reply;
+  body.nguonTraLoi = out.reply === "" ? "" : out.source === "agent" || out.source === "nhap" ? "agent" : "may-luat";
+  body.hanhDong = out.action;
+  body.canNguoi = out.needsHuman;
+  body.lyDo = out.reason;
+  const engine = out.engine;
+  if (engine !== null) {
+    body.y = engine.intentId ?? "";
+    body.duKien = { ...engine.slots, ...(engine.itemCode ? { ma: engine.itemCode } : {}) };
+    body.canXacNhan = engine.gates.filter((g) => g.action !== "send").map((g) => g.reason);
+  } else if (out.router !== null) {
+    body.y = out.router.intent.intent;
+    const said = Object.entries(out.router.entities).filter(([, v]) => typeof v === "string" && v !== "");
+    body.duKien = Object.fromEntries(said.map(([k, v]) => [k, String(v)]));
+  }
+  return body;
 }
 
 export class AiDeskService {
@@ -104,6 +109,10 @@ export class AiDeskService {
 
   // ------------------------------------------------------------------ draft
 
+  /**
+   * The reply the bot WOULD give, with the steps it took: the SAME pipeline as the live door, in
+   * "khong-gui" mode — nothing sent, nobody notified, no memory written, tools read-only.
+   */
   async draft(input: { tenant: string; maHoiThoai: string; kenh: string; cheDo: string; nguon: string }): Promise<DeskResult<DraftBody>> {
     const binding = await this.options.brain.bindingForTenant(input.tenant);
     if (binding === null) return this.notServed();
@@ -117,113 +126,107 @@ export class AiDeskService {
     }
     const recent = await tools.call("conversation.recent", { conversationId: input.maHoiThoai as ConversationId, limit: HISTORY_LIMIT });
     if (!recent.ok) return { ok: false, status: 502, error: "khong_doc_duoc_hoi_thoai", message: recent.error.message };
-    const history: HistoryLine[] = recent.data.tin.map((m) => ({
-      who: m.chieu === "den" ? "khach" : m.boi === "bo-nao" ? "bot" : "nguoi", text: m.chu, images: m.chieu === "den" ? m.soAnh : 0
-    }));
     let lastCustomer = -1;
-    history.forEach((line, i) => { if (line.who === "khach") lastCustomer = i; });
+    recent.data.tin.forEach((line, i) => { if (line.chieu === "den") lastCustomer = i; });
     if (lastCustomer < 0) return { ok: false, status: 409, error: "chua_co_tin_khach", message: "Hội thoại chưa có tin nào của khách để soạn trả lời." };
     // Everything the page said after the customer's last message is already an answer: draft for that message.
-    const thread = history.slice(0, lastCustomer + 1);
-    const text = thread[lastCustomer]!.text;
-    const body: DraftBody = { ...empty, tinKhach: redactPII(text) };
-    body.dauVet.push({ buoc: 1, loai: "doc", ten: "Đọc hội thoại", chiTiet: `${history.length} tin gần nhất; tin khách cần trả lời: "${redactPII(text).slice(0, 200)}"${thread[lastCustomer]!.images > 0 ? ` (+${thread[lastCustomer]!.images} ảnh)` : ""}` });
+    const thread = recent.data.tin.slice(0, lastCustomer + 1);
+    const last = thread[lastCustomer]!;
+    const body: DraftBody = { ...empty, tinKhach: redactPII(last.chu) };
 
-    if (SalesAgent.mustHuman(binding.pack, text)) {
-      body.canNguoi = true;
-      body.hanhDong = "human_handoff";
-      body.lyDo = "Khiếu nại / tiền / đổi trả cụ thể — người thật xử lý (luật của bộ luật ngành).";
-      body.dauVet.push({ buoc: 2, loai: "quyet-dinh", ten: "Chuyển người thật", chiTiet: body.lyDo });
-      return { ok: true, ...body };
-    }
-
-    const context = { shop: input.tenant, agent: "ai_draft" as const, channel: input.kenh, conversationId: input.maHoiThoai };
-    const agentResult = await this.runAgent(binding, input.kenh, thread, input.maHoiThoai, text, body, context);
-    if (agentResult) return { ok: true, ...body };
-    await this.runEngine(binding, input.tenant, input.maHoiThoai, text, thread[lastCustomer]!.images, readOnlyMemory(binding.gateway.memory), body);
-    return { ok: true, ...body };
-  }
-
-  /** The agent, when configured and the landing opens its tools. Fills `body`; false = the engine must answer. */
-  private async runAgent(
-    binding: MerchantBinding, channel: string, history: HistoryLine[], conversationId: string, text: string, body: DraftBody,
-    context: { shop: string; agent: "ai_draft" | "sandbox"; channel: string; conversationId: string }
-  ): Promise<boolean> {
-    const agent = this.options.brain.readyAgent();
-    const profile = binding.pack.agent;
-    const open = binding.gateway.tools.available();
-    if (agent === null || profile === undefined || channel === COMMENT_CHANNEL || !AGENT_TOOLS.every((t) => open.includes(t))) {
-      body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "quyet-dinh", ten: "Không dùng mô hình", chiTiet: agent === null ? "Xeon chưa cấu hình mô hình cho agent — máy luật soạn." : "Kênh / công cụ chưa hợp với agent — máy luật soạn." });
-      return false;
-    }
-    const knowledge = await this.options.brain.knowledgeFor(binding, conversationId, text);
-    if (knowledge) {
-      body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "doc", ten: "Kiến thức shop đã duyệt", chiTiet: `${knowledge.hoiDap.length} hỏi đáp, ${knowledge.quyTac.length} quy tắc, ${knowledge.cauMau.length} câu mẫu, ${knowledge.kienThuc.length} ghi chú fit${knowledge.spNgoai ? `, SP ngoài đang chốt ${knowledge.spNgoai.ma}` : ""}` });
-    }
-    const outcome = await withUsage(context, () => agent.run({
-      agent: profile, site: binding.origin, history, neverSay: binding.pack.identity.neverSay,
-      extraContext: renderKnowledge(knowledge),
-      tools: this.options.brain.agentToolBox(binding, profile.fallbackPolicy, knowledge)
-    }));
-    body.dauVet.push(...traceSteps(outcome.trace, body.dauVet.length + 1));
-    if (!outcome.ok) {
-      body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "loi", ten: "Agent không viết được", chiTiet: `${outcome.viSao} — máy luật soạn thay.` });
-      return false;
-    }
-    body.traLoi = outcome.reply;
-    body.nguonTraLoi = "agent";
-    body.hanhDong = "ai_fallback_draft";
-    body.canNguoi = new RegExp(profile.handoffReplyPattern).test(stripDiacritics(outcome.reply).toLowerCase());
-    body.lyDo = body.canNguoi ? "Agent gọi người phụ trách vào." : `Agent trả lời sau ${outcome.steps} bước.`;
-    body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "quyet-dinh", ten: "Đề xuất phản hồi", chiTiet: body.lyDo });
-    return true;
-  }
-
-  /** The rule engine on read-only tools. */
-  private async runEngine(binding: MerchantBinding, tenant: string, conversationId: string, text: string, images: number, memory: MemoryPort, body: DraftBody): Promise<void> {
-    const engine = new TurnEngine(binding.pack, { tools: readOnlyTools(binding.gateway.tools), catalog: binding.gateway.catalog, memory, clock: this.options.clock });
-    const result = await engine.handle({ tenant: tenant as TenantId, conversationId: conversationId as ConversationId, text, imageCount: images, at: this.options.clock.now().toISOString() });
-    for (const fact of result.facts) body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "cong-cu", ten: fact.source, chiTiet: fact.text.slice(0, 300) });
-    body.y = result.intentId ?? "";
-    body.duKien = { ...result.slots, ...(result.itemCode ? { ma: result.itemCode } : {}) };
-    body.canXacNhan = result.gates.filter((g) => g.action !== "send").map((g) => g.reason);
-    body.traLoi = result.action === "handoff" ? "" : result.reply;
-    body.nguonTraLoi = result.action === "handoff" ? "" : "may-luat";
-    body.hanhDong = result.action === "handoff" ? "human_handoff" : result.action === "ask_back" ? "ask_clarification" : "script_reply";
-    body.canNguoi = result.action === "handoff";
-    body.lyDo = result.action === "handoff" ? String(result.gates.find((g) => g.action === "handoff" || g.action === "block")?.reason ?? "máy luật không chắc — chuyển người thật") : result.intentId ? `Máy luật nhận ý "${result.intentId}".` : "Máy luật chưa hiểu câu này.";
-    body.dauVet.push({ buoc: body.dauVet.length + 1, loai: "quyet-dinh", ten: "Đề xuất phản hồi", chiTiet: body.lyDo });
+    const out = await this.options.brain.turnPipeline().run({
+      tenant: input.tenant, binding, conversationId: input.maHoiThoai, mode: "khong-gui", usageAgent: "ai_draft",
+      message: { kenh: input.kenh, nguoi: "", chu: last.chu, maTin: last.maTin, luc: last.luc, soAnh: last.soAnh, anh: last.anh, traLoiTin: last.traLoiTin },
+      recent: { tin: thread, ...(recent.data.hoiThoai ? { hoiThoai: recent.data.hoiThoai } : {}) }
+    });
+    return { ok: true, ...fillBody(body, out) };
   }
 
   // ------------------------------------------------------------------ sandbox
 
-  async sandbox(input: { tenant: string; lichSu: { ai: string; chu: string }[]; chu: string }): Promise<DeskResult<DraftBody>> {
+  /**
+   * `mucDich: "web"` (21/09/2026) is the same machinery serving a VISITOR on the shop's website —
+   * the "AI tư vấn" box of the storefront, ported from the running site where it was a bare GPT
+   * call with the shop's own key. Here it is the shop's own brain: read-only tools, a memory
+   * thrown away after the answer, nothing sent anywhere, and its own row in the token ledger.
+   */
+  async sandbox(input: { tenant: string; lichSu: { ai: string; chu: string }[]; chu: string; mucDich?: "demo" | "web"; anh?: string[] | undefined }): Promise<DeskResult<DraftBody>> {
     const binding = await this.options.brain.bindingForTenant(input.tenant);
     if (binding === null) return this.notServed();
+    const forWeb = input.mucDich === "web";
     const text = input.chu.trim();
-    const history: HistoryLine[] = [
-      ...input.lichSu.map((m) => ({ who: m.ai === "khach" ? "khach" as const : "nguoi" as const, text: m.chu, images: 0 })),
-      { who: "khach", text, images: 0 }
+    const anh = (input.anh ?? []).filter((u) => /^https:\/\//i.test(u)).slice(0, 4);
+    const channel = forWeb ? "web" : "demo";
+    const nowIso = this.options.clock.now().toISOString();
+    // The made-up thread in the landing's wire shape, a person on duty standing in for the page.
+    const thread = [
+      ...input.lichSu.map((m) => ({ maTin: "", chieu: m.ai === "khach" ? "den" as const : "di" as const, boi: m.ai === "khach" ? "khach" : "nguoi-truc", chu: m.chu, soAnh: 0, luc: nowIso })),
+      { maTin: "", chieu: "den" as const, boi: "khach", chu: text, soAnh: anh.length, luc: nowIso, ...(anh.length > 0 ? { anh } : {}) }
     ];
     const body: DraftBody = { traLoi: "", nguonTraLoi: "", hanhDong: "", choPhepTuGui: false, canNguoi: false, lyDo: "", y: "", duKien: {}, canXacNhan: [], dauVet: [], tinKhach: redactPII(text) };
-    body.dauVet.push({ buoc: 1, loai: "doc", ten: "Hộp cát", chiTiet: `${history.length} tin mô phỏng; bộ nhớ dùng một lần, không gửi, công cụ chỉ đọc.` });
-    if (SalesAgent.mustHuman(binding.pack, text)) {
-      body.canNguoi = true;
-      body.hanhDong = "human_handoff";
-      body.lyDo = "Câu này bộ luật ngành giao người thật.";
-      return { ok: true, ...body };
-    }
-    const context = { shop: input.tenant, agent: "sandbox" as const, channel: "demo", conversationId: "" };
-    if (await this.runAgent(binding, "demo", history, "", text, body, context)) return { ok: true, ...body };
-    // The engine keeps state across turns: replay the made-up customer lines into a throwaway memory.
+    body.dauVet.push(forWeb
+      ? { buoc: 1, loai: "doc", ten: "Khách trên web", chiTiet: `${thread.length} tin của khách trên web; bộ nhớ dùng một lần, không gửi, công cụ chỉ đọc.` }
+      : { buoc: 1, loai: "doc", ten: "Hộp cát", chiTiet: `${thread.length} tin mô phỏng; bộ nhớ dùng một lần, không gửi, công cụ chỉ đọc.` });
+    // A throwaway memory. When no agent can answer, the engine will: replay the made-up customer
+    // lines into it first, so a follow-up ("size 42") still knows the item — as before the pipeline.
     const memory = new InMemoryConversationMemory(1);
-    const id = `demo:${this.options.clock.now().getTime()}`;
-    for (const line of input.lichSu.filter((m) => m.ai === "khach")) {
-      const engine = new TurnEngine(binding.pack, { tools: readOnlyTools(binding.gateway.tools), catalog: binding.gateway.catalog, memory, clock: this.options.clock });
-      await engine.handle({ tenant: input.tenant as TenantId, conversationId: id as ConversationId, text: line.chu, at: this.options.clock.now().toISOString() });
+    const id = `${channel}:${this.options.clock.now().getTime()}`;
+    if (this.options.brain.readyAgent() === null) {
+      const shop = await this.options.brain.shopProfileFor(binding);
+      for (const line of input.lichSu.filter((m) => m.ai === "khach")) {
+        const engine = new TurnEngine(applyShopProfile(binding.pack, shop?.hoSo ?? null, binding.chung.cauCam), { tools: readOnlyTools(binding.gateway.tools), catalog: binding.gateway.catalog, memory, clock: this.options.clock });
+        await engine.handle({ tenant: input.tenant as TenantId, conversationId: id as ConversationId, text: line.chu, at: nowIso });
+      }
     }
-    await this.runEngine(binding, input.tenant, id, text, 0, memory, body);
-    return { ok: true, ...body };
+    const out = await this.options.brain.turnPipeline().run({
+      tenant: input.tenant, binding, conversationId: id, mode: "khong-gui", usageAgent: forWeb ? "web_advisor" : "sandbox",
+      message: { kenh: channel, nguoi: "", chu: text, soAnh: anh.length, ...(anh.length > 0 ? { anh } : {}), luc: nowIso },
+      recent: { tin: thread }, memory
+    });
+    return { ok: true, ...fillBody(body, out) };
+  }
+
+  // ------------------------------------------------------------------ the Chatbot tab (tier 3 screen)
+
+  /**
+   * What OMI's Chatbot tab needs from the industry (tier 2) and the platform (tier 1): the
+   * suggested profile values, the policy text suggestions, and every block with its fingerprint so
+   * the screen can say which block the shop may rewrite and whether the industry's text moved.
+   */
+  async profileTemplate(input: { tenant: string }): Promise<DeskResult<{ nganh: string; mauHoSo: Record<string, unknown>; khoi: Record<string, unknown>[]; khoiChung: Record<string, unknown>[] }>> {
+    const binding = await this.options.brain.bindingForTenant(input.tenant);
+    if (binding === null) return this.notServed();
+    const agent = binding.pack.agent;
+    const block = (b: { id: string; tieuDe: string; shopSua: boolean; loiDan: string }) => ({ id: b.id, tieuDe: b.tieuDe, shopSua: b.shopSua, loiDan: b.loiDan, phienBan: blockFingerprint(b.loiDan) });
+    return {
+      ok: true,
+      nganh: binding.packId,
+      mauHoSo: agent ? { goiY: agent.mauHoSo.goiY, chinhSach: agent.mauHoSo.chinhSach } : { goiY: {}, chinhSach: { doiTra: "", ship: "", baoHanh: "" } },
+      khoi: (agent?.khoi ?? []).map(block),
+      khoiChung: binding.chung.khoi.map((b) => ({ ...block(b), shopSua: false }))
+    };
+  }
+
+  /**
+   * The system message the agent would be given RIGHT NOW for this shop, with the profile the
+   * landing holds — so a person filling the Chatbot tab can read what the bot will be told.
+   */
+  async promptPreview(input: { tenant: string }): Promise<DeskResult<{ loiDan: string; nangLuc: string[]; hoSoPhienBan: number }>> {
+    const binding = await this.options.brain.bindingForTenant(input.tenant);
+    if (binding === null) return this.notServed();
+    const profile = binding.pack.agent;
+    if (profile === undefined) return { ok: false, status: 409, error: "nganh_khong_co_agent", message: "Ngành này chưa có sổ tay agent; bot chỉ trả lời bằng máy luật." };
+    const shop = await this.options.brain.shopProfileFor(binding);
+    const hoSo = shop?.hoSo ?? null;
+    const open = binding.gateway.tools.available();
+    const nangLuc = systemCapabilities({ open, visionReady: this.options.brain.visionReady(), hoSo });
+    const turn: AgentTurnInput = {
+      agent: profile, chung: binding.chung, hoSo, chinhSach: shop?.chinhSach, nangLuc,
+      site: binding.origin, shopName: binding.shopName, history: [],
+      neverSay: applyShopProfile(binding.pack, hoSo, binding.chung.cauCam).identity.neverSay,
+      extraContext: ""
+    };
+    return { ok: true, loiDan: composeSystemPrompt(turn), nangLuc, hoSoPhienBan: hoSo?.phienBan ?? 0 };
   }
 
   // ------------------------------------------------------------------ analysis, proposals, photos

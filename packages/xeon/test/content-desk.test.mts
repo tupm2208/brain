@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  ContentController, ContentDeskService, LicenseLedger, LicenseService, ManualClock, MemoryLogger, buildPrompt, generateSigningKey,
+  ContentController, ContentDeskService, LicenseLedger, LicenseService, ManualClock, MemoryLogger, ProfileTranslator, buildPrompt, generateSigningKey,
   summarizeReview, currentUsage, type TextModelPort, type TextOutcome, type TextRequest
 } from "@sp/xeon";
 
@@ -40,7 +40,7 @@ async function build(model: TextModelPort) {
   const shop = await license.issueKey({ shop: "toprun", tenShop: "TopRun", hetHan: "2027-09-15T00:00:00.000Z" });
   const landing = await license.registerLanding({ key: shop.key, diaChi: "https://shop.test" });
   assert.ok(landing.ok);
-  const controller = new ContentController({ desk: new ContentDeskService({ model }), license, logger: new MemoryLogger() });
+  const controller = new ContentController({ desk: new ContentDeskService({ model }), translator: new ProfileTranslator({ model }), license, logger: new MemoryLogger() });
   const call = async (path: string, body: unknown, token: string | null = landing.maNhanTin): Promise<{ status: number; body: Body }> => {
     let status = 0;
     let out: Body = {};
@@ -52,7 +52,7 @@ async function build(model: TextModelPort) {
   return { call };
 }
 
-const POST = { ma: "lo-1-1", gio: "10:00", trang: "TopRun", dangBai: "so_sanh", huongDan: "So sánh", caption: "BA ĐÔI ĐÁNG CÂN NHẮC cho người mới", chuAnh: "BA ĐÔI", comment: "https://shop.test/a inbox em", mon: [{ ma: "A1", ten: "Giày A1", size: ["42"] }] };
+const POST = { ma: "lo-1-1", gio: "10:00", trang: "TopRun", dangBai: "so_sanh", huongDan: "So sánh", chuDe: "Giới thiệu các dòng giày Hoka", caption: "BA ĐÔI ĐÁNG CÂN NHẮC cho người mới", chuAnh: "BA ĐÔI", comment: "https://shop.test/a inbox em", mon: [{ ma: "A1", ten: "Giày A1", size: ["42"] }] };
 
 test("phản biện: three judges, pass only when all say ĐẠT and the lowest score is at least 7", async () => {
   const model = new ScriptModel((r) => (r.system.includes("chuyên gia") ? verdict(8) : r.system.includes("biên tập") ? verdict(6.5, true, "GIỌNG AI") : verdict(9)));
@@ -63,6 +63,7 @@ test("phản biện: three judges, pass only when all say ĐẠT and the lowest 
   assert.equal(r.body["giong"]["diem"], 6.5);
   assert.equal(r.body["giong"]["phatHien"][0]["nhan"], "GIỌNG AI");
   assert.equal(model.asked.length, 3);
+  assert.ok(model.asked.every((q) => q.user.includes("Giới thiệu các dòng giày Hoka")), "cả ba người chấm phải thấy chủ đề gốc");
   const voice = model.asked.find((q) => q.system.includes("biên tập"))!;
   assert.match(voice.user, /Caption nhắc giá tiền: 500k/, "lỗi luật do MÁY của landing quét, người chấm chỉ được dẫn lại");
   assert.match(voice.user, /Xưng em, gọi các bác/, "phong cách của shop đi theo yêu cầu");
@@ -80,6 +81,7 @@ test("tối ưu: the rewrite carries every finding and the rule errors; an empty
   assert.equal(r.body["caption"], "BA ĐÔI ĐÁNG CÂN NHẮC bản mới");
   assert.match(model.asked[0]!.user, /đế carbon/);
   assert.match(model.asked[0]!.user, /Hook viết hoa cả câu/);
+  assert.match(model.asked[0]!.user, /Giới thiệu các dòng giày Hoka/, "tối ưu phải giữ đúng chủ đề gốc");
 
   const empty = await (await build(new ScriptModel(() => JSON.stringify({ caption: "", chuAnh: "" })))).call("/noi-dung/toi-uu", { bai: POST });
   assert.equal(empty.status, 502);

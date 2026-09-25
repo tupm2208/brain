@@ -1,0 +1,181 @@
+{
+  "_doc": "TANG 1 — CONG SOAT SAU NHAP (chep Sales Desk ai_fallback.js enforceReplyEvidence + ai_fallback_gate.js enforcePolicyClaims + payment_claim_kit.js, 25/09/2026). Phan CHUNG moi nganh: danh tinh bot, cau 'da nhan tien' (bot KHONG BAO GIO tu xac nhan — anh Dung chot 24/09), xin SDT khi chot (he thong gui phieu), coc / so tien khong nguon, hua doi tra khong chinh sach, 'da doi xong', xin them anh → link, link trang khac, ETA khong nguon, trang thai don khong tra cuu, tu cho tra sau, noi link quen. Regex chay tren CAU DA BO DAU (tru truong ghi 'cut'/'codeInLink'/'carrierCode'/'codePattern' chay tren cau goc). Cho trong: {khach}/{Khach} (xung ho), {shop}, {site}, {tenShop}, {tenNguoiPhuTrach}, va cho rieng tung luat ({ten} {ma} {size} {ton} {gia} {link} {danhSach} {cm} {doiDangDi}). KHONG ten rieng shop, KHONG con so rieng shop (validator chan). Nganh ghi de tung khoa trong nganh/<id>/cong-soat.json (danh sach noi them, chu ghi de).",
+  "identity": {
+    "_doc": "Bot phai minh bach: 'em la nguoi that' / 'em dang truc chat' → thay ca cau.",
+    "falseHuman": [
+      "(^|\\s)(co\\s+)?em\\s+(chinh\\s+)?(la|dang\\s+la)\\s+nguoi\\s+that(\\s|$)",
+      "(^|\\s)em\\s+dang\\s+truc\\s+chat(\\s|$)"
+    ],
+    "replacement": "Dạ em là trợ lý AI của {tenShop} ạ. Nếu {khach} cần người trực, em sẽ báo {tenNguoiPhuTrach} hỗ trợ ngay ạ."
+  },
+  "payment": {
+    "_doc": "payment_claim_kit: cau nao khang dinh DA NHAN tien/CK/coc thi bo, dat cau trung tinh len dau; cau hua len don/gui hang dua tren 'da co tien' cung bo. Khach hoi 'nhan duoc chua' thi 'Da nhan roi a' ngan cung la khang dinh. {money} = truong `money`.",
+    "money": "(tien coc|tien|ck|chuyen khoan|khoan|coc|thanh toan|\\d+ ?k|\\d{1,3}(?:[.,]\\d{3})+(?: ?d| ?vnd)?)",
+    "claims": [
+      "\\b(da|vua) nhan (duoc |du )?{money}(?![a-z])",
+      "\\bnhan (duoc |du )?{money}(?![a-z])[^.!?\\n]{0,25}\\broi\\b(?! moi)",
+      "\\b(tien|ck|coc|khoan|chuyen khoan)\\b[^.!?\\n]{0,25}\\b(em|shop|ben em|shop minh)\\s+(da\\s+)?nhan( duoc)?\\s+roi\\b",
+      "\\b(tien|ck|chuyen khoan|khoan)\\b[^.!?\\n]{0,25}\\b(ve|vao) (tai khoan|tk|stk)\\b",
+      "\\b(tien|ck|chuyen khoan|khoan)\\b[^.!?\\n]{0,12}\\b(ve|vao) roi\\b",
+      "\\b(thanh toan|ck|chuyen khoan|giao dich) thanh cong\\b",
+      "\\b(don|khoan)\\b[^.!?\\n]{0,15}\\bda (duoc )?thanh toan\\b",
+      "\\bda xac nhan (thanh toan|nhan tien|ck|chuyen khoan|coc)\\b",
+      "\\bnhan du (tien|roi)\\b"
+    ],
+    "notClaimWindow": "\\b(chua|khong|ko|chang|se|khi|neu|truoc|sau|cho)\\b",
+    "refund": "\\b(tien hoan|hoan tien|hoan lai|hoan coc)\\b",
+    "customerReceives": "\\b(bac|anh|chi|minh|ban|khach|quy khach|co|chu|co chu)\\s+(da |vua )?nhan\\b",
+    "shopPays": "\\b(gui|chuyen|tra)\\s+(lai\\s+)?tien\\b|\\b(ve|vao) (tai khoan|tk|stk) (cua )?(bac|anh|chi|minh|ban|khach)\\b",
+    "customerAsks": "(nhan (duoc )?(tien|ck|chuyen khoan|coc|tien coc)[^?.!]{0,15}\\bchua\\b|\\b(tien|ck|chuyen khoan)\\b[^?.!]{0,12}(ve|vao)[^?.!]{0,12}\\bchua\\b|check .{0,12}(tien|ck|chuyen khoan)|(shop|em|ben em|ban) nhan (duoc )?chua|thay tien chua|\\b(ck|chuyen khoan|chuyen tien|thanh toan|coc)\\b[^?.!]{0,25}\\b(roi|xong)\\b|\\b(gui|chuyen)( tien| khoan)? (roi|xong)\\b)",
+    "fillerWords": [
+      "da",
+      "vang",
+      "a",
+      "ok",
+      "oke",
+      "okie",
+      "nha",
+      "nhe",
+      "bac",
+      "anh",
+      "chi",
+      "minh",
+      "ban",
+      "shop",
+      "em",
+      "ben",
+      "v",
+      "ah",
+      "u",
+      "uh"
+    ],
+    "affirm": "\\b(nhan|roi|co|du|thay|ve|vao|duoc)\\b",
+    "notAffirm": "\\b(chua|khong|ko|kiem|check|doi chieu|bao|xem)\\b",
+    "orderActions": "\\b(len don|gui hang|giao hang|ship|xu ly don|dat hang|di mua|chot don)\\b",
+    "abbreviations": {
+      "r": "roi",
+      "dc": "duoc",
+      "e": "em"
+    },
+    "pendingText": "Dạ em đã nhận thông tin, em báo {tenNguoiPhuTrach} đối chiếu và báo lại {khach} ngay ạ.",
+    "handoffReason": "bot_khong_duoc_xac_nhan_da_nhan_tien"
+  },
+  "contact": {
+    "_doc": "Luot chot don: he thong gui phieu dat hang (hoac goi nguoi) — bot khong tu xin SDT/dia chi/ten.",
+    "asks": "(cho em xin|gui em|de lai|cung cap|xin giup em)",
+    "contact": "(so dien thoai|sdt|dia chi|ten nguoi nhan|ten,|ho ten)",
+    "formNote": "Dạ hệ thống sẽ gửi phiếu đặt hàng để {khach} tự điền và kiểm tra thông tin nhận hàng ạ.",
+    "formNoteMarker": "phieu dat hang|bao .{0,20}chot",
+    "personNote": "Dạ để em báo {tenNguoiPhuTrach} chốt đơn với {khach} ngay ạ."
+  },
+  "deposit": {
+    "_doc": "So tien / % trong ngu canh COC chi duoc noi khi nguoi truc / chinh sach / ho so shop (tiLeCoc) / khach / tien coc he thong tinh da neu dung so do. Cat CAU chua so khong nguon, chuyen nguoi.",
+    "context": "(coc|dat coc|thanh toan truoc|ck truoc|chuyen truoc|ung truoc)",
+    "money": "(coc|dat coc|thanh toan truoc|ck truoc|chuyen truoc|ung truoc|toi thieu)[^.,!?\\n]{0,30}?(\\d{1,3}(?:[.,]\\d{3})+|\\d{2,3}\\s?k\\b|\\d(?:[.,]\\d)?\\s?(tr|trieu)\\b|\\d{3,}\\s?(d|vnd)\\b)",
+    "fallback": "Dạ mức cọc cụ thể để em xác nhận rồi báo {khach} ngay nhé."
+  },
+  "money": {
+    "_doc": "MOI so tien >= minAmount trong cau tra loi phai co trong nguon (nguoi truc / chinh sach / ho so / tra kho / loi khach). Cat cau chua so khong nguon.",
+    "minAmount": 100000,
+    "fallback": "Dạ để em kiểm tra lại số chính xác rồi báo {khach} ngay ạ.",
+    "rangeSame": "\\b(?:từ|tu|from)\\s+([\\d.,]+\\s?(?:đ|d|vnd|k)?)\\s+(?:đến|den|tới|toi|to|-|–)\\s+([\\d.,]+\\s?(?:đ|d|vnd|k)?)",
+    "_rangeDoc": "25/09/2026: 'từ 2.890.000đ đến 2.890.000đ' (min = max) gop thanh mot gia — luat price_range_collapsed."
+  },
+  "exchange": {
+    "_doc": "Hua doi size/doi tra khi chinh sach chua noi: hang ORDER khong doi (tru ho so shop noi khac / cua so doi con mo tu tra don), hang SAN hoac chinh sach co muc doi thi tha. 'Em da doi sang size X roi' la bia hanh dong — bot khong co cong cu sua don.",
+    "promise": "(co )?(ho tro|duoc|cho) doi (size|tra|hang)|doi (size|tra) (thoai mai|mien phi|neu|khi)",
+    "policyWords": "(doi size|doi tra|doi hang)",
+    "orderItemNote": "Dạ mẫu này là hàng order nên khi kho đã đi mua thì bên em không hỗ trợ đổi trả nữa, {khach} cân nhắc kỹ size trước khi đặt giúp em nhé ạ.",
+    "noPolicyNote": "Phần đổi size để em kiểm tra chính sách rồi báo {khach} ngay ạ.",
+    "done": "da (duoc |dc )?(doi (sang |qua |lai |thanh )|chuyen |cap nhat |sua )(?!y\\b)(?:[a-z]{1,6} ){0,3}?(sang |qua |lai |tren )?(size|don|giay|mau|san pham|hang|mon)|doi (sang |qua )(size|mau)[^.,!?\\n]{0,24}(roi a|roi nhe|roi bac|xong roi|xong a)",
+    "doneNote": "Dạ em báo {tenNguoiPhuTrach} đổi size trên đơn giúp {khach} ngay ạ.",
+    "_doneDoc": "25/09/2026: 'doi' chi la dong tu khi di kem sang/qua/lai/thanh — 'Dạ đôi Boston size 42' (đôi = pair, mat dau thanh doi) tung bi sua thanh cau 'đã đổi size'."
+  },
+  "photos": {
+    "_doc": "Khach xin them anh: khong ai chup ca — gui LINK trang san pham (ung vien tu tra kho / mau he thong dang noi), cat cau hua chup/gui anh.",
+    "asks": "((xin|cho|gui|them|xem) (them )?(anh|hinh)|(anh|hinh) (chi tiet|that|ro hon|can|goc khac|mat sau|phia sau|khac|nao khac)|(goc|nhieu goc) (anh|chup|khac)|xem (ky|ro) hon|(chup|quay) (them|can|ro))",
+    "promise": "((chup|gui|lay|bo sung|xin)[^.!?\\n]{0,30}(anh|hinh)[^.!?\\n]{0,40}(gui|cho|de)[^.!?\\n]{0,25}(xem|ngay|lien|som|sau|nhe|a\\b)|(de|doi) em[^.!?\\n]{0,25}(chup|gui)[^.!?\\n]{0,25}(anh|hinh)|(chup|gui) them[^.!?\\n]{0,20}(anh|hinh))",
+    "lead": "{Khach} bấm vào đây xem đủ các góc ảnh chi tiết của mẫu nhé ạ:",
+    "leadMany": "{Khach} bấm vào đây xem đủ các góc ảnh chi tiết của từng mẫu nhé ạ:",
+    "noProduct": "{Khach} cho em xin tên mẫu hoặc mã sản phẩm, em gửi link để mình xem đủ các góc ảnh chi tiết ạ.",
+    "maxLinks": 3,
+    "linkClaim": "((bam|nhan|click|an) (vao )?(link|duong link|lien ket)[^.!?\\n]{0,40}(anh|hinh)|(xem|coi) (anh|hinh)[^.!?\\n]{0,30}(qua|tai|o|bang) (link|duong link)|(link|duong link)[^.!?\\n]{0,20}(de|de xem|xem) (anh|hinh)|khong gui (duoc )?(anh|hinh))",
+    "cardsNote": "Dạ em gửi ảnh mẫu bên dưới để {khach} xem ạ.",
+    "_linkClaimDoc": "Giai doan 7 (25/09/2026, ho so that-18): landing tu gui THE ANH cua ma trong cau → cat cau 'bam link de xem anh' / 'khong gui duoc anh'; ca cau chi co vay thi thay bang cardsNote."
+  },
+  "link": {
+    "_doc": "Link ngoai site shop bi xoa (co ma san pham dung rieng trong link thi dung lai link shop). Trang tra cuu van don cua hang van chuyen KHONG phai link la.",
+    "allowedHosts": [
+      "m.me",
+      "127.0.0.1",
+      "localhost"
+    ],
+    "carrierHosts": [
+      "spx.vn",
+      "viettelpost.com.vn",
+      "viettelpost.vn",
+      "ghn.vn",
+      "ghtk.vn",
+      "jtexpress.vn"
+    ],
+    "codeInLink": "(?:^|[^A-Za-z0-9])([A-Z]{2}\\d{4,5})(?![A-Za-z0-9])",
+    "productLink": "https://{site}/product/{ma}"
+  },
+  "eta": {
+    "_doc": "Cap so ngay ('3-5 ngay', 'khoang 7 ngay') phai xuat hien nguyen cum trong loi nguoi truc / chinh sach / thoi gian hang order cua ho so shop. Cat dung cau chua moc ngay.",
+    "pattern": "(\\d{1,2})\\s*(?:-|den|toi|->)\\s*(\\d{1,2})\\s*ngay|(?:khoang|tam|tam khoang|sau|trong)\\s+(\\d{1,2})\\s*ngay",
+    "fallback": "Dạ để em kiểm tra thời gian hàng về chính xác rồi báo {khach} ngay nhé ạ."
+  },
+  "tracking": {
+    "_doc": "Khach hoi hang di den dau: gui DUNG link tra cuu van don da tra duoc (khong phai link san pham), khong doc ma tran trui. Link hang van chuyen khong co nguon thi xoa + goi nguoi.",
+    "asksShipment": "(hang (di )?(den|toi) dau|van don|tracking|ma van chuyen|hanh trinh|theo doi don|(bao gio|khi nao|chung nao)[^.!?]{0,15}(nhan|toi|den|giao)|don (cua )?(em|minh|toi|anh|chi|bac)[^.!?]{0,20}(dau|sao|the nao|chua)|gui lai (link|ma))",
+    "trackingWords": "tra cuu|van don|hanh trinh|theo doi don|tracking",
+    "aboutOrder": "(gui lai|van don|tra cuu|hanh trinh|tracking)",
+    "orderNoun": "(\\bdon\\b|kien|hang)",
+    "orderVerb": "(gui|giao|ship|van chuyen|chuan bi|hanh trinh|van don|tra cuu|len he thong)",
+    "addedText": "{Khach} bấm link này để xem hành trình đơn: {link}",
+    "carrierCode": "[A-Z]{2,5}\\d{6,}",
+    "handoffReason": "van_don_khong_co_nguon"
+  },
+  "advice": {
+    "_doc": "Co danh sach mau phu hop (adviceCandidates) ma bot nhac ma ngoai danh sach, khong ai nhac → thay bang 2 mau dau danh sach. {danhSach} = 'Ten (MA) gia ... va Ten (MA)'.",
+    "replacement": "Dạ với nhu cầu của {khach}, bên em đang có {danhSach} ạ. {Khach} xem thử mẫu nào ưng để em check size giúp nhé."
+  },
+  "evidence": {
+    "_doc": "enforceReplyEvidence phan chung: tu dem khi so loi bot voi loi nguoi truc, dang ma san pham, trang thai don khong tra cuu, tu cho tra sau, ma la, gia sai. Phan ton kho / size / doi dang di nam o cong-soat.json cua nganh.",
+    "fillerWords": [
+      "dang",
+      "da",
+      "duoc",
+      "co",
+      "la",
+      "roi",
+      "van",
+      "se",
+      "cua",
+      "cho"
+    ],
+    "codePattern": "\\b[A-Z]{1,3}\\d{4,6}(?:-\\d{3})?\\b",
+    "orderClaim": "(khong tim thay don|chua tim thay don|da (duoc )?dat thanh cong|da len don|da xuat kho|da ban giao|dang (duoc )?giao|ship?per dang|dang (duoc )?chuan bi|sap giao|sap (duoc )?gui|da gui di)",
+    "phone": "0\\d{9}",
+    "orderCheckReply": "Dạ để em kiểm tra đơn của {khach} rồi báo ngay ạ.",
+    "orderAskPhoneReply": "Dạ {khach} cho em xin số điện thoại đặt đơn để em kiểm tra giúp {khach} nhé ạ.",
+    "defer": "(nhan hang (roi |xong )?(moi )?thanh toan|thanh toan sau|tra sau|ship cod|cu len don .{0,25}thanh toan)",
+    "customerAsksDefer": "(chuyen (tra )?sau|thanh toan sau|lay (cho a |di |truoc )?.{0,12}(chuyen|tra) (tra |sau)|khach quen .{0,20}(ban khoan|chuyen)|nhan hang (roi )?(moi )?(thanh toan|chuyen))",
+    "agreesShip": "(len don|gui hang|gui (cho )?(anh|chi|bac|minh)|ship (cho|luon))",
+    "agreesShipUnless": "(sau khi|khi nhan duoc|chuyen khoan xong|ck xong)",
+    "deferReply": "Dạ phần thanh toán để em nhờ {tenNguoiPhuTrach} xác nhận với {khach} ngay nhé ạ.",
+    "alienReply": "Dạ để em kiểm tra lại mẫu chính xác rồi báo {khach} ngay ạ.",
+    "moneyContext": "(coc|dat coc|chuyen khoan|\\bck\\b|chuyen (truoc|them|du)|hoan (lai|tien|coc)|phi ship|tien ship|con lai|thanh toan truoc|ung truoc)[^.,!?\\n]{0,25}$",
+    "priceAgree": "(dung roi|chuan roi|dung gia|chinh xac|duoi \\d|tam gia|khoang \\d|tam \\d)",
+    "priceAgreeReply": "Dạ mẫu {ten} bên em đang ở giá {gia} ạ. {Khach} gửi giúp em tên mẫu đang giảm để em kiểm tra lại chính xác nhé.",
+    "variantDivergence": "(ban (nam|nu|khac)|phien ban|mau khac|cung dong)",
+    "variantReply": "Dạ để em kiểm tra lại giá chính xác của bản đó rồi báo {khach} ngay nhé ạ."
+  },
+  "appendLinks": {
+    "_doc": "server.js sau agent cap 2: link nhom/dong da chuan bi ma model quen thi noi vao cuoi; hoi loai hang ma khong neu duoc mau nao (khong ma, khong link shop) thi noi link bo loc.",
+    "lineText": "• {ten}{soMau}: {link}",
+    "groupText": "{Khach} xem các mẫu và chọn giúp em tại: {link}",
+    "filterText": "{Khach} xem đủ các mẫu còn hàng tại: {link}"
+  }
+}

@@ -1,0 +1,184 @@
+[
+ {
+  "ma": "kb-01",
+  "mucTieu": "Hỏi đích danh mẫu + size → tra kho ngay, không hỏi cự ly/pace",
+  "lichSu": [],
+  "chu": "shop ơi còn samba og trắng size 42 không"
+ },
+ {
+  "ma": "kb-02",
+  "mucTieu": "Hỏi chung chung → hỏi nhu cầu, không liệt kê mẫu",
+  "lichSu": [],
+  "chu": "tư vấn giúp em đôi giày nào đẹp với"
+ },
+ {
+  "ma": "kb-03",
+  "mucTieu": "Giày chạy: đã có cự ly + pace → được gợi mẫu, kèm lý do",
+  "lichSu": [
+   {
+    "ai": "khach",
+    "chu": "em tìm giày chạy bộ"
+   },
+   {
+    "ai": "shop",
+    "chu": "Dạ bác chạy cự ly nào và pace khoảng bao nhiêu ạ?"
+   }
+  ],
+  "chu": "em chạy 10k, pace 6:30, size 42, nam"
+ },
+ {
+  "ma": "kb-04",
+  "mucTieu": "Chạy nhẹ → không hỏi pace, gợi dòng êm",
+  "lichSu": [],
+  "chu": "anh chạy thể dục buổi sáng nhẹ nhàng thôi, size 41, tầm 2 triệu"
+ },
+ {
+  "ma": "kb-05",
+  "mucTieu": "Hãng không bán (salomon) → câu 'không còn hãng đó' của shop, không tra kho",
+  "lichSu": [],
+  "chu": "shop có bán salomon không"
+ },
+ {
+  "ma": "kb-06",
+  "mucTieu": "Mẫu không có → câu 'không còn mẫu đó' + gợi ý tương tự",
+  "lichSu": [],
+  "chu": "còn nike pegasus 41 size 43 không ạ"
+ },
+ {
+  "ma": "kb-07",
+  "mucTieu": "Mặc cả → không giảm, câu theo hồ sơ",
+  "lichSu": [
+   {
+    "ai": "khach",
+    "chu": "samba og IG1025 size 42 giá bao nhiêu"
+   },
+   {
+    "ai": "shop",
+    "chu": "Dạ mẫu này 2.500.000đ ạ"
+   }
+  ],
+  "chu": "2tr được không em"
+ },
+ {
+  "ma": "kb-08",
+  "mucTieu": "Khách chốt → gửi phiếu đặt hàng (link ?size=), không xin SĐT",
+  "lichSu": [
+   {
+    "ai": "khach",
+    "chu": "còn samba og IG1025 size 42 không"
+   },
+   {
+    "ai": "shop",
+    "chu": "Dạ còn ạ, giá 2.500.000đ, hàng sẵn giao ngay ạ"
+   }
+  ],
+  "chu": "ok em lấy đôi này"
+ },
+ {
+  "ma": "kb-09",
+  "mucTieu": "Hỏi cọc hàng order → 20% từ hồ sơ, không bịa",
+  "lichSu": [],
+  "chu": "hàng order thì cọc bao nhiêu và mấy ngày có hàng"
+ },
+ {
+  "ma": "kb-10",
+  "mucTieu": "Đã chuyển khoản → chuyển người (tầng 1)",
+  "lichSu": [
+   {
+    "ai": "shop",
+    "chu": "Dạ bác chuyển khoản cọc giúp em ạ"
+   }
+  ],
+  "chu": "em vừa ck 500k rồi nhé"
+ },
+ {
+  "ma": "kb-11",
+  "mucTieu": "Xin biên lai → chủ đề shop khai → chuyển người",
+  "lichSu": [],
+  "chu": "cho em xin biên lai đơn hôm qua"
+ },
+ {
+  "ma": "kb-12",
+  "mucTieu": "Hỏi đơn/vận đơn → xin SĐT + gọi người, không bịa trạng thái",
+  "lichSu": [],
+  "chu": "đơn của em tới đâu rồi shop"
+ },
+ {
+  "ma": "kb-13",
+  "mucTieu": "Đổi trả → đọc chinh_sach, nói đúng ô đã khai",
+  "lichSu": [],
+  "chu": "mua về đi không vừa có đổi được không"
+ },
+ {
+  "ma": "kb-14",
+  "mucTieu": "Phí ship (chưa khai số) → kiểm theo địa chỉ, không bịa số",
+  "lichSu": [],
+  "chu": "ship về Đà Nẵng bao nhiêu tiền"
+ },
+ {
+  "ma": "kb-15",
+  "mucTieu": "Tư vấn size theo số đo → dùng bang_size, không khẳng định chắc",
+  "lichSu": [
+   {
+    "ai": "khach",
+    "chu": "em muốn mua adizero sl2 chạy bộ"
+   },
+   {
+    "ai": "shop",
+    "chu": "Dạ bác đo giúp em chiều dài bàn chân (cm) ạ"
+   }
+  ],
+  "chu": "chân em dài 25cm, rộng 10cm"
+ },
+ {
+  "ma": "kb-16",
+  "mucTieu": "Khách đọc số tem → tra thẳng cột tem, không cộng 1,5",
+  "lichSu": [],
+  "chu": "tem đôi cũ em ghi 26.5 thì lấy size gì"
+ },
+ {
+  "ma": "kb-17",
+  "mucTieu": "Môn thể thao có bán (bóng rổ) → tra kho theo môn, không nói không bán",
+  "lichSu": [],
+  "chu": "shop có giày bóng rổ không"
+ },
+ {
+  "ma": "kb-18",
+  "mucTieu": "Đi học đi chơi → gợi theo nhóm + link, không hỏi pace",
+  "lichSu": [],
+  "chu": "em cần đôi đi học đi chơi size 40 nữ"
+ },
+ {
+  "ma": "kb-19",
+  "mucTieu": "Xin thêm ảnh → không hứa chụp, gửi link sản phẩm",
+  "lichSu": [
+   {
+    "ai": "khach",
+    "chu": "samba og IG1025 còn không"
+   },
+   {
+    "ai": "shop",
+    "chu": "Dạ còn size 40–43 ạ"
+   }
+  ],
+  "chu": "cho em xin thêm ảnh thật góc khác với"
+ },
+ {
+  "ma": "kb-20",
+  "mucTieu": "Quần áo: khách nói size → chốt size, không hỏi sâu",
+  "lichSu": [],
+  "chu": "mua áo adidas size L còn không"
+ },
+ {
+  "ma": "kb-21",
+  "mucTieu": "Khiếu nại hàng lỗi → chuyển người",
+  "lichSu": [],
+  "chu": "giày nhận về bị bong keo, em muốn khiếu nại"
+ },
+ {
+  "ma": "kb-22",
+  "mucTieu": "Câu hỏi về cách trả tiền (không phải đã trả) → bot trả lời, không chuyển người",
+  "lichSu": [],
+  "chu": "có cách nào không chuyển khoản cọc vẫn mua được không em"
+ }
+]

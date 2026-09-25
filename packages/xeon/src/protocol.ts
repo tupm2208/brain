@@ -25,6 +25,17 @@ export interface InboundMessageBody {
   /** Number of images attached. */
   soAnh?: number | undefined;
   /**
+   * Đ7 (21/09/2026): the ADDRESSES of those images (https, at most four). The brain reads them for
+   * this turn — what the picture shows, and which catalogue code it matches — and keeps none of
+   * them. An older landing sends only `soAnh`; the bot then answers as before, picture unseen.
+   */
+  anh?: string[] | undefined;
+  /**
+   * 24/09/2026 (tái tạo tầng 1 Desk): mã tin mà khách BẤM "Trả lời" (Meta `reply_to.mid`). Vắng =
+   * tin thường, hoặc landing cũ chưa gửi.
+   */
+  traLoiTin?: string | undefined;
+  /**
    * Đ7: how the landing answers this conversation — `auto` (the bot sends), `suggest` (drafts for a
    * person only), `off`. Anything but `auto` is never sent by `/tin-den`. Absent = auto (older landings).
    */
@@ -89,15 +100,36 @@ export const PATHS = {
   /** Đ7 — the AI desk: draft (never sends), sandbox, batch analysis, knowledge proposal, image reading, token ledger, price table. */
   aiDraft: "/ai/goi-y",
   aiSandbox: "/ai/hop-cat",
+  /** The "AI tư vấn" box on the shop's own website: the same brain, for a visitor nobody is chatting with yet. */
+  aiWebAdvisor: "/ai/tu-van-web",
   aiAnalyze: "/ai/phan-tich-lo",
   aiKnowledge: "/ai/de-xuat-kien-thuc",
   aiImage: "/ai/doc-anh",
   aiTokens: "/ai/token",
+  /**
+   * A model call the LANDING paid for itself (the partner portal reads a box label with the
+   * operator's key, never through Xeon), reported here so the shop's token book still shows it.
+   * Ported from the running site 15/09/2026, where the same lesson cost a whole column of the
+   * Token AI screen: a call nobody writes down is a call nobody can price.
+   */
+  aiUsageReport: "/ai/ghi-token",
   aiPricing: "/ai/bang-gia",
+  /**
+   * 24/09/2026 — the Chatbot tab of OMI (tier 3 screen): the industry's suggested profile and its
+   * blocks, and a preview of the system message the agent would be given for this shop right now.
+   */
+  aiProfileTemplate: "/ai/mau-ho-so",
+  aiPromptPreview: "/ai/loi-dan-xem-thu",
   /** Đ8 — the Content screen: critique (three judges), optimise against the critique, weekly trend research. */
   contentReview: "/noi-dung/phan-bien",
   contentOptimize: "/noi-dung/toi-uu",
   contentTrends: "/noi-dung/xu-huong",
+  /**
+   * 22/09/2026 — the shop tells the workshop HOW IT WANTS CONTENT MADE in its own words, and this
+   * turns those words into the form the landing stores. It only proposes: the landing writes
+   * nothing until a person approves what came back.
+   */
+  contentProfile: "/noi-dung/hieu-y",
   /** Đ9 — industry knowledge (sample profiles, research queue, line knowledge) and the Video Studio ticket. */
   knowledgePrefix: "/kien-thuc/",
   videoTicket: "/video/ve",

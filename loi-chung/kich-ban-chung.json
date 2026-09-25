@@ -1,0 +1,57 @@
+{
+  "_doc": "TANG 1 — KICH BAN TRA LOI CUNG dung chung moi nganh (chep tu Sales Desk ai_router.js SCRIPT_REPLIES + matchBotScript, 24/09/2026; cau ghi nhan chuyen khoan la cau TRUNG TINH anh Dung chot 24/09: bot KHONG BAO GIO tu noi da nhan tien). Cho trong: {khach}/{Khach} (xung ho), {shop}, {site}, {tenShop}, {nganHang} {soTaiKhoan} {tenTaiKhoan} (tai khoan shop), {camKetHang} va moi truong ho so shop {banHang.…}. Mot cho trong khong dien duoc = KHONG dung kich ban do (de agent / goi nguoi). `action`: script_reply (tu gui) | human_handoff (goi nguoi; `safeToAutoSend` true = van gui cau nay ngay) | ask_clarification. Nganh GHI DE tung kich ban trong nganh/<id>/kich-ban.json.",
+  "scripts": {
+    "greeting": {
+      "action": "script_reply",
+      "reply": "Dạ em nghe ạ, {khach} đang tìm mẫu nào để em hỗ trợ ạ?"
+    },
+    "small_talk": {
+      "action": "script_reply",
+      "reply": "Dạ vâng, cảm ơn {khach} đã ủng hộ shop ạ! Cần gì {khach} cứ nhắn em nhé."
+    },
+    "small_talk_plain": {
+      "action": "script_reply",
+      "reply": "Dạ vâng ạ! Cần gì {khach} cứ nhắn em nhé."
+    },
+    "complaint_or_human": {
+      "action": "human_handoff",
+      "reply": "Dạ em chuyển người phụ trách xử lý trực tiếp cho {khach} để kiểm tra đúng thông tin ạ."
+    },
+    "payment_confirmation": {
+      "action": "human_handoff",
+      "safeToAutoSend": true,
+      "reply": "Dạ em đã nhận thông tin, em báo người phụ trách đối chiếu và báo lại {khach} ngay ạ."
+    },
+    "payment_dispute": {
+      "action": "human_handoff",
+      "safeToAutoSend": true,
+      "reply": "Dạ em ghi nhận thắc mắc của {khach} về khoản đã chuyển ạ. Em báo người phụ trách đối chiếu đúng tổng đơn, phí ship và khoản đã chuyển rồi báo lại {khach} ngay ạ."
+    },
+    "bank_ack": {
+      "action": "script_reply",
+      "reply": "Dạ vâng ạ, {khach} chuyển xong nhắn em để em kiểm tra và lên đơn ngay nhé!"
+    },
+    "asks_bank_info": {
+      "action": "script_reply",
+      "reply": "Dạ {khach} chuyển khoản giúp em vào:\n{nganHang} - {soTaiKhoan} - {tenTaiKhoan}\nChuyển xong {khach} nhắn em để em xác nhận và lên đơn ngay ạ!"
+    },
+    "resell_offer": {
+      "action": "human_handoff",
+      "reply": "Dạ phần thu lại/pass hàng em nhờ người phụ trách xem giúp {khach} ạ. {Khach} cho em xin thêm ảnh và mức giá mong muốn nhé!"
+    },
+    "receipt_image": {
+      "action": "human_handoff",
+      "safeToAutoSend": true,
+      "reply": "Dạ em nhận được ảnh rồi ạ, em báo người phụ trách đối chiếu và báo lại {khach} ngay ạ."
+    },
+    "image_unclear": {
+      "action": "ask_clarification",
+      "reply": "Dạ {khach} đang tìm mẫu này để em kiểm tra giúp ạ? {Khach} cho em xin tên mẫu hoặc mã sản phẩm nhé."
+    }
+  },
+  "hoiLai": {
+    "chung": "Dạ {khach} cho em xin tên mẫu hoặc mã sản phẩm để em kiểm tra đúng tồn và giá nhé ạ?",
+    "xinSdtDon": "Dạ {khach} cho em xin số điện thoại đặt đơn để em kiểm tra đơn và hỗ trợ đổi size giúp {khach} ạ.",
+    "xinLoiCho": "Dạ em xin lỗi {khach} chờ ạ, "
+  }
+}

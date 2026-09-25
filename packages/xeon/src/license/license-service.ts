@@ -89,7 +89,7 @@ export type LandingRegistrationResult =
   | { ok: false; viSao: "key_khong_co" | "key_bi_khoa" | "key_het_han" | "dia_chi_sai" };
 
 export type ServiceEligibility =
-  | { ok: true; shop: string; diaChi: string; nganh: string; manh: string[] }
+  | { ok: true; shop: string; tenShop: string; diaChi: string; nganh: string; manh: string[] }
   | { ok: false; viSao: "khong_co_key" | "key_het_han" | "chua_mua_chatbot" | "landing_chua_dang_ky" };
 
 export interface MachinePageView {
@@ -371,7 +371,7 @@ export class LicenseService {
     if (this.status(record) === "het_han") return { ok: false, viSao: "key_het_han" };
     if (!this.enabledModules(record).includes(CHATBOT_MODULE)) return { ok: false, viSao: "chua_mua_chatbot" };
     if (!record.landing?.diaChi) return { ok: false, viSao: "landing_chua_dang_ky" };
-    return { ok: true, shop: record.shop, diaChi: record.landing.diaChi, nganh: record.nganh, manh: this.enabledModules(record) };
+    return { ok: true, shop: record.shop, tenShop: record.tenShop, diaChi: record.landing.diaChi, nganh: record.nganh, manh: this.enabledModules(record) };
   }
 
   /** A `dich-vu` ticket for the brain to call the landing. Lives 1 hour; callers renew near expiry. */

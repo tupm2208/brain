@@ -1,0 +1,21 @@
+{
+  "_doc": "TANG 2 — phan DINH NGANH cua khung hoi thoai (giay chay): page hoi size / hoi muc dich, tin khach chi la so size, hinh dang ma san pham, tu nhieu trong ten mau khi doi chieu ten khach go. Duoc GHEP vao loi-chung/khung-hoi-thoai.json (danh sach noi them, chu ghi de). Nganh khong co tep nay thi khung chi con phan chung.",
+  "pageTurn": {
+    "asked_size": [
+      "(size (nao|bao nhieu|may|gi)|tim size|di size|so may|mang size|size bao nhieu|size nao)"
+    ],
+    "asked_purpose": [
+      "(muc dich|chay bo hay|di choi hay|dung de (chay|di)|nhu cau|chay lau chua|chay duong (nao|truong|nhua)|toc do (nao|bao)|cu ly|pace|dang chay bang|dang di (giay|doi)|hay di (choi|lam)|chay hay di|hay (duong|san|trail|leo)|duong (thuong|nhua|bang) hay|san (cung|dat) hay|nam hay nu|tap gi)"
+    ]
+  },
+  "sizeOnly": [
+    "^(3[4-9]|4[0-9]|5[0-2])(\\s*-?\\s*[12]\\s*\\/\\s*3|[.,]5|\\s*ruoi)?(\\s*(va|,|&|\\+)\\s*(3[4-9]|4[0-9]|5[0-2])(\\s*-?\\s*[12]\\s*\\/\\s*3|[.,]5)?)*$"
+  ],
+  "productCodePatterns": [
+    "\\b(\\d{4}[A-Za-z]\\d{3}-\\d{3}|[A-Za-z]{2}\\d{4}(?:-\\d{3})?)\\b"
+  ],
+  "nameNoiseWords": ["m", "w", "men", "women", "nam", "nu", "giay", "shoes", "running", "chay", "bo", "size"],
+  "kindTexts": {
+    "asked_purpose": "page vừa HỎI MỤC ĐÍCH/NHU CẦU (chạy gì, tốc độ, cự ly, đang đi giày nào)"
+  }
+}

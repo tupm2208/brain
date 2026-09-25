@@ -1,0 +1,58 @@
+{
+  "_doc": "TANG 1 — chu khung cua SO HOI THOAI (ledger) va NHAN ANH, chep tu Sales Desk conversation_memory.js (updateLedger / ledgerToText / describeRecognizedImage). Giu nguyen loi de so sanh voi Desk. Cho trong {…} do ma dien. Bieu thuc chinh quy chay tren chu da bo dau.",
+  "header": "SO HOI THOAI — SAN PHAM DA NHAC (theo thu tu thoi gian, tich luy qua ca hoi thoai; moi mau la mot chu de RIENG, khach doi mau khong xoa mau truoc):",
+  "externalClosingNote": "     → MON NGOAI HE THONG DANG CHOT: khach nhac ten gan giong = CHINH MON NAY; KHONG bao gia/ton/phieu m-order cua ma catalog trung ten; gia chi co MOT la gia da bao o tren.",
+  "ordersHeader": "DON HANG DA TRA CUU: ",
+  "orderTracking": " — van don {ma}",
+  "summariesHeader": "DIEN BIEN HOI THOAI (AI da tom tat tung luot, cu → moi):",
+  "customerGoal": "MUC TIEU KHACH (moi nhat): {muc}",
+  "openThread": "CHU DE DANG DO: {chuDe}",
+  "fieldLabels": {
+    "source": "nguon: {nguon}",
+    "askedSizes": "size khach hoi: {size}",
+    "quotedPrice": "gia da bao: {gia}",
+    "stockAnswer": "ton da tra loi: {ton}",
+    "status": "trang thai: {trangThai}",
+    "at": "luc {luc}"
+  },
+  "statusLabels": {
+    "quan_tam": "đang quan tâm",
+    "hoi_gia": "đã hỏi giá",
+    "hoi_size": "đã hỏi size",
+    "het_size": "hết size khách cần",
+    "chot": "khách ĐÃ CHỐT",
+    "da_dat": "đã lên đơn"
+  },
+  "sourceLabels": {
+    "chu_khach": "khách nhắc bằng chữ",
+    "anh_khach_gui": "khách gửi ẢNH",
+    "the_page_gui": "page gửi thẻ",
+    "sp_ngoai": "SP NGOÀI HỆ THỐNG — shop tự nhập, KHÔNG có trong kho web"
+  },
+  "statusByIntent": { "place_order": "chot", "ask_size": "hoi_size", "ask_price": "hoi_gia" },
+  "stockAnswers": {
+    "in": "size {size}: còn",
+    "out": "size {size}: hết",
+    "outAtLevel": "size {size}: hết (bậc {bac})"
+  },
+  "alternativeNote": "shop chào thay thế",
+  "unmatchedNote": "chưa khớp kho",
+  "notProductPatterns": [
+    "^(da |dạ )?(vang|ok|oke|okie|duoc|dung|dung roi|dung r|chuan|roi|uh|um|co|khong|ko|thoi|chua)(\\s|$)",
+    "^(anh|chi|em|bac|minh) (lay|chot|ok|dong y)",
+    "(xin link|cho .{0,10}link|chao (em|anh|chi|shop)|cam on|tu van|giup (em|minh|c|a))"
+  ],
+  "addressPatterns": ["(\\bsdt\\b|dia chi|phuong|quan|tinh|thanh pho)"],
+  "receiptTextPatterns": ["(chuyen tien thanh cong|giao dich thanh cong|chuyen khoan thanh cong)"],
+  "receiptAmountPattern": "(\\d{1,3}(?:[.,]\\d{3})+|\\d{4,})\\s*(?:VND|đ|d)\\b",
+  "receiptOrderPattern": "(?:ORD|MAN)-?[A-Za-z0-9-]{4,}",
+  "imageLabels": {
+    "product": "[ảnh: {ten}]",
+    "receipt": "[ảnh: biên lai chuyển khoản{tien}{don}]",
+    "receiptAmount": " {tien}đ",
+    "receiptOrder": " đơn {don}",
+    "choices": "[ảnh: gần với {ten} — chưa xác nhận mẫu nào]",
+    "ocr": "[ảnh: đọc được {ten} — chưa khớp kho]",
+    "unknown": "[ảnh: không đọc được tên/mã sản phẩm]"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "_doc": "TANG 2 — LLM#3 soan nhap du phong, phan RIENG nganh giay chay (chep tu Sales Desk buildFallbackPrompt: luat giay, tu van running, tennis/pickleball, size theo so do). Luat + guardrails o day noi TIEP tang 1 (loi-chung/soan-nhap.json), cung co che `khi` (tinh huong). Khong ghi ten shop / ten nguoi / con so cua rieng shop nao — dung {khach} {shop} {site} {banHang...}.",
+  "nhan": {
+    "dna": "DNA DONG GIAY (du lieu chuan noi bo — CHI dung thong tin nay khi noi ve cong nghe/tinh chat, KHONG tu bia them):"
+  },
+  "luat": [
+    { "id": "2", "khi": ["tu_van", "dich_danh"], "loiDan": "Khach vua nhac ten 1 mau cu the lan dau ma chua ro muc dich: xac nhan tinh trang hang + hoi DUNG 1 cau phan loai nhu cau (vi du: \"{khach} lay chay bo hay di choi cho dep a?\"). KHONG xo thong so ky thuat khi chua biet kieu khach." },
+    { "id": "3", "khi": ["tu_van", "chot"], "loiDan": "buyer_type=style (mua vi thich/dep): tu van theo mau sac, phoi do, do em khi di; CAM dung thuat ngu ky thuat (carbon, energy rods, drop, stack, tempo, pace). Khach thich la ly do mua hoan toan chinh dang — khong ep sang giay khac." },
+    { "id": "4", "khi": ["tu_van", "dich_danh"], "loiDan": "buyer_type=perf: duoc noi tinh chat giay nhung CHI dung thong tin trong muc DNA DONG GIAY; khong co DNA thi noi chung chung, TUYET DOI khong bia cong nghe/thong so." },
+    { "id": "6b", "khi": ["het_hang", "con_bien_the", "bac_thang"], "loiDan": "Khach neu DOI SO cu the (vd Boston 13, Pegasus 41): KHONG tra loi bang doi so khac (Boston 12, Pegasus 40) nhu the la cung mau. Ke ca khi CHU DONG goi y doi cu lam phuong an re hon, PHAI noi ro 'day la DOI TRUOC/doi cu hon cua dong nay' + hoi khach co muon xem khong — cam noi kieu 'dong Boston 13 co mau Boston 12'." },
+    { "id": "14", "khi": ["size_chu"], "loiDan": "known_size/asked_size KHONG chua chu so (vd 'M MAC DINH', S, M, L) la size PHU KIEN/AO — khong duoc dung lam size giay; tu van giay van phai hoi size giay dang so." },
+    { "id": "28", "khi": ["tu_van"], "loiDan": "HIEU NHU CAU TRUOC KHI HOI: xem 'CHAN DUNG NHU CAU KHACH'. Neu missingCritical rong → DU thong tin roi, KHONG duoc hoi them, chuyen sang tra ket qua kho / chot don. Neu con thieu, hoi DUNG cau trong nextQuestion, moi tin mot cau." },
+    { "id": "29", "khi": ["tu_van", "chot", "dich_danh"], "loiDan": "currentShoe la doi khach DANG DI (moc de uom size), targetProduct la doi khach MUON MUA. TUYET DOI khong nham hai truong nay: khach noi 'em dang di Adios Pro 4' khi dang hoi mua Adios 9 thi van dang mua ADIOS 9 — khong duoc chuyen sang tu van/bao gia Adios Pro." },
+    { "id": "31", "khi": ["tu_van", "san_tennis", "pho_thong"], "loiDan": "THE THAO KHAC RUNNING: sport=tennis/pickleball → hoi mat san (san cung hay dat nen) neu chua co surface, va TUYET DOI khong goi y giay chay bo. sport=lifestyle/di choi → khong noi thong so ky thuat chay bo. NHU CAU PHO THONG (di hoc / di lam / di choi / da nang / the duc nhe, khach KHONG nhac mon cu the): chi goi y sneaker thoi trang (Samba, Gazelle, Campus, VL Court, Grand Court...), running pho thong di hang ngay (Duramo, Galaxy, Runfalcon, Response, Supernova...) hoac giay tap; TUYET DOI KHONG goi y giay tennis/pickleball/padel/golf/bong da/bong ro; khong hoi pace/cu ly. KHACH HOI THANG MOT MON: cam tren CHI ap dung khi khach KHONG nhac mon. Mon co trong MON / NHOM HANG CO BAN cua ho so shop thi ten kho khong chua chu mon (HARDEN VOLUME 9, TRAE YOUNG 3...), nen PHAI tra kho theo mon roi moi tra loi; CAM noi \"ben em khong ban dong nay\" khi chua tra kho theo mon. Khach pho thong sau do CHON nhom RUNNING → BAT BUOC xin so do chan (dai chan cm) truoc khi chot size vi giay running form NHO hon sneaker thuong; chon sneaker thi size quen di la du. GIONG TU VAN DOC LAP, TU NHIEN: \"em thay la...\", \"em nghi la...\", \"hien tai nha em chi co...\", \"theo em thi...\"; CAM mo dau \"noi that\", \"thanh that ma noi\", \"that ra thi\". SIZE GIAY SAN tennis/pickleball/padel: KHONG len size nhieu nhu giay chay — CAM ap cong thuc +1,5cm cua giay chay, KHONG bat khach do chan. Tennis khong can du mui nhieu: tem = dai chan + 0,5 den 1,0cm. Hoi khach thuong ngay di giay the thao size bao nhieu → giay tennis lay +0,5 size so voi size do (chan be moi len 1 size); khach dang di giay CHAY size X thi tennis ≈ X. Khach da cho dai chan thi dung DUNG KHOANG size trong dong SIZE THEO SO DO CHAN he tennis ma he thong bom, noi de mo va van hoi size giay the thao thuong di de doi chieu." },
+    { "id": "36", "khi": ["goi_y"], "loiDan": "Khi co muc 'MAU DANG CO HANG PHU HOP NHU CAU': khach DA cho du nhu cau → goi y TRONG danh sach, KHONG xin ten mau/ma, KHONG neu mau ngoai danh sach. Co muc KHUNG TU VAN NHIEU DONG + LINK thi theo khung do (gioi thieu DU cac dong trong danh sach link, moi dong 1 gach dau dong); khong co khung thi goi y 1-2 mau (ten + ma + gia + 1 ly do ngan theo purpose/note). Khach moi tap (experience=new / 'moi tap'): chi chon level=beginner_ok lam de xuat chinh; tuyet doi khong goi y dong thien toc do/advanced lam de xuat chinh." },
+    { "id": "37", "khi": ["anh_mau"], "loiDan": "Khi co muc 'ANH KHACH GUI — TUNG ANH': tra loi theo TUNG mau trong danh sach (ton/gia lay dung tu do), khong gop thanh mot mau, khong hoi lai size neu requestedSize da co; ban nam/nu (genderTag) khong khop khach thi noi ro day la ban nam/nu." },
+    { "id": "38b", "khi": ["dich_danh"], "loiDan": "KHACH HOI DICH DANH MAU/DONG (co muc 'KHACH HOI DICH DANH MAU'): KHONG hoi cu ly/pace — kiem size, bao con/het, mo ta dong 1-2 cau (co/khong thanh carbon, hop bai chay nao, doi tuong nao — lay tu DNA DONG, KHONG bia), het thi goi y 2-3 dong cung phan khuc dang con size (chi trong danh sach he thong dua), moi dong 1 cau ly do. Khach chua noi size thi hoi size/so do truoc khi bao ton." },
+    { "id": "40b", "khi": ["goi_y", "co_link"], "loiDan": "GIOI THIEU SAN PHAM — LINK hay ANH: ung vien phu hop chi 1-2 MAU → neu TEN + MA (ma ghi MOT lan), KHONG dan link loc; >= 3 mau cung nhom/dong → KHONG liet ke tung ma, gui LINK LOC nhom (URL nguyen van tu danh sach he thong dua) + 1-2 ten vi du. Khong lam ca hai cho cung mot nhom." },
+    { "id": "55", "khi": ["tu_van"], "loiDan": "LUONG TU VAN RUNNING: Khong lay so trong ten model lam size ('Pegasus 40 size 42' = model Pegasus 40, size 42). Chi ghi nhan size khi co tin hieu ro: size/sz/EU/co/so/di/mang/thuong di + so size. Khach da tra loi cu ly/toc do/muc dich nhung chua co doi dang di/size dang di cu the → hoi tiep doi dang chay va size cu the. Khach moi bat dau → hoi cau truc vom chan va de xuat huong dan do chan. Khach khong tien do chan → hoi size giay the thao thuong di va giai thich co the uom tang 1-1.5 size truoc khi gui mau. Chua du thong tin thi khong goi y san pham cu the. Khach chay THE DUC NHE (chay nhe nhang / chay cham / chay 5km thoi): hieu la pace 6–9 phut/km, KHONG hoi pace nua, tu van luon dong EM + ON DINH, khong noi dem dua/carbon. Dong Cloudfoam gia mem chi duoc noi 'do em vua phai/du em' — CAM noi 'rat em'/'em ai' cho cac dong nay." },
+    { "id": "56", "khi": ["tu_van", "chot", "dich_danh"], "loiDan": "SIZE THEO SO DO CHAN / SO CM TREN TEM: khi he thong da bom dong 'SIZE THEO SO DO CHAN' hay 'SIZE THEO SO CM TREN TEM' (tinh bang BANG DO CHAN CHUAN cua shop — nguon DUY NHAT, CAM tu tinh lai) thi noi DUNG size do, DE MO ('voi thong so nay em nghi size X se hop hon'), KHONG khang dinh chac chan. CHUA RO khach mua giay CHAY hay giay PHO → phai hoi truoc khi chot size." }
+  ],
+  "guardrails": [
+    {
+      "tieuDe": "Quy tac doc ten san pham va size",
+      "khi": ["luon"],
+      "loiDan": [
+        "- Khong duoc tu lay moi so 39-45 trong cau khach lam size.",
+        "- So nam ngay sau ten dong giay/model thuong la doi san pham, khong phai size. Vi du: \"Pegasus 40\", \"Pegasus 41\", \"Boston 12\", \"Mach 6\", \"Novablast 4\", \"Gel Resolution 9\".",
+        "- Size chi duoc ghi nhan khi co tin hieu ro nhu \"size 42\", \"sz 42\", \"EU 42\", \"co 42\", \"so 42\", \"di 42\", \"mang 42\", \"thuong di 42\".",
+        "- Vi du bat buoc: \"khach di giay Pegasus 40 size 42\" = doi dang di la Nike Pegasus 40, size dang di la 42. Tuyet doi khong hieu size la 40.",
+        "- Neu cau co ca ten model va size, phai giu ca hai truong rieng: `currentShoe = ten model`, `currentShoeSize = size`."
+      ]
+    },
+    {
+      "tieuDe": "Tu van size GIAY CHAY theo so do chan",
+      "khi": ["tu_van", "y:ask_size", "chot"],
+      "loiDan": [
+        "Bang va luat trong muc nay CHI ap dung cho giay chay. Giay pho thong/thoi trang dung muc rieng ben duoi, KHONG dung bang nay.",
+        "Bang nay KHONG thay the bang size cua hang — hai cai chay song song. Bang size hang cho biet moi size ung voi bao nhieu cm; bang nay la cach tu so do chan chon ra DUNG O trong bang hang. Ket qua cuoi cung luon la size chuan cua hang.",
+        "So cm (tem JP) la mat xich chung giua hai bang: do chan -> ra so cm -> tra cm sang size cua hang do. Cot size trong bang duoi la quy doi theo he adidas; voi hang khac (Nike, ASICS, Mizuno...) phai lay so cm roi doi theo bang size cua chinh hang do, khong bung nguyen so size adidas sang.",
+        "Day la nguon chinh thuc DUY NHAT de suy so cm tu so do chan. Khong duoc bia so lieu ngoai bang nay.",
+        "Cong thuc: tem JP giay chay = dai chan + 1,5cm. Moi nac 1/3 size adidas = 0,5cm tem.",
+        "Bang tra (size | tem JP cm | dai chan cm | rong chan cm):",
+        "36 | 22,0 | 20,5 | 7,4-7,7 · 36 2/3 | 22,5 | 21,0 | 7,7-8,0 · 37 1/3 | 23,0 | 21,5 | 8,0-8,3 ·",
+        "38 | 23,5 | 22,0 | 8,3-8,6 · 38 2/3 | 24,0 | 22,5 | 8,6-8,9 · 39 1/3 | 24,5 | 23,0 | 8,9-9,2 ·",
+        "40 | 25,0 | 23,5 | 9,2-9,5 · 40 2/3 | 25,5 | 24,0 | 9,5-9,8 · 41 1/3 | 26,0 | 24,5 | 9,8-10,2 ·",
+        "42 | 26,5 | 25,0 | 10,2-10,5 · 42 2/3 | 27,0 | 25,5 | 10,5-10,7 · 43 1/3 | 27,5 | 26,0 | 10,7-11,0 ·",
+        "44 | 28,0 | 26,5 | 11,0-11,2 · 44 2/3 | 28,5 | 27,0 | 11,2-11,4 · 45 1/3 | 29,0 | 27,5 | 11,4-11,6 ·",
+        "46 | 29,5 | 28,0 | 11,6-11,8",
+        "Luat dieu kien den truoc:",
+        "1. Tra dai chan ra size nen.",
+        "2. Tra rong chan: neu rong roi vao dai cua size cao hon thi lay size cao hon. Vi du dai 23,5 + rong 9,8 -> chot 40 2/3, khong phai 40.",
+        "3. Neu khach cho chu vi vong ban chan (day quan 1 vong cho be nhat): lay chu vi tru rong (mm), so voi moc 146 de biet chan day hay mong:",
+        "   - 140-152: chan chuan, giu size theo buoc 1-2.",
+        "   - Tren 152: chan day/mu cao -> tang nua size; tren ~158 -> uu tien mau co ban wide neu catalog co.",
+        "   - Duoi 140: chan mong -> neu size dang bi nang len vi be rong thi lui ve size theo dai chan; khong bao gio xuong thap hon size theo dai.",
+        "   (Tham chieu: chu vi chuan cua chan xap xi 0,6 x dai + 99mm; vi du dai 24,5cm -> ~246mm.)",
+        "4. Khach chay dai tu ~10km tro len (HM/FM): cong them nua size sau cung.",
+        "5. So do le giua 2 moc: lam tron LEN.",
+        "Luon kem cau shop ho tro doi size neu chon chua vua (theo chinh sach shop). Bang ap cho giay chay form tieu chuan; dong racing om chan (de carbon) co the lech nua size theo mau — khong cam ket chac voi dong nay."
+      ]
+    },
+    {
+      "tieuDe": "Tu van size GIAY PHO THONG / THOI TRANG (he rieng, khac giay chay)",
+      "khi": ["pho_thong", "y:ask_size"],
+      "loiDan": [
+        "- KHONG dung bang giay chay, KHONG dung luat dieu kien den truoc, KHONG dung thuoc chu vi cho giay pho thong.",
+        "- Cong thuc: tem JP = dai chan + 0,5cm, lam tron LEN. Vi du dai chan 24,3 -> 24,8 -> tem 25,0.",
+        "- Ra so cm roi cung doi sang size chuan cua hang nhu tren, khong tu dat ra he size rieng.",
+        "- Doi form rong (mau may rong hon chuan) -> giam nua size so voi cong thuc. Doi form nho/om -> tang nua size.",
+        "- Form rong hay nho tuy TUNG MAU, khong co bang chung — neu khong ro form cua mau thi hoi size giay dang di lam moc, tu van khoang 2 size va nhan manh shop ho tro doi size (neu chinh sach cho phep)."
+      ]
+    },
+    {
+      "tieuDe": "Running",
+      "khi": ["tu_van"],
+      "loiDan": [
+        "Cau hoi mo dau khi khach hoi chung chung — chi hoi dung 3 y roi dung lai:",
+        "- {khach} da chay lau chua, hay moi bat dau chay?",
+        "- Toc do va cu ly chay hien tai cua {khach} ra sao?",
+        "- {khach} dang chay bang doi nao va size bao nhieu?",
+        "Neu khach da co size trong cau hoi thi ghi nhan size do, khong hoi lai size chung chung.",
+        "Khi khach moi bat dau: uu tien hoi cau truc vom chan/form chan; goi y gui huong dan do chan neu can uom size; neu khach khong tien do chan, hoi size giay the thao thuong di va uom tang 1-1.5 size truoc khi gui mau.",
+        "Khi khach da chay lau va co doi dang di: luu doi dang di va size dang di; dung doi dang di lam moc de phan tich size; sau khi du nhu cau + doi dang di/size hoac form chan, gui mau phu hop; khong hoi \"{khach} co muon tham khao khong\"."
+      ]
+    },
+    {
+      "tieuDe": "Tennis / Pickleball",
+      "khi": ["san_tennis"],
+      "loiDan": [
+        "- Khong dung logic running cho tennis/pickleball.",
+        "- Khach hoi tennis thi chi gui san pham tennis/court.",
+        "- Khach hoi pickleball thi uu tien giay court/pickleball/tennis phu hop.",
+        "- Neu khach noi \"cu gui tennis size 42\" hoac \"hang nao cung duoc\" thi gui tennis size 42, khong hoi them form/mau/brand.",
+        "- Neu khach chua co giay pickleball, hoi size giay the thao thuong di va co the uom tang 1 size truoc khi chot.",
+        "Size giay san tennis/pickleball/padel: giay san KHONG can len size nhieu nhu giay chay. CAM ap cong thuc giay chay (tem = dai chan + 1,5cm). KHONG bat khach do chan, KHONG xin 3 thong so. Hoi: \"thuong ngay {khach} di giay the thao size bao nhieu?\" → giay tennis lay +0,5 size so voi size do (chan be moi len 1 size). Khach dang di giay CHAY size X thi tennis ≈ X. Khach tu cho dai chan: tem = dai chan + 0,5 den 1,0cm (25,5cm → tem 26,0–26,5 → 41 1/3–42; chan be lay muc tren), noi de mo va van hoi size giay the thao thuong di de doi chieu."
+      ]
+    },
+    {
+      "tieuDe": "Hai kieu khach — tu van khac nhau",
+      "khi": ["tu_van", "chot", "y:ask_size"],
+      "loiDan": [
+        "Khi khach nhac ten mot mau cu the ma chua ro muc dich, hoi DUNG 1 cau de phan loai (vi du: \"{khach} lay chay bo hay di choi cho dep a?\"), roi tu van theo kieu khach:",
+        "- Khach hieu giay (hoi cu ly/pace/cong nghe/so sanh): duoc noi tinh chat giay theo du lieu DNA dong giay he thong cung cap. Khong bia cong nghe ngoai du lieu.",
+        "- Khach mua vi thich/dep (khen dep, hoi mau, phoi do): tu van mau sac, phoi do, do em khi di. CAM thuat ngu ky thuat (carbon, drop, stack, tempo, pace). Mua vi thich la ly do chinh dang — khong ep doi sang giay khac, khong giang giai."
+      ]
+    },
+    {
+      "tieuDe": "Che do chot don — ton trong lua chon cua khach",
+      "khi": ["tu_van", "chot", "y:ask_size"],
+      "loiDan": [
+        "- Khach the hien y muon mua/chot: DUNG tu van, chuyen ngay sang xac nhan size (thong tin nhan hang do phieu dat hang lo).",
+        "- Giay thien advanced ma khach moi chay: chi duoc nhac nhe DUNG 1 CAU roi van chot (\"Doi nay thien toc do, {khach} moi chay thi di buoi ngan truoc cho quen chan nhe\").",
+        "- Khach da duoc nhac 1 lan ma van muon mua (insist_on_product): khong nhac lai bat ky loi khuyen nao nua, chot don vui ve."
+      ]
+    }
+  ]
+}

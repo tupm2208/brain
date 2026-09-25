@@ -74,6 +74,52 @@ export function redactPII(text: string): string {
     .replace(REDACT_PHONE_RE, REDACTED);
 }
 
+/**
+ * A short stable label for a value, so the same phone becomes the same stand-in everywhere.
+ *
+ * LETTERS ONLY, on purpose. A hexadecimal tag can come out as six digits, and six digits with no
+ * leading zero is exactly what `moneyAmounts` reads as a price — the stand-in would then look to
+ * the reply reviewer like a budget the customer named.
+ */
+function tag(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  let out = "";
+  for (let i = 0; i < 6; i += 1) {
+    out += String.fromCharCode(97 + (hash % 26));
+    hash = Math.floor(hash / 26);
+  }
+  return out;
+}
+
+/**
+ * Replaces every phone number and e-mail with a STABLE stand-in: the same number always becomes
+ * the same `SDT-xxxxxx`, in every field of the same call.
+ *
+ * `redactPII` is for a log line nobody replays. This is for a CASE FILE that goes into git and is
+ * re-run forever (`chan-doan dong-bai`): a masked value would lose the link between "the number the
+ * customer typed" and "the number the tool was asked about", and the case would stop reproducing
+ * the bug. Pass ONE `map` across a whole case file so the stand-ins line up.
+ *
+ * The stand-ins carry no long digit runs, so they cannot be read back as a price.
+ */
+export function pseudonymisePII(text: string, map: Map<string, string> = new Map()): string {
+  const stand = (kind: string, raw: string): string => {
+    const key = `${kind}:${raw}`;
+    const known = map.get(key);
+    if (known !== undefined) return known;
+    const made = kind === "mail" ? `nguoi-${tag(raw)}@vi-du.test` : `SDT-${tag(raw)}`;
+    map.set(key, made);
+    return made;
+  };
+  return String(text ?? "")
+    .replace(new RegExp(EMAIL_RE.source, "gi"), (m) => stand("mail", m))
+    .replace(REDACT_PHONE_RE, (m) => stand("sdt", m));
+}
+
 export interface PIIFinding {
   index: number;
   kind: "phone" | "email";
@@ -91,7 +137,13 @@ export function findPIIInText(text: string): PIIFinding[] {
 }
 
 /**
- * Throws when the FREE TEXT about to be stored still contains personal data.
+ * Throws when the FREE TEXT about to be stored in CONVERSATION MEMORY still contains personal data.
+ *
+ * Scope, since 21/09/2026: this guards the memory the engine carries between turns — the thing
+ * that lives for as long as the conversation does. It is NOT a ban on Xeon ever holding customer
+ * data: the TURN DOSSIER deliberately keeps some, on a deadline, so a bug can be reproduced
+ * (`chan-doan/turn-dossier.ts`, `KE-HOACH-NHAT-KY-CHAN-DOAN.md`). The dossier is written down a
+ * different path and never passes through here.
  *
  * Pass free text only; never conversation ids, product codes or tenant ids.
  * The signature accepts `string[]` so that a wrong call fails at compile time.
@@ -104,7 +156,8 @@ export function assertNoStoredPII(texts: readonly string[]): void {
   if (bad.length > 0) {
     throw new Error(
       `Text about to be stored still contains personal data (${bad.length} place(s)): ${bad.slice(0, 6).join(", ")}. ` +
-        `See DECISION 3 (QUYET DINH 3): Xeon must not store customer phone numbers or e-mails.`
+        `See DECISION 3 (QUYET DINH 3): conversation MEMORY must not carry customer phone numbers or e-mails. ` +
+        `(A turn dossier may, on a deadline — that is a different path.)`
     );
   }
 }

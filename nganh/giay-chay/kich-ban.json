@@ -1,0 +1,45 @@
+{
+  "_doc": "TANG 2 — KICH BAN TRA LOI CUNG dinh nganh giay chay (chep tu Sales Desk SCRIPT_REPLIES / matchBotScript 24/09/2026), GHI DE tung kich ban cua loi-chung/kich-ban-chung.json. Cam ket hang, trang web, ty le coc... la CUA SHOP: chi de cho trong {camKetHang} {site} {banHang.…}; shop chua khai thi kich ban do KHONG dung (agent / goi nguoi). `hoiLai` = cau hoi lai theo ly do (san pham chua ro, xin ten mau, xin anh, hang khong ban, sau khi da hoi lai).",
+  "scripts": {
+    "tiec_that": {
+      "action": "script_reply",
+      "reply": "Dạ tiếc quá ạ, khi nào hàng về em báo {khach} ngay nhé. {Khach} muốn xem mẫu tương tự thì em gửi liền ạ."
+    },
+    "authenticity": {
+      "action": "script_reply",
+      "reply": "Dạ {camKetHang} ạ, {khach} yên tâm nhé!"
+    },
+    "shipping": {
+      "action": "script_reply",
+      "reply": "Dạ phần phí ship em sẽ check theo địa chỉ nhận hàng rồi báo lại {khach} cho chính xác ạ."
+    },
+    "return_exchange": {
+      "action": "human_handoff",
+      "reply": "Dạ phần đổi trả em chuyển người phụ trách kiểm tra đúng chính sách và tình trạng đơn cho {khach} ạ."
+    },
+    "order_howto": {
+      "action": "script_reply",
+      "reply": "Dạ {khach} đặt trực tiếp trên web {site} nhé ạ — chọn mẫu, chọn size rồi điền thông tin nhận hàng là xong. {Khach} cần em giữ mẫu nào thì nhắn em, em lên đơn giúp luôn ạ."
+    },
+    "resell_offer": {
+      "action": "human_handoff",
+      "reply": "Dạ phần thu lại/pass hàng em nhờ người phụ trách xem giúp {khach} ạ. {Khach} chụp giúp em thêm mặt đế và cho em xin mức giá mong muốn nhé!"
+    },
+    "image_unclear": {
+      "action": "ask_clarification",
+      "reply": "Dạ {khach} đang tìm mẫu này size bao nhiêu để em kiểm tra giúp ạ?"
+    }
+  },
+  "hoiLai": {
+    "sanPham": "Dạ em chưa rõ {khach} đang hỏi mẫu nào ạ. {Khach} cho em xin ảnh hoặc tên mẫu để em kiểm tra giúp nhé.",
+    "tenMau": "Dạ {khach} xác nhận giúp em tên mẫu hoặc mã sản phẩm (chữ in trên ảnh/tem) để em kiểm tra đúng tồn và giá nhé ạ?",
+    "anh": "Dạ {khach} chụp giúp em ảnh tem/hộp hoặc mặt giày để em nhận đúng mẫu ạ.",
+    "hangKhongBan": "Dạ {banHang.cauKhongCo} ạ. {Khach} xem giúp em vài mẫu tương tự đang có nhé?",
+    "sauHoiLai": "Dạ em vẫn chưa nhận ra mẫu ạ, để em nhờ người phụ trách xem giúp {khach} nhé.",
+    "daCoAnh": "Dạ em nhận được ảnh rồi mà chưa nhận ra mẫu ạ. {Khach} cho em xin tên mẫu, hoặc ảnh chụp rõ tem size trong lưỡi giày/hộp để em kiểm tra size và giá giúp {khach} nhé.",
+    "daCoAnhTen": "Dạ em nhận được ảnh rồi ạ, nhưng em tra {ten} thì chưa thấy mẫu này bên em. {Khach} cho em xin mã sản phẩm, hoặc ảnh chụp rõ tem trong lưỡi giày/hộp để em kiểm tra lại giúp nhé.",
+    "daCoVideo": "Dạ em xem rồi mà chưa nhận ra mẫu ạ. {Khach} cho em xin tên mẫu hoặc một tấm ảnh chụp rõ tem trong lưỡi giày/hộp để em kiểm tra size và giá giúp {khach} nhé.",
+    "hangHetHang": "Dạ hàng {hang} bên em hiện đang hết ạ. Bên em đang có sẵn {dsHang}, {khach} muốn em tìm mẫu tương đương không ạ?",
+    "linkLoaiHang": "Dạ bên em có {loai} ạ. {Khach} xem các mẫu tại: {link} — thấy mẫu nào ưng thì nhắn em, em kiểm tra size và giá ngay ạ."
+  }
+}

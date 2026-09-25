@@ -1,0 +1,77 @@
+{
+  "_doc": "TANG 2 — tu khoa Y DINH dinh nganh giay chay, NOI THEM vao loi-chung/y-dinh-chung.json theo tung ten y dinh (giao sai size, bong keo, hoi size, tu van theo nhu cau chay, hoi anh mau...). Y dinh `ask_size` chi co o day vi 'size' la khai niem cua nganh. Khong ghi ten shop / so tien / ngay thang.",
+  "rules": [
+    {
+      "intent": "complaint_or_human",
+      "keywords": [
+        "sai size",
+        "sai mau",
+        "dau chan",
+        "chat qua",
+        "rong qua",
+        "bong keo",
+        "bung keo"
+      ]
+    },
+    {
+      "intent": "send_image",
+      "keywords": [
+        "mau trong anh"
+      ]
+    },
+    {
+      "intent": "place_order",
+      "keywords": [
+        "lay doi",
+        "giu size",
+        "cho minh doi"
+      ]
+    },
+    {
+      "intent": "ask_size",
+      "confidence": 0.88,
+      "keywords": [
+        "con size",
+        "co size",
+        "size",
+        "sz",
+        "so may",
+        "kich co"
+      ]
+    },
+    {
+      "intent": "resell_offer",
+      "keywords": [
+        "pass doi",
+        "ban lai doi"
+      ]
+    },
+    {
+      "intent": "return_exchange",
+      "keywords": [
+        "doi size"
+      ]
+    },
+    {
+      "intent": "product_advice",
+      "keywords": [
+        "chan be",
+        "chan thon",
+        "mu cao",
+        "daily",
+        "tempo",
+        "race",
+        "marathon",
+        "tennis",
+        "pickleball",
+        "di bo"
+      ]
+    }
+  ],
+  "reconcile": {
+    "carriesRequest": [
+      "(size)"
+    ],
+    "asksFootMeasure": "(do|đo) (giup|giúp)? ?(em|shop)? ?(chieu dai|chiều dài) (ban chan|bàn chân)|(dai|dài) (ban chan|bàn chân)|(bao nhieu|bao nhiêu) ?cm|(so do|số đo) (chan|chân)|(tem|nhan|nhãn) (size|trong luoi|trong lưỡi)"
+  }
+}
