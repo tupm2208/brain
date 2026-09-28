@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
-  HealthController, LandingGateway, LicenseLedger, LicenseService, ManualClock, MemoryLogger, MetaController, MetaForwarder,
+  HealthController, LandingGateway, LicenseLedger, LicenseService, ManualClock, MemoryLogger, MetaController, MetaForwarder, MetaPassthrough,
   MetaGraphClient, PENDING_FILE, createXeonServer, generateSigningKey, verifyTicket, type FetchLike
 } from "@sp/xeon";
 
@@ -27,7 +27,7 @@ const META_PAGES: Record<string, { id: string; name: string }> = {
 
 interface LandingCall { origin: string; path: string; body: Record<string, unknown>; token: string }
 
-async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | null } = {}) {
+async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | null, passthroughPages = [] as string[] } = {}) {
   const clock = new ManualClock(T0);
   const signingKey = generateSigningKey();
   const license = new LicenseService({ ledger: await LicenseLedger.open(), signingKey, clock, xeonAddress: "https://xeon.test", sellableModules: MODULES, coreModules: CORE });
@@ -41,9 +41,15 @@ async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | 
   const landingCalls: LandingCall[] = [];
   const graphCalls: string[] = [];
   const network = { down: (_origin: string): boolean => false };
+  const passCalls: { url: string; body: string; signature: string }[] = [];
   const fetch: FetchLike = async (url, init) => {
     const u = new URL(url);
     const reply = (payload: unknown, status = 200) => ({ ok: status < 300, status, json: async () => payload });
+    if (u.hostname === "toprun.test") {
+      if (network.down(u.origin)) throw new Error("mat mang");
+      passCalls.push({ url, body: String(init.body), signature: String(init.headers["X-Hub-Signature-256"] ?? "") });
+      return reply({ ok: true });
+    }
     if (u.hostname === "graph.facebook.com") {
       graphCalls.push(`${init.method} ${u.pathname}`);
       // Facebook Login (Đ6): the code becomes a user token, the user token lists the pages.
@@ -64,7 +70,8 @@ async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | 
   const server = createXeonServer({
     controllers: [
       new HealthController(license, clock, () => ({ meta: { soTrang: license.pageCount(), goiDangCho: forwarder.pendingCount() } })),
-      new MetaController({ license, forwarder, graph: new MetaGraphClient({ fetch }), appSecret, verifyToken: VERIFY, appId: "app-thu", xeonAddress: "https://xeon.test", logger })
+      new MetaController({ license, forwarder, graph: new MetaGraphClient({ fetch }), appSecret, verifyToken: VERIFY, appId: "app-thu", xeonAddress: "https://xeon.test", logger,
+        passthrough: new MetaPassthrough({ url: "https://toprun.test/api/facebook/webhook", pages: passthroughPages, appSecret, fetch }) })
     ]
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -82,7 +89,7 @@ async function setup({ appSecret = APP_SECRET, dataDirectory = null as string | 
     return { status: real.status, text, body: json };
   };
   return {
-    call, license, signingKey, clock, logger, forwarder, landingCalls, graphCalls, network,
+    call, license, signingKey, clock, logger, forwarder, landingCalls, graphCalls, network, passCalls,
     inboxA: regA.maNhanTin, inboxB: regB.maNhanTin,
     close: () => new Promise<void>((resolve) => server.close(() => resolve()))
   };
@@ -158,7 +165,7 @@ test("one packet, two merchants: each landing gets only its own page's entries, 
     const raw = packet(message("trang-a", "khach-1", "con size 42"), message("trang-b", "khach-2", "ship bao lau"), message("trang-la", "khach-3", "alo"));
     const r = await x.call("/meta/webhook", { method: "POST", body: raw, headers: signed(raw) });
     assert.equal(r.status, 200);
-    assert.deepEqual(r.body, { ok: true, soShop: 2, chuaChuyen: 0, trangLa: 1 });
+    assert.deepEqual(r.body, { ok: true, soShop: 2, chuaChuyen: 0, trangLa: 1, chuyenTiep: 0 });
 
     const toA = x.landingCalls.find((c) => c.origin === "https://a.test")!;
     const toB = x.landingCalls.find((c) => c.origin === "https://b.test")!;
@@ -285,5 +292,56 @@ test("Đ6: Facebook Login through the developer app — the landing starts, Meta
     assert.deepEqual(got.body, { ok: true, xong: true, trang: [{ ma: "trang-a", ten: "Trang A", token: "tk-trang-a" }] });
     assert.equal((await x.call(`/meta/dang-nhap/ket-qua?maPhien=${state}`, { token: x.inboxA })).status, 404, "collected once, then forgotten");
     assert.equal((await x.call("/meta/dang-nhap/xong?state=la&code=ma-dung")).status, 400);
+  } finally { await x.close(); }
+});
+
+test("28/09: pages kept by the old inbox go there re-signed with the app secret, alone; other pages still reach their landing", async () => {
+  const x = await setup({ passthroughPages: ["trang-toprun", "trang-tennis"] });
+  try {
+    const connect = await x.call("/meta/trang", { method: "POST", token: x.inboxA, body: { trang: [{ ma: "trang-a", token: "tk-trang-a" }] } });
+    assert.equal(connect.status, 200);
+    const raw = packet(message("trang-toprun", "khach-1", "con size 42"), message("trang-a", "khach-2", "gia bao nhieu"), message("trang-tennis", "khach-3", "vot nay con khong"));
+    const r = await x.call("/meta/webhook", { method: "POST", body: raw, headers: signed(raw) });
+    assert.equal(r.status, 200);
+    assert.equal(r.body!["chuyenTiep"], 2);
+    assert.equal(r.body!["trangLa"], 0, "a kept page is not a stranger");
+
+    assert.equal(x.passCalls.length, 1, "one call carries every kept page");
+    const sent = x.passCalls[0]!;
+    assert.equal(sent.url, "https://toprun.test/api/facebook/webhook");
+    const expected = "sha256=" + crypto.createHmac("sha256", APP_SECRET).update(sent.body).digest("hex");
+    assert.equal(sent.signature, expected, "signed exactly as Meta signs, so Sales Desk's check passes");
+    const body = JSON.parse(sent.body) as { object: string; entry: { id: string }[] };
+    assert.equal(body.object, "page");
+    assert.deepEqual(body.entry.map((e) => e.id).sort(), ["trang-tennis", "trang-toprun"]);
+    assert.ok(!sent.body.includes("trang-a") && !sent.body.includes("gia bao nhieu"), "another merchant's message never rides along");
+
+    assert.equal(x.landingCalls.length, 1);
+    assert.equal(x.landingCalls[0]!.origin, "https://a.test");
+    assert.ok(!JSON.stringify(x.landingCalls[0]!.body).includes("trang-toprun"), "a kept page never reaches a merchant's landing");
+  } finally { await x.close(); }
+});
+
+test("28/09: a kept page wins even if a merchant connected it; the old inbox down still answers Meta 200", async () => {
+  const x = await setup({ passthroughPages: ["trang-a"] });
+  try {
+    await x.call("/meta/trang", { method: "POST", token: x.inboxA, body: { trang: [{ ma: "trang-a", token: "tk-trang-a" }] } });
+    x.network.down = (origin) => origin === "https://toprun.test";
+    const raw = packet(message("trang-a", "khach-1", "alo"));
+    const r = await x.call("/meta/webhook", { method: "POST", body: raw, headers: signed(raw) });
+    assert.equal(r.status, 200, "a non-2xx would make Meta re-deliver every merchant's entries");
+    assert.equal(x.landingCalls.length, 0);
+    assert.ok(x.logger.warnings.some((l) => l.includes("hop thu cu hong")), "the failure is logged");
+  } finally { await x.close(); }
+});
+
+test("28/09: no kept pages configured = nothing is passed on", async () => {
+  const x = await setup();
+  try {
+    const raw = packet(message("trang-la", "khach-1", "alo"));
+    const r = await x.call("/meta/webhook", { method: "POST", body: raw, headers: signed(raw) });
+    assert.equal(r.body!["chuyenTiep"], 0);
+    assert.equal(r.body!["trangLa"], 1);
+    assert.equal(x.passCalls.length, 0);
   } finally { await x.close(); }
 });

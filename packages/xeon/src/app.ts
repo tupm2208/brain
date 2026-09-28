@@ -61,6 +61,7 @@ import { LicenseService } from "./license/license-service";
 import { SigningKeyStore } from "./license/signing-key";
 import { MetaGraphClient } from "./meta/graph-client";
 import { MetaForwarder } from "./meta/meta-forwarder";
+import { MetaPassthrough } from "./meta/meta-passthrough";
 import { systemClock, type Clock } from "./support/clock";
 import { ActivityLog } from "./support/activity-log";
 import { consoleLogger, type Logger } from "./support/logger";
@@ -231,7 +232,8 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
       new InboundController({ brain, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger, activityLog }),
       new MetaController({
         license, forwarder: meta, graph: new MetaGraphClient({ version: config.metaGraphVersion }),
-        appSecret: config.metaAppSecret, verifyToken: config.metaVerifyToken, appId: config.metaAppId, xeonAddress: config.xeonAddress, logger, activityLog
+        appSecret: config.metaAppSecret, verifyToken: config.metaVerifyToken, appId: config.metaAppId, xeonAddress: config.xeonAddress, logger, activityLog,
+        passthrough: new MetaPassthrough({ url: config.metaPassthroughUrl, pages: config.metaPassthroughPages, appSecret: config.metaAppSecret })
       }),
       // The post writer. Without a key the door still exists and refuses with a sentence the shop
       // can act on — better than a screen where the button silently does nothing.

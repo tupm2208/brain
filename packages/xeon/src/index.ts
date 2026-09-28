@@ -38,6 +38,7 @@ export * from "./agent/sales-agent";
 export * from "./meta/meta-packet";
 export * from "./meta/graph-client";
 export * from "./meta/meta-forwarder";
+export * from "./meta/meta-passthrough";
 export * from "./http/http-utils";
 export * from "./http/rate-limiter";
 export * from "./http/admin-session";

@@ -30,6 +30,8 @@
  *   FACEBOOK_VERIFY_TOKEN  the string Meta echoes when the webhook address is registered
  *   FACEBOOK_APP_ID        App ID of the same app: the Facebook Login dialog (Đ6). Absent = /meta/dang-nhap answers 503.
  *   META_GRAPH_API_VERSION Graph API version for page checks (default v23.0)
+ *   META_CHUYEN_TIEP_URL   webhook address of an older inbox that keeps some pages (TopRun Sales Desk)
+ *   META_CHUYEN_TIEP_TRANG comma-separated page ids sent there, re-signed with FACEBOOK_APP_SECRET
  *   SPX_APP_ID / SPX_APP_SECRET  the developer's SPX Open Platform app (25/09/2026): Xeon signs every
  *                          landing's SPX request (`POST /spx/ky`); the secret never goes to a merchant's
  *                          hosting. The merchant only types its own User ID + Secret Key. Absent = 503.
@@ -100,6 +102,10 @@ export interface XeonConfig {
   /** App ID of the same app — the Facebook Login dialog (Đ6). */
   metaAppId: string;
   metaGraphVersion: string;
+  /** Webhook address of the older inbox that keeps its pages (28/09/2026). Empty = off. */
+  metaPassthroughUrl: string;
+  /** Page ids sent there instead of to a merchant's landing. */
+  metaPassthroughPages: string[];
   /** Public address of the separate Video Studio service (Đ9). Empty = not running. */
   videoStudioAddress: string;
   /** The developer's SPX app (25/09/2026): Xeon signs SPX requests for every landing. */
@@ -168,6 +174,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv, defaultDataDirectory: stri
     metaVerifyToken: String(env["FACEBOOK_VERIFY_TOKEN"] || "").trim(),
     metaAppId: String(env["FACEBOOK_APP_ID"] || "").trim(),
     metaGraphVersion: String(env["META_GRAPH_API_VERSION"] || "").trim(),
+    metaPassthroughUrl: String(env["META_CHUYEN_TIEP_URL"] || "").trim(),
+    metaPassthroughPages: String(env["META_CHUYEN_TIEP_TRANG"] || "").split(",").map((s) => s.trim()).filter(Boolean),
     videoStudioAddress: String(env["XEON_VIDEO_DIA_CHI"] || "").trim(),
     spxAppId: String(env["SPX_APP_ID"] || "").trim(),
     spxAppSecret: String(env["SPX_APP_SECRET"] || "").trim(),

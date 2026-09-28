@@ -23,6 +23,7 @@ import { constantTimeEqual } from "../license/key-format";
 import type { LicenseService } from "../license/license-service";
 import type { MetaForwarder } from "../meta/meta-forwarder";
 import type { MetaGraphClient } from "../meta/graph-client";
+import type { MetaPassthrough } from "../meta/meta-passthrough";
 import { splitByPage, verifyMetaSignature, type PagePacket } from "../meta/meta-packet";
 import { PATHS, type PageClaimOutcome } from "../protocol";
 import type { ActivityLog } from "../support/activity-log";
@@ -42,6 +43,8 @@ export interface MetaControllerOptions {
   appId?: string | undefined;
   /** Public address of Xeon: Meta redirects back to `<xeonAddress>/meta/dang-nhap/xong`. */
   xeonAddress?: string | undefined;
+  /** Pages that keep going to an older inbox (TopRun Sales Desk, 28/09/2026). Absent = none. */
+  passthrough?: MetaPassthrough | undefined;
   logger: Logger;
   activityLog?: ActivityLog | undefined;
 }
@@ -116,18 +119,27 @@ export class MetaController implements RequestController {
     });
 
     const byShop = new Map<string, PagePacket>();
+    const passOn: PagePacket = { object: "page", entry: [] };
     let strangers = 0;
     for (const [pageId, packet] of byPage) {
+      // Checked BEFORE the merchants: a listed page never reaches a landing, whoever claims it.
+      if (this.options.passthrough?.owns(pageId)) { passOn.entry.push(...packet.entry); continue; }
       const shop = this.options.license.shopForPage(pageId);
       if (!shop) { strangers += packet.entry.length; this.noteUnknownPage(pageId); continue; }
       const merged = byShop.get(shop) ?? { object: "page" as const, entry: [] };
       merged.entry.push(...packet.entry);
       byShop.set(shop, merged);
     }
-    const results = await Promise.all([...byShop].map(([shop, packet]) => this.options.forwarder.deliver(shop, packet)));
+    const passing = passOn.entry.length > 0 && this.options.passthrough ? this.options.passthrough.send(passOn) : null;
+    const [results, passed] = await Promise.all([
+      Promise.all([...byShop].map(([shop, packet]) => this.options.forwarder.deliver(shop, packet))),
+      passing
+    ]);
     const chuaChuyen = results.filter((r) => !r.ok).length;
+    // No retry queue for the old inbox: Sales Desk polls the page inbox and fills any gap itself.
+    if (passed && !passed.ok) this.options.logger.warn(`[meta] chuyen tiep ${passOn.entry.length} muc ve hop thu cu hong: ${passed.message}`);
     // Always 200 once the packet is split: a non-2xx makes Meta re-deliver every merchant's entries.
-    sendJson(res, 200, { ok: true, soShop: byShop.size, chuaChuyen, trangLa: strangers });
+    sendJson(res, 200, { ok: true, soShop: byShop.size, chuaChuyen, trangLa: strangers, chuyenTiep: passOn.entry.length });
 
     // Activity log: one entry per webhook call with the summary of what happened.
     this.options.activityLog?.add({
