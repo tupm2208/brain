@@ -352,11 +352,16 @@ export class LicenseService {
     };
   }
 
-  /** Which merchant an inbox token belongs to. The tenant is never read from the message body. */
+  /**
+   * Which merchant an inbox token belongs to. The tenant is never read from the message body.
+   * A locked key's token answers nothing: every landing call (SPX signing, library, video...) stops
+   * the moment the key is locked, and comes back on unlock.
+   */
   tenantForInboxToken(token: unknown): string | null {
     const value = String(token ?? "").trim();
     if (!value) return null;
     for (const record of Object.values(this.ledger.read().cacKey)) {
+      if (record.khoaLuc) continue;
       if (record.landing?.maNhanTin && constantTimeEqual(value, record.landing.maNhanTin)) return record.shop;
     }
     return null;

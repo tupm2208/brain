@@ -195,6 +195,12 @@ test("landing registration: bad address refused; success returns the public key 
   assert.notEqual(second.maNhanTin, first.maNhanTin);
   assert.equal(license.tenantForInboxToken(first.maNhanTin), null, "the old token is dead");
   assert.equal(license.tenantForInboxToken(second.maNhanTin), "toprun");
+
+  // A locked key's landing is cut off from every Xeon service; unlocking restores the same token.
+  await license.lockKey(key, "no tien");
+  assert.equal(license.tenantForInboxToken(second.maNhanTin), null, "locked key: token answers nothing");
+  await license.unlockKey(key);
+  assert.equal(license.tenantForInboxToken(second.maNhanTin), "toprun", "unlocked: same token works again");
 });
 
 test("the brain serves only: valid key + chatbot module + registered landing; the service ticket lives 1 hour", async () => {

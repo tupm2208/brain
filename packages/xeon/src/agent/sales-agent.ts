@@ -532,8 +532,14 @@ export function systemCapabilities(input: { open: readonly string[]; visionReady
     : "CHUA xem duoc anh. Tin co \"[khach gui N anh]\" → KHONG doan mau trong anh; xin khach ten mau hoac ma tren tem/hop.");
   lines.push("He thong KHONG tu gui anh the san pham hay anh huong dan do chan. KHONG noi \"em gửi ảnh bên dưới\". Muon khach xem mau → gui LINK trang san pham lay tu tra_kho.");
   const khiChot = input.hoSo?.banHang.khiChot ?? "";
-  if (khiChot === "phieu") {
-    lines.push("KHACH CHOT (da co mau + size con hang): gui PHIEU DAT HANG = link trang san pham tu tra_kho, them ?size=<size khach chon> vao cuoi link. Khach dien thong tin nhan hang tren phieu, he thong tu hien ma QR chuyen khoan. Noi: \"Dạ em gửi phiếu đặt hàng, {khach} điền giúp em thông tin nhận hàng, xong hệ thống tự ra mã QR để {khach} chuyển khoản ạ.\" KHONG tu xin ten/SDT/dia chi de go don.");
+  // 27/09/2026: ONE order slip. This line used to tell the agent to build the slip itself (product
+  // link + `?size=`) while the `order.formLink` line above said the system attaches it — both went
+  // into the same prompt, so a customer could get two different links. The slip is the landing's
+  // standard order page, and only the system attaches it.
+  if (khiChot === "phieu" && input.open.includes("order.formLink")) {
+    lines.push("KHACH CHOT (da co mau + size con hang): HE THONG tu gui kem PHIEU DAT HANG. Khach dien thong tin nhan hang tren phieu, chon cach thanh toan, he thong tu hien ma QR chuyen khoan. Noi: \"Dạ em gửi phiếu đặt hàng bên dưới, {khach} điền giúp em thông tin nhận hàng, xong hệ thống tự ra mã QR để {khach} chuyển khoản ạ.\" KHONG tu ghep link phieu, KHONG gui link trang san pham thay phieu, KHONG tu xin ten/SDT/dia chi de go don.");
+  } else if (khiChot === "phieu") {
+    lines.push("KHACH CHOT: landing chua mo phieu dat hang trong luot nay. KHONG tu ghep link phieu, KHONG xin dia chi. Noi: \"Dạ để em báo người phụ trách lên đơn cho {khach} ngay ạ.\"");
   } else if (khiChot === "goi-nguoi") {
     lines.push("KHACH CHOT: KHONG gui phieu, KHONG xin dia chi. Noi: \"Dạ phần này để em gọi người phụ trách vào lên đơn cho {khach} ngay ạ.\"");
   }

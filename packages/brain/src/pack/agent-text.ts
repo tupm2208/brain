@@ -99,7 +99,7 @@ export function renderBlocks(blocks: readonly AgentBlock[], values: FillValues):
 }
 
 const MAC_CA: Record<string, string> = { "khong-giam": "KHONG giam gia, ban dung gia niem yet", "giam-toi-da": "duoc giam, toi da theo muc shop khai", "qua-tang": "khong giam gia, co the tang kem" };
-const KHI_CHOT: Record<string, string> = { "link-web": "gui LINK trang san pham (tu tra_kho) de khach dat tren web", phieu: "moi khach dien phieu dat hang", "goi-nguoi": "goi nguoi phu trach vao len don" };
+const KHI_CHOT: Record<string, string> = { phieu: "moi khach dien phieu dat hang", "goi-nguoi": "goi nguoi phu trach vao len don" };
 const MUC_CHOT: Record<string, string> = { khong: "KHONG BAO GIO moi chot; tra loi dung thong tin roi dung", "dau-hieu": "chi moi chot khi khach TU co dau hieu mua (lay/dat/mua/ship/coc/cho dia chi-SDT)", "sau-bao-gia": "sau khi bao gia co the moi khach chot mot cau ngan" };
 
 /**
