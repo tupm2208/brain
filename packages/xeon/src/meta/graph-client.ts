@@ -25,7 +25,7 @@ export interface MetaGraphClientOptions {
 
 export class MetaGraphClient {
   private readonly fetchImpl: FetchLike;
-  private readonly version: string;
+  readonly version: string;
   private readonly timeoutMs: number;
 
   constructor(options: MetaGraphClientOptions = {}) {

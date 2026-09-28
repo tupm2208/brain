@@ -51,8 +51,12 @@ export interface MetaControllerOptions {
 
 /** How long a Facebook Login session waits for the person and then for the landing to collect it. */
 export const LOGIN_SESSION_TTL_MS = 15 * 60 * 1000;
-/** Permissions the inbox needs: list pages, read and answer messages and comments, subscribe the page. */
-export const LOGIN_SCOPES: readonly string[] = ["pages_show_list", "pages_messaging", "pages_manage_metadata", "pages_read_engagement", "pages_manage_engagement"];
+/**
+ * Permissions the inbox needs: list pages, read and answer messages and comments, subscribe the page.
+ * Same list, same order as TopRun Sales Desk (`server.js`, FACEBOOK_OAUTH_SCOPES) — the one app both use
+ * has these approved; 28/09/2026 the Desk login worked while ours showed "Feature unavailable".
+ */
+export const LOGIN_SCOPES: readonly string[] = ["pages_show_list", "pages_manage_metadata", "pages_messaging", "pages_read_engagement", "pages_read_user_content", "pages_manage_engagement", "pages_manage_posts"];
 
 interface LoginSession {
   shop: string;
@@ -241,7 +245,8 @@ export class MetaController implements RequestController {
     const state = crypto.randomBytes(24).toString("base64url");
     this.logins.set(state, { shop, createdAt: Date.now(), pages: null, error: "" });
     const redirect = `${base}${PATHS.metaLoginDone}`;
-    const url = `https://www.facebook.com/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirect)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(LOGIN_SCOPES.join(","))}&response_type=code`;
+    // Versioned dialog, as Desk builds it (`https://www.facebook.com/<v>/dialog/oauth`).
+    const url = `https://www.facebook.com/${encodeURIComponent(this.options.graph.version)}/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirect)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(LOGIN_SCOPES.join(","))}&response_type=code`;
     sendJson(res, 200, { ok: true, url, maPhien: state, hetSauGiay: Math.round(LOGIN_SESSION_TTL_MS / 1000) });
   }
 
