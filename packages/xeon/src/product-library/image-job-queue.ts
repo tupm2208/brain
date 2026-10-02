@@ -17,7 +17,18 @@ export interface ImageJob {
    * Landing biết hãng từ đầu (cột `hang`); việc duy nhất phải làm là chuyển nó xuống.
    */
   brand?: string;
+  /** 30/09/2026 — tên hàng landing biết, để bộ cào đoán hãng khi `brand` trống hoặc "Chưa rõ" (như bản portable). */
+  name?: string;
 }
+/**
+ * 30/09/2026 — việc báo LỖI (bộ cào nghi bị chặn / Chrome chết) được hẹn lại, không bị nhận lại ngay.
+ * Trước đây lỗi kiểu ấy được báo là "xong, 0 ảnh", Xeon đóng dấu `scrapedAt` và khoá mã 7 ngày: 421 mã
+ * nằm im, phần lớn chỉ vì hỏng đúng hôm 24/09 và 29/09. Nay nó thành lỗi — mà lỗi nhận lại ngay thì năm
+ * lượt cháy hết trong vài phút khi trang còn đang chặn. Giãn 15, 30, 45, 60 phút.
+ */
+export const RETRY_AFTER_ERROR_MS = 15 * 60 * 1000;
+const readyToRetry = (job: ImageJob, now: number): boolean =>
+  !job.error || now - Date.parse(job.updatedAt) >= Math.min(job.attempts, 4) * RETRY_AFTER_ERROR_MS;
 interface QueueDocument { version: 1; jobs: ImageJob[]; paused?: boolean }
 /** `failed` (24/09/2026): số việc chết của CẢ hàng đợi — màn hình đếm trong danh sách đã cắt thì
  *  ba việc chết hôm 19/09 rơi ra ngoài, nút "Chạy lại việc lỗi" tự ẩn và không cửa nào mở lại được. */
@@ -33,9 +44,10 @@ export class ImageJobQueue {
     const load = os.loadavg()[0] || 0; const byLoad = load > cpu * 0.9 ? Math.max(1, Math.floor(cpu / 3)) : cpu;
     return Math.max(1, Math.min(16, this.maxConcurrent, cpu, byMemory, byLoad));
   }
-  enqueue(code: string, request: { requestedFields?: unknown; brokenAssetUrls?: unknown; brand?: unknown } = {}): ImageJob {
+  enqueue(code: string, request: { requestedFields?: unknown; brokenAssetUrls?: unknown; brand?: unknown; name?: unknown } = {}): ImageJob {
     const normalized = key(code); if (!normalized) throw new Error("Mã sản phẩm không hợp lệ.");
     const brand = String(request.brand ?? "").trim().slice(0, 100);
+    const name = String(request.name ?? "").trim().slice(0, 200);
     const requestedFields = [...new Set((Array.isArray(request.requestedFields) ? request.requestedFields : []).map((x) => String(x).trim()).filter(Boolean))].slice(0, 50);
     const brokenAssetUrls = [...new Set((Array.isArray(request.brokenAssetUrls) ? request.brokenAssetUrls : []).map((x) => String(x).trim()).filter((x) => /^https:\/\//i.test(x)))].slice(0, 50);
     const active = this.doc.jobs.find((j) => j.code === normalized && (j.status === "waiting" || j.status === "running"));
@@ -43,11 +55,12 @@ export class ImageJobQueue {
       active.requestedFields = [...new Set([...(active.requestedFields ?? []), ...requestedFields])];
       active.brokenAssetUrls = [...new Set([...(active.brokenAssetUrls ?? []), ...brokenAssetUrls])];
       if (brand && !active.brand) active.brand = brand;   // biết muộn còn hơn không bao giờ biết
+      if (name && !active.name) active.name = name;
       active.updatedAt = this.now().toISOString(); this.save(); return { ...active };
     }
     const at = this.now().toISOString();
     const job: ImageJob = { id: `img_${crypto.randomUUID()}`, code: normalized, status: "waiting", attempts: 0, createdAt: at, updatedAt: at,
-      ...(requestedFields.length ? { requestedFields } : {}), ...(brokenAssetUrls.length ? { brokenAssetUrls } : {}), ...(brand ? { brand } : {}) };
+      ...(requestedFields.length ? { requestedFields } : {}), ...(brokenAssetUrls.length ? { brokenAssetUrls } : {}), ...(brand ? { brand } : {}), ...(name ? { name } : {}) };
     this.doc.jobs.push(job); this.save(); return job;
   }
   claim(worker: string, leaseMs = 30 * 60 * 1000): ImageJob | null {
@@ -60,7 +73,7 @@ export class ImageJobQueue {
     if (resumed) { resumed.updatedAt = now.toISOString(); resumed.leaseUntil = new Date(now.getTime() + Math.max(30_000, leaseMs)).toISOString(); this.save(); return { ...resumed }; }
     if (this.doc.paused) { this.save(); return null; }
     if (this.doc.jobs.filter((j) => j.status === "running").length >= this.capacity()) { this.save(); return null; }
-    const job = this.doc.jobs.filter((j) => j.status === "waiting" && j.attempts < 5).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))[0];
+    const job = this.doc.jobs.filter((j) => j.status === "waiting" && j.attempts < 5 && readyToRetry(j, now.getTime())).sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))[0];
     if (!job) { this.save(); return null; }
     job.status = "running"; job.worker = owner; job.attempts += 1; job.updatedAt = now.toISOString(); job.leaseUntil = new Date(now.getTime() + Math.max(30_000, leaseMs)).toISOString(); this.save(); return { ...job };
   }
@@ -69,6 +82,15 @@ export class ImageJobQueue {
     const job = this.owned(id, worker); const now = this.now(); job.updatedAt = now.toISOString(); job.leaseUntil = new Date(now.getTime() + Math.max(30_000, leaseMs)).toISOString(); this.save(); return { ...job };
   }
   assertOwned(id: string, worker: string): ImageJob { return { ...this.owned(id, worker) }; }
+  /** Một việc theo mã việc. */
+  get(id: string): ImageJob | null { const job = this.doc.jobs.find((j) => j.id === id); return job ? { ...job } : null; }
+  /** Nhiều việc theo mã việc, quét hàng đợi MỘT lần — sổ lô ảnh (`image-batch-book.ts`) hỏi mỗi phút. */
+  getMany(ids: Iterable<string>): Map<string, ImageJob> {
+    const wanted = new Set(ids); const found = new Map<string, ImageJob>();
+    if (wanted.size === 0) return found;
+    for (const job of this.doc.jobs) if (wanted.has(job.id)) found.set(job.id, { ...job });
+    return found;
+  }
   fail(id: string, worker: string, error: string): ImageJob { const job = this.owned(id, worker); job.status = job.attempts >= 5 ? "failed" : "waiting"; job.error = String(error).slice(0, 1000); job.updatedAt = this.now().toISOString(); delete job.leaseUntil; delete job.worker; this.save(); return { ...job }; }
   /**
    * 24/09/2026: chỗ này từng cắt 1.000 việc mới nhất RỒI mới để người gọi lọc theo mã. Hàng đợi có

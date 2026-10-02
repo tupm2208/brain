@@ -53,6 +53,7 @@
     "receiptOrder": " đơn {don}",
     "choices": "[ảnh: gần với {ten} — chưa xác nhận mẫu nào]",
     "ocr": "[ảnh: đọc được {ten} — chưa khớp kho]",
+    "guess": "[ảnh: đoán là {ten} — chưa xác nhận]",
     "unknown": "[ảnh: không đọc được tên/mã sản phẩm]"
   }
 }

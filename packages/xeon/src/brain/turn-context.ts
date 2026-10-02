@@ -28,6 +28,15 @@ export const BOT_AUTHORS: ReadonlySet<string> = new Set(["bo-nao"]);
 /** A product a PERSON on the page sent within this window is the product in focus (Desk P1d). */
 export const HUMAN_PRODUCT_WINDOW_MS = 30 * 60 * 1000;
 /** Placeholder the transcript shows for a customer photo the bot has not recognised. */
+/** How far back a photo sent just before the customer's words still counts as this turn's photo. */
+export const BURST_PHOTO_WINDOW_MS = 30 * 60 * 1000;
+/**
+ * How far back a photo the customer sent keeps its address in the transcript (02/10/2026), so an agent
+ * that sees photos can open it again (`xem_anh`) — "cứ đoán đi" one message after the photo. At most
+ * `LOOK_BACK_LINES` earlier photo messages.
+ */
+export const LOOK_BACK_MS = 30 * 60 * 1000;
+export const LOOK_BACK_LINES = 3;
 const IMAGE_PLACEHOLDER = "[khách gửi ảnh]";
 
 export interface FocusedProduct extends ProductRef {
@@ -161,6 +170,20 @@ export class TurnContextBuilder {
           + (origIsPageText ? " Khách hỏi \"là sao/nghĩa là gì/sao vậy\" → GIẢI THÍCH LẠI đúng nội dung tin đó bằng lời dễ hiểu hơn (giá/chính sách/size trong tin), KHÔNG hỏi size hay chuyển đề tài." : "");
       }
     }
+    // Photo, then words ("[ảnh]" + "có đôi này ko"): the photo's own turn was folded into this one
+    // (`gop_vao_tin_sau`) before its reading was saved, so the photo belongs to THIS turn. Only photos
+    // in the burst (no page line since), recent, and not yet labelled — a labelled one is already
+    // in the transcript as words.
+    if (photos.length === 0 && replyTo === "") {
+      const latestAt = Date.parse(lines.at(-1)?.luc ?? "") || nowMs;
+      for (let i = lines.length - 2; i >= 0 && photos.length < 3; i -= 1) {
+        const m = lines[i]!;
+        if (m.chieu === "di") break;
+        if (latestAt - (Date.parse(m.luc) || 0) > BURST_PHOTO_WINDOW_MS) break;
+        if (m.maTin && labels[m.maTin]) continue;
+        photos = [...own(m), ...photos].slice(-3);
+      }
+    }
     // P1d: a PERSON on the page sent a product in the last 30 minutes — that beats the bot's focus.
     if (focusedProduct === null) {
       const latestCustomerAt = Date.parse(lines.at(-1)?.luc ?? "") || nowMs;
@@ -180,6 +203,17 @@ export class TurnContextBuilder {
     if (lastLine !== undefined) {
       if (replyNote !== "") lastLine.note = replyNote;
       if (photos.length > 0) lastLine.imageUrls = photos.slice(0, 3).map((p) => p.url);
+    }
+    // Earlier photos of the last half hour keep their address (02/10/2026): the agent may look again.
+    for (let i = lines.length - 2, kept = 0; i >= 0 && kept < LOOK_BACK_LINES; i -= 1) {
+      const m = lines[i]!;
+      if (m.chieu !== "den") continue;
+      if (nowMs - (Date.parse(m.luc) || 0) > LOOK_BACK_MS) break;
+      // A burst photo already shown on the last line is not repeated.
+      const urls = own(m).map((p) => p.url).filter((u) => !(lastLine?.imageUrls ?? []).includes(u)).slice(0, 3);
+      if (urls.length === 0) continue;
+      history[i]!.imageUrls = urls;
+      kept += 1;
     }
 
     const focusFromState: ProductRef | null = state.episode?.focus ? { code: state.episode.focus.code, name: state.episode.focus.name } : state.focusItemCode ? { code: state.focusItemCode } : null;

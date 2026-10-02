@@ -25,11 +25,11 @@
  * Every model call is inside `withUsage`, so the token ledger knows shop, agent and conversation.
  */
 
-import { TOOLS, type ConversationId, type InboxOrderFormAttachment, type OrderBrief, type ShopProfile, type TenantId, type ToolName, type ToolOutput } from "@sp/contract";
+import { TOOLS, readShopProfile, type ConversationId, type InboxOrderFormAttachment, type OrderBrief, type ShopProfile, type TenantId, type ToolName, type ToolOutput } from "@sp/contract";
 import {
   CatalogResolver, CatalogScorer, FactNoteComposer, FocusResolver, PaymentClaimKit, ReplyGate, TurnEngine, UncertainProductGate, appendShopTurn, appendTurn, applyShopProfile,
   buildStockFacts, catalogQueryOf, detectIntent, findLine, hasRecentImageEvidence, inStockRows, loadContextAnalysisText, loadDialogueConfig, loadDraftText,
-  loadCatalogVerifyText, loadEntityConfig, loadHumanExamples, loadImageReadText, loadIntentRules, loadLedgerTexts, loadMatchingConfig, loadNoteTexts, loadProductLines,
+  loadCatalogVerifyText, loadEntityConfig, loadHumanExamples, loadImageCompareText, loadImageReadText, loadIntentRules, loadLedgerTexts, loadMatchingConfig, loadNoteTexts, loadProductLines,
   loadRawProductLines, loadReplyGateConfig, loadScriptTexts, normalize, planStockCascade, redactPII, ruleRouterFor, turnFactsFromStock,
   type CascadeLine, type CatalogQuery, type CatalogResolution, type ConversationState, type Entities, type EpisodeTurn, type FocusResolution, type FoundItem,
   type GateSources, type HandleResult, type MemoryPort, type ProductRef, type RouterOutput, type RouterTurn, type RuleRouter, type StockFacts, type ToolPort,
@@ -40,7 +40,7 @@ import type { ImageIntake, PhotoReading } from "./image-intake";
 import type { CatalogVerifier } from "./catalog-verifier";
 import type { GatewayBreaker } from "../agent/gateway-breaker";
 import { LineKnowledge, distanceBand, paceBand, parsePaceMinutes, type LineDna } from "../knowledge/line-dna";
-import { SalesAgent, composeSystemPrompt, moneyAmounts, reviewReply, systemCapabilities, type AgentOutcome, type AgentToolBox, type AgentTurnInput } from "../agent/sales-agent";
+import { LOOK_TOOL, SalesAgent, composeSystemPrompt, moneyAmounts, reviewReply, systemCapabilities, type AgentOutcome, type AgentToolBox, type AgentTurnInput, type AgentVision } from "../agent/sales-agent";
 import { renderKnowledge, type TrainingKnowledge } from "../ai/knowledge";
 import { withUsage } from "../ai/usage-context";
 import { DRAFT_TIMEOUT_MS, DraftWriter, type DraftFacts } from "./draft-writer";
@@ -242,6 +242,12 @@ export interface TurnPipelineDeps {
   memoryFor: (binding: MerchantBinding) => MemoryPort;
   /** Asks the landing for its tool list again (the fallback list lacks the agent's tools). */
   refreshTools: (tenant: string, binding: MerchantBinding) => Promise<void>;
+  /**
+   * The agent SEES the customer's photos (02/10/2026, measured 72% → 87% right, none wrong), on top of
+   * the system's reading. One switch for the whole platform (`XEON_AGENT_XEM_ANH`), there to back
+   * out of a fault — not a per-shop choice. Absent = off (the note alone, as before).
+   */
+  agentSeesPhotos?: boolean | undefined;
 }
 
 /** Everything one run needs at hand, so the steps can be small methods. */
@@ -354,8 +360,9 @@ export class TurnPipeline {
     // "cho em xin ảnh" got sent to a customer who had just sent one. The page just asked for the shoe
     // the customer wears (frame `asked_size`): the photo is a size REFERENCE, not something to sell.
     turn.photos = turn.modelsOff ? null : await this.deps.intake.read({
-      tenant, binding, photos: ctx.photos, kenh: channel, conversationId, text: loadImageReadText(binding.packId),
-      reference: ctx.frame?.kind === "asked_size", receiptTextPatterns: loadLedgerTexts().receiptTextPatterns
+      tenant, binding, photos: ctx.photos, kenh: channel, conversationId, text: loadImageReadText(binding.packId), compareText: loadImageCompareText(binding.packId),
+      reference: ctx.frame?.kind === "asked_size", receiptTextPatterns: loadLedgerTexts().receiptTextPatterns,
+      agentSees: this.agentSees(binding)
     });
     if (turn.photos !== null) {
       draft.anh = { loai: turn.photos.loai, soAnh: turn.photos.looks.length, thamChieu: turn.photos.thamChieu, loi: turn.photos.loi };
@@ -481,7 +488,8 @@ export class TurnPipeline {
 
     // 7. LLM#3: the agent could not (broken, blocked, out of quota, off). Desk kept tier 1's own
     // decision when level 2 failed; here that is one draft from the facts already in hand.
-    const drafted = await this.runDraft(turn, agentRun?.toolCalls ?? [], notes);
+    // LLM#3 never sees the photo: its notes say what the system read, not "look again yourself".
+    const drafted = await this.runDraft(turn, agentRun?.toolCalls ?? [], turn.photos?.noteBlind != null ? this.composeNotes(turn, decision.hint, true) : notes);
     if (drafted === "superseded") return this.outcome(SUPERSEDED, { reply: "", source: "", action: "", needsHuman: false, reason: "Khách nhắn thêm trong lúc soạn.", steps, analysis: turn.analysis, router, engine: null });
     if (drafted !== null) {
       const gated = await this.gateReply(turn, drafted.reply, drafted.needsHuman, agentRun?.toolCalls ?? []);
@@ -549,6 +557,7 @@ export class TurnPipeline {
       attachments: Math.max(turn.ctx.photos.length, Number(turn.req.message.soAnh || 0)),
       attachmentKinds: (turn.photos?.looks ?? []).map((l) => l.loai),
       aiIntent: turn.analysis !== null ? { intent: turn.analysis.intent, confidence: turn.analysis.confidence, matched: ["llm1"] } : null,
+      aiFlags: turn.analysis?.riskFlags ?? [],
       frame: turn.ctx.frame, profile: turn.hoSo, site: binding.origin, tenShop: binding.shopName
     };
     let out = router.route(input);
@@ -562,7 +571,7 @@ export class TurnPipeline {
   }
 
   /** Desk's level-2 note (the nine fact blocks) plus the frame, the focus, the photo and LLM#1's reading, one block each. */
-  private composeNotes(turn: Turn, hint: string): string[] {
+  private composeNotes(turn: Turn, hint: string, blind = false): string[] {
     const { binding } = turn.req;
     const identity = applyShopProfile(binding.pack, turn.hoSo, binding.chung.cauCam).identity;
     const nowIso = this.deps.clock.now().toISOString();
@@ -575,7 +584,7 @@ export class TurnPipeline {
     const frameNote = turn.ctx.frame !== null ? turn.contexts.describeFrame(turn.ctx.frame) : "";
     const focusNote = this.focusNote(turn);
     const truthLines = (turn.truth?.lines ?? []).join("\n");
-    const photoNote = turn.photos?.note ?? "";
+    const photoNote = (blind ? turn.photos?.noteBlind ?? turn.photos?.note : turn.photos?.note) ?? "";
     const a = turn.analysis;
     const analysisNote = a !== null ? [
       `PHAN TICH NGU CANH (LLM#1): y dinh ${a.intent} (${a.confidence})${turn.router !== null && turn.router.intent.intent !== a.intent ? `, bo dinh tuyen chot ${turn.router.intent.intent}` : ""}.`,
@@ -587,7 +596,16 @@ export class TurnPipeline {
       a.lookupCommands.length > 0 ? `Nen tra cuu: ${a.lookupCommands.map((c) => `${c.command} ${JSON.stringify(c.args)}`).join("; ")}.` : "",
       a.riskFlags.length > 0 ? `Rui ro: ${a.riskFlags.join(", ")}.` : ""
     ].filter((line) => line !== "").join("\n") : "";
-    const hintNote = hint !== "" ? `CAU HOI LAI MAU (dung khi thieu mau/size, viet lai cho hop): ${hint}` : "";
+    // 30/09/2026: a customer who described a need is searched BY that need, never asked for a model name.
+    // The impatience hint (an apology, then the answer) is kept; only the "ask for the model" hint gives way.
+    const need = knownNeedOf(a, turn.ctx.state);
+    const apology = turn.router?.decision.kind === "agent_draft" && turn.router.decision.reason === "impatience";
+    const hintNote = [
+      apology && hint !== "" ? hint : "",
+      need !== ""
+        ? `KHACH DA NOI NHU CAU: ${need}. Goi cong cu tra kho theo NHU CAU va nhung gi khach da cho biet; KHONG hoi lai ten / ma mau. Chi hoi dung dieu con thieu de chon.`
+        : !apology && hint !== "" ? `CAU HOI LAI MAU (dung khi thieu mau/size, viet lai cho hop): ${hint}` : ""
+    ].filter((line) => line !== "").join("\n");
     return [memoryNote, truthLines, frameNote, focusNote, photoNote, analysisNote, hintNote].filter((part) => part !== "");
   }
 
@@ -671,7 +689,7 @@ export class TurnPipeline {
     // Desk `dropStaleFocusOnImageTurn`, BEFORE any lookup: under a photo nobody recognised, a focus
     // inherited from outside this session is not "đôi này" — its stock must not even be looked up.
     const photos = turn.photos;
-    const imageRecognised = photos !== null && (photos.chot !== null || photos.read.code !== "" || photos.read.model !== "");
+    const imageRecognised = photos !== null && (photos.chot !== null || photos.read.code !== "" || (photos.read.model !== "" && !photos.dongChuaChac));
     if (turn.ctx.photos.length > 0 && !imageRecognised && turn.ctx.focusedProduct === null && carried !== null && (carried.code ?? "") !== "") {
       const session = normalize(this.sessionLines(turn).map((t) => t.text).join(" "));
       if (!session.includes(normalize(carried.code))) carried = null;
@@ -964,7 +982,7 @@ export class TurnPipeline {
       analysisFocus: turn.analysis !== null && turn.analysis.focus.product !== "" ? { product: turn.analysis.focus.product, changed: turn.analysis.focus.changed } : null,
       resolution: truth.resolution,
       hasImage: turn.ctx.photos.length > 0,
-      imageRecognised: photos !== null && (photos.chot !== null || photos.read.code !== "" || photos.read.model !== ""),
+      imageRecognised: photos !== null && (photos.chot !== null || photos.read.code !== "" || (photos.read.model !== "" && !photos.dongChuaChac)),
       sessionTexts: session.map((t) => t.text).filter((t) => t.trim() !== ""),
       sessionStartAt: session[0]?.at,
       pool: truth.found.map((it) => ({ code: it.ma, name: it.ten }))
@@ -1091,15 +1109,22 @@ export class TurnPipeline {
       return null;
     }
 
+    // 02/10/2026: the agent sees the photos (the switch, a vision model, tier 1's words, a photo near).
+    const vision = this.agentVision(turn);
     const turnInput: AgentTurnInput = {
       agent: profile, chung: binding.chung, hoSo: turn.hoSo, chinhSach: turn.shop?.chinhSach,
-      nangLuc: systemCapabilities({ open, visionReady: this.visionReady(), hoSo: turn.hoSo, chaoAi: turn.chaoAi, guiKem: open.includes("order.formLink") || turn.ctx.theDaGui.length > 0 }),
+      nangLuc: systemCapabilities({
+        open, visionReady: this.visionReady(), hoSo: turn.hoSo, chaoAi: turn.chaoAi, guiKem: open.includes("order.formLink") || turn.ctx.theDaGui.length > 0,
+        photoLine: vision !== null ? binding.chung.xemAnh?.nangLuc : undefined
+      }),
       site: binding.origin, shopName: binding.shopName, history: turn.ctx.history,
       neverSay: applyShopProfile(binding.pack, turn.hoSo, binding.chung.cauCam).identity.neverSay,
       extraContext,
       ...this.provenAmounts(turn),
+      ...(vision !== null ? { xemAnh: { anh: vision.photos.map((p) => p.url) } } : {}),
       deadlineMs: Math.max(AGENT_MIN_DEADLINE_MS, this.budgetLeft(turn) - 5000)
     };
+    if (vision !== null) turn.steps.push({ loai: "doc", ten: "Agent xem ảnh", chiTiet: `${vision.photos.length} ảnh đính kèm cho agent; được gọi ${LOOK_TOOL} xem ảnh cũ trong hội thoại / ảnh sản phẩm.` });
     const toolCalls: RecordedToolCall[] = [];
     const usage = { shop: tenant, agent: turn.req.usageAgent ?? "bot_l2", channel: turn.channel, conversationId };
     const runTurn = () => {
@@ -1108,7 +1133,8 @@ export class TurnPipeline {
       toolCalls.length = 0;
       return withUsage(usage, () => agent.run({
         ...turnInput,
-        tools: recordingToolBox(this.agentToolBox(binding, turn.tools, knowledge, turn.shop), toolCalls, this.deps.clock)
+        tools: recordingToolBox(this.agentToolBox(binding, turn.tools, knowledge, turn.shop), toolCalls, this.deps.clock),
+        ...(vision !== null ? { vision } : {})
       }));
     };
     let outcome = await runTurn();
@@ -1230,7 +1256,8 @@ export class TurnPipeline {
       text: turn.text,
       imageCount: Number(message.soAnh || 0),
       at: String(message.luc || this.deps.clock.now().toISOString()),
-      intentHint: turn.router?.intent.intent
+      intentHint: turn.router?.intent.intent,
+      knownNeed: knownNeedOf(turn.analysis ?? null, turn.ctx.state)
     });
     turn.engine = result;
     turn.draft.duongDi = "may-luat";
@@ -1250,10 +1277,10 @@ export class TurnPipeline {
     // A model was tried and could not answer, and the engine did not understand either (no intent),
     // or hands over SILENTLY: the customer must hear something, and the shop must be told.
     if (turn.modelTried && (result.intentId === null || result.action === "handoff")) {
-      return this.handOverToPerson(turn, "agent khong tra loi duoc, may luat khong hieu cau", "may-luat");
+      return this.handOverToPerson(turn, `agent khong tra loi duoc, ${result.handoffReason ?? "may luat khong hieu cau"}`, "may-luat");
     }
     const engineReason = result.action === "handoff"
-      ? String((result.gates ?? []).find((g) => g.action === "handoff" || g.action === "block")?.reason || "bot khong chac, chuyen nguoi that")
+      ? result.handoffReason ?? String((result.gates ?? []).find((g) => g.action === "handoff" || g.action === "block")?.reason || "bot khong chac, chuyen nguoi that")
       : result.intentId ? `Máy luật nhận ý "${result.intentId}".` : "Máy luật chưa hiểu câu này.";
     // The engine's handoff is a DELIBERATE non-answer: a human beats a wrong reply. Logged, and the
     // merchant is told there is work waiting.
@@ -1312,7 +1339,13 @@ export class TurnPipeline {
     const identity = applyShopProfile(binding.pack, turn.hoSo).identity;
     const sentence = String(binding.pack.templates["handoff"] ?? "")
       .split("{shop}").join(identity.selfPronoun).split("{khach}").join(identity.customerPronoun);
-    const polite = sentence.charAt(0).toUpperCase() === sentence.charAt(0) ? sentence : `Dạ ${sentence}`;
+    // 30/09/2026: a customer who is chasing us hears the apology first, in the shop's own pronouns —
+    // not a bare "a person will answer", which reads as being brushed off a second time.
+    const sorry = turn.router?.intent.matched.includes("impatience") === true
+      ? this.routerFor(binding).fillHoiLai("xinLoiCho", { profile: turn.hoSo, site: binding.origin, tenShop: binding.shopName }) ?? ""
+      : "";
+    const polite = sorry !== "" ? `${sorry}${sentence.replace(/^Dạ\s+/, "")}`
+      : sentence.charAt(0).toUpperCase() === sentence.charAt(0) ? sentence : `Dạ ${sentence}`;
     if (turn.live) {
       await this.send(turn, polite);
       await this.notify(turn, lyDo);
@@ -1599,7 +1632,8 @@ export class TurnPipeline {
       orders: turn.orders,
       customerMessage: turn.text,
       summary: a !== null ? (a.contextSummary || a.episodeSummary) : undefined,
-      customerGoal: a !== null && a.customerGoal !== "" ? a.customerGoal : undefined
+      customerGoal: a !== null && a.customerGoal !== "" ? a.customerGoal : undefined,
+      customerNeed: statedNeed(a) || undefined
     };
     const episodeTurn: EpisodeTurn = {
       now: turn.now, customerText: turn.text, intentId: turn.intentId,
@@ -1619,7 +1653,13 @@ export class TurnPipeline {
         match: turn.photos.chot?.ket === "tu_tin" ? { action: "auto_match", primary: imageProducts[0] }
           : turn.photos.chot?.ket === "hoi_lai" ? { action: "ask_choose", selected: turn.photos.chot.luaChon.map((c) => ({ code: c.ma, name: c.ten })) }
           : undefined,
-        ocr: turn.photos.read.code !== "" || turn.photos.read.model !== "" ? { brand: turn.photos.read.brand, code: turn.photos.read.code, name: turn.photos.read.model } : undefined
+        // An unconfirmed line is a guess: never a name later turns would repeat as fact (01/10/2026)…
+        ocr: turn.photos.read.code !== "" || (turn.photos.read.model !== "" && !turn.photos.dongChuaChac) ? { brand: turn.photos.read.brand, code: turn.photos.read.code, name: turn.photos.dongChuaChac ? "" : turn.photos.read.model } : undefined,
+        // …but kept AS a guess (02/10/2026): "not read" left a later "cứ đoán đi" with nothing to go on.
+        guess: turn.photos.dongChuaChac && turn.photos.read.model !== "" ? {
+          brand: normalize(turn.photos.read.model).startsWith(normalize(turn.photos.read.brand)) ? "" : turn.photos.read.brand,
+          name: turn.photos.read.model
+        } : undefined
       });
       const label = recognised !== null ? ledger.imageLabel(recognised) : "";
       for (const photo of ctx.photos) if (photo.maTin !== "" && label !== "") imageLabels[photo.maTin] = label;
@@ -1712,12 +1752,40 @@ export class TurnPipeline {
     if (!binding.gateway.tools.available().includes("shop.profile" as ToolName)) return null;
     const r = await binding.gateway.tools.call("shop.profile" as ToolName, {} as never);
     if (!r.ok) { this.deps.logger.warn(`[bo-nao] khong doc duoc ho so shop: ${r.error.message}`); return null; }
-    return r.data as unknown as ShopProfileBundle;
+    return readShopProfileBundle(r.data);
   }
 
   /** Whether a photo the customer sends is read this turn (a vision-capable model is configured). */
   visionReady(): boolean {
     return this.deps.vision !== null && this.deps.vision.ready();
+  }
+
+  /** The agent may see photos: the switch is on, a model reads pictures, and tier 1 has the words for it. */
+  private agentSees(binding: MerchantBinding): boolean {
+    return this.deps.agentSeesPhotos === true && this.visionReady() && binding.chung.xemAnh !== undefined;
+  }
+
+  /**
+   * What the agent sees this turn (02/10/2026): the customer's fresh photos as the intake prepared them,
+   * and a way to open one more — a photo the customer sent in the last half hour, or a product photo a
+   * stock result showed. `null` = nothing to show (no photo anywhere near), or seeing is off.
+   */
+  private agentVision(turn: Turn): AgentVision | null {
+    const { binding } = turn.req;
+    if (!this.agentSees(binding)) return null;
+    const fresh = (turn.photos?.looks ?? []).filter((l) => (l.xem ?? "") !== "").map((l) => ({ url: l.url, dataUrl: l.xem! }));
+    const earlier = turn.ctx.history.some((line) => (line.imageUrls ?? []).length > 0);
+    if (fresh.length === 0 && !earlier) return null;
+    const intake = this.deps.intake;
+    return {
+      photos: fresh,
+      // A product photo may be a path on the shop's own site ("assets/…", "/api/…"): resolved there.
+      look: (url, kind) => {
+        let absolute = url;
+        if (!/^https?:\/\//i.test(url)) { try { absolute = new URL(url.startsWith("/") ? url : `/${url}`, binding.origin).toString(); } catch { return Promise.resolve(null); } }
+        return intake.view(absolute, kind);
+      }
+    };
   }
 
   /** WHAT THE CUSTOMER'S PHOTOS ARE, for a caller outside a turn (the AI desk's image door): the intake with the industry's prompt. */
@@ -1775,4 +1843,43 @@ function entityRecord(entities: Entities): Record<string, unknown> {
     out[key] = value;
   }
   return out;
+}
+
+/**
+ * The `shop.profile` answer made safe (30/09/2026): landings of every build answer it, so the
+ * profile goes through `readShopProfile` (an unanswered choice is "chua khai", never "khong") and a
+ * warehouse whose kind is not "ready"/"order" is dropped rather than guessed.
+ */
+export function readShopProfileBundle(raw: unknown): ShopProfileBundle {
+  const o = raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const cs = o["chinhSach"] !== null && typeof o["chinhSach"] === "object" ? (o["chinhSach"] as Record<string, unknown>) : {};
+  const str = (v: unknown): string => (typeof v === "string" ? v : "");
+  const kho: ShopProfileBundle["kho"] = [];
+  for (const w of Array.isArray(o["kho"]) ? o["kho"] : []) {
+    const k = w !== null && typeof w === "object" ? (w as Record<string, unknown>) : {};
+    if (k["loai"] !== "ready" && k["loai"] !== "order") continue;
+    kho.push({ ma: str(k["ma"]), ten: str(k["ten"]), loai: k["loai"], uuTien: Number(k["uuTien"]) || 0, chinhSach: str(k["chinhSach"]).trim() });
+  }
+  return { hoSo: readShopProfile(o["hoSo"]), chinhSach: { doiTra: str(cs["doiTra"]), ship: str(cs["ship"]), baoHanh: str(cs["baoHanh"]) }, kho };
+}
+
+/**
+ * The need the customer described this turn, in the model's words; "" when they did not (30/09/2026).
+ * `product_advice` is the PLATFORM's intent for "help me choose by what I need" (loi-chung), so this
+ * holds for every industry: a greeting, a bare "size 42 còn không" or a named model is not a need.
+ */
+export function statedNeed(a: { intent: string; customerGoal: string; contextSummary: string } | null): string {
+  if (a === null || a.intent !== "product_advice") return "";
+  return (a.customerGoal || a.contextSummary).trim();
+}
+
+/** The need the engine must not ignore: this turn's, else the ledger's — only if said in THIS shopping episode. */
+export function knownNeedOf(a: { intent: string; customerGoal: string; contextSummary: string } | null, state: { ledger?: { customerNeed?: string; customerNeedAt?: string } | undefined; episode?: { startedAt?: string } | null | undefined }): string {
+  const now = statedNeed(a);
+  if (now !== "") return now;
+  const need = (state.ledger?.customerNeed ?? "").trim();
+  const at = state.ledger?.customerNeedAt ?? "";
+  const since = state.episode?.startedAt ?? "";
+  if (need === "" || at === "") return "";
+  return since === "" || at >= since ? need : "";
 }

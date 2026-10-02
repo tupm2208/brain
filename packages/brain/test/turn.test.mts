@@ -86,6 +86,24 @@ test("unknown item: ask back, never guess", async () => {
   assert.ok(!f.calls.some((c) => c.tool === "stock.lookup"));
 });
 
+test("(30/09) a customer who DESCRIBED a need is never asked for a model name: a person takes it, the episode stays open", async () => {
+  const f = fakePorts();
+  const r = await ask(f.ports, "con size 42 khong shop", { knownNeed: "giày đa năng đi hằng ngày, chạy nhẹ, tập gym" });
+  assert.equal(r.action, "handoff");
+  assert.doesNotMatch(r.reply, /xin mã hoặc tên mẫu/);
+  assert.match(r.handoffReason ?? "", /nhu cau/);
+  assert.notEqual(r.state.handedOff, true, "the next turn, with the model back, advises normally");
+  assert.equal(r.state.askBackCount ?? 0, 0, "not counted as an ask-back");
+  // Nothing known: the old ask-back is right.
+  const g = fakePorts();
+  assert.equal((await ask(g.ports, "con size 42 khong shop", { knownNeed: "  " })).action, "ask_back");
+  // The need does not stop a customer who NAMED the model from being served.
+  const h = fakePorts();
+  const named = await ask(h.ports, "adizero boston 13 con size 42 khong shop", { knownNeed: "giày chạy" });
+  assert.equal(named.action, "send");
+  assert.match(named.reply, /Còn 3 đôi size 42/);
+});
+
 test("a second ask-back still lacking information hands off", async () => {
   const f = fakePorts();
   await ask(f.ports, "con size 42 khong shop");

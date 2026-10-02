@@ -1,0 +1,101 @@
+{
+  "_doc": "Bo do nhan anh khach that (01/10/2026). Moi ca: anh, shop (key trong license), landing, va dieu PHAI dung. 'phienBanCo' / 'phienBanKhong' la regex tren TEN cac ma ma buoc so anh xep cung phien ban; 'ghiChu' la regex tren ghi chu dua cho agent. Chay: node scripts/do-nhan-anh.mjs [--lan 2] [--ca ten]. Anh bien lai / anh co du lieu ca nhan KHONG dua vao day. 'dong' (01/10/2026) = regex dong DUNG cua mon trong anh: doc ra dong khac ma he thong khong tu biet (dongChuaChac) = NGUY HIEM. 'docGia' = ep moi lan doc anh tra ve dong nay (mo phong doc nham dong, ca that 01/10: Evo SL doc thanh Adios Pro) — kiem buoc so anh tu phat hien.",
+  "ca": [
+    {
+      "ten": "pegasus-41-sadida",
+      "anh": "pegasus-41-cua-hang.jpg",
+      "shop": "sadida",
+      "landing": "https://centerbrain.site",
+      "phienBanCo": [
+        "pegasus 41"
+      ],
+      "phienBanKhong": [
+        "pegasus 42",
+        "turbo",
+        "plus"
+      ],
+      "ghiChu": [
+        "KHÔNG mã nào cùng màu|giống"
+      ],
+      "viSao": "Ca goc 01/10: anh chup cua hang Pegasus 41 nu trang xanh nhat; bot doc thanh Pegasus 40. Kho sadida co 6 ma Pegasus 41 khac mau.",
+      "dong": "pegasus"
+    },
+    {
+      "ten": "boston-12-toprun",
+      "anh": "boston-12-reels.jpg",
+      "shop": "toprun",
+      "landing": "http://127.0.0.1:4180",
+      "phienBanCo": [],
+      "phienBanKhong": [
+        "boston 13"
+      ],
+      "ghiChu": [
+        "KHÔNG mẫu nào cùng mẫu/cùng đời"
+      ],
+      "viSao": "Anh reels Boston 12; kho toprun chi co Boston 13 — phai noi khong co dung doi.",
+      "dong": "boston"
+    },
+    {
+      "ten": "evo-sl-toprun",
+      "anh": "evo-sl-xam.jpg",
+      "shop": "toprun",
+      "landing": "http://127.0.0.1:4180",
+      "phienBanCo": [
+        "evo sl(?! ?2)"
+      ],
+      "phienBanKhong": [
+        "evo sl ?2"
+      ],
+      "ghiChu": [
+        "SO VỚI ẢNH CATALOG"
+      ],
+      "viSao": "Evo SL doi dau (chu in tren than). Kho co ca Evo SL va Evo SL 2 — hai doi sat nhau.",
+      "dong": "evo sl"
+    },
+    {
+      "ten": "sl2-toprun",
+      "anh": "sl2-chup-web.jpg",
+      "shop": "toprun",
+      "landing": "http://127.0.0.1:4180",
+      "maDung": "IF6749",
+      "phienBanCo": [],
+      "phienBanKhong": [],
+      "ghiChu": [],
+      "viSao": "Anh chup trang web co ma IF6749 in ro — duong cu (doc ma + van tay) phai giu nguyen, khong bi buoc so anh lam roi.",
+      "dong": "sl ?2|evo"
+    },
+    {
+      "ten": "duramo-toprun",
+      "anh": "duramo-rc2-bai-dang.jpg",
+      "shop": "toprun",
+      "landing": "http://127.0.0.1:4180",
+      "maDung": "JQ8077",
+      "phienBanCo": [],
+      "phienBanKhong": [],
+      "ghiChu": [],
+      "viSao": "Anh bai dang co 'DURAMO RC2 M JQ8077' in tren anh.",
+      "dong": "duramo"
+    },
+    {
+      "ten": "evo-sl-doc-nham-toprun",
+      "anh": "evo-sl-xam.jpg",
+      "shop": "toprun",
+      "landing": "http://127.0.0.1:4180",
+      "dong": "evo sl",
+      "docGia": {
+        "brand": "adidas",
+        "model": "Adizero Adios Pro",
+        "tuKhoa": "adios pro",
+        "color": "xám bạc"
+      },
+      "phienBanCo": [],
+      "phienBanKhong": [
+        "adios"
+      ],
+      "ghiChu": [
+        "CHƯA XÁC NHẬN"
+      ],
+      "viSao": "Ca that 01/10 qua duong that: anh Evo SL doc thanh Adios Pro, bot chao Adios Pro 4 nhu cung dong. Ep doc sai: buoc so anh phai thay ung vien Adios Pro KHONG cung dong va danh dau ten dong chua xac nhan."
+    }
+  ]
+}

@@ -36,6 +36,7 @@ bộ soi (`checkBlocksFree`) từ chối, Xeon không khởi động.
 | `line-dna.json` | Không | sự thật (5), kiến thức | Dòng sản phẩm (`lines[]`: id, name, aliases, equivalents, beginnerAlternative, purpose, note, ma trận pace × cự ly) — bậc thang tồn đi sang dòng tương đương / dòng cho người mới, và tư vấn theo nhu cầu |
 | `xac-nhan-catalog.json` | Không | sự thật (5) | Ví dụ ngành cho LLM#2 (xác nhận mẫu khi chỉ có một phỏng đoán yếu) |
 | `xem-anh.json` | Không | đọc ảnh (2) | Mô tả hàng hoá của ngành để mô hình nhìn ảnh đọc đúng |
+| `so-anh-catalog.json` | Không | đọc ảnh (2) | "Phiên bản" của ngành là gì khi so ảnh khách với ảnh catalog (giày: đời Pegasus 40/41; quần áo: cùng kiểu) |
 | `phan-tich-ngu-canh.json` | Không | LLM#1 (3) | Khối lời dặn ngành nối tiếp khối chung; `schema` góp thêm khoá vào JSON chung (vd `needBrief`, cách tách tên mẫu) |
 | `ghi-chu-he-thong.json` | Không | ghi chú (6) | Lời định ngành của ghi chú hệ thống cho agent (size, trả kho, môn thể thao, tem cm), ghi đè từng khoá |
 | `soan-nhap.json` | Không | LLM#3 (8) | Luật + guardrails ngành cho nháp dự phòng, cùng cơ chế `khi` (tình huống) |
@@ -55,7 +56,8 @@ bộ soi (`checkBlocksFree`) từ chối, Xeon không khởi động.
 | `kich-ban-chung.json` | định tuyến (4) | Kịch bản cứng chung (`scripts`) + `hoiLai`; câu ghi nhận chuyển khoản là câu **trung tính** — bot không bao giờ tự nói đã nhận tiền |
 | `khung-hoi-thoai.json` | nền lượt (1) | Khung hội thoại + phiên mua: page vừa hỏi gì (`pageTurn`), đồng ý / từ chối / tham chiếu, mẫu link sản phẩm, câu trả lời ngắn, chữ mô tả khung |
 | `so-hoi-thoai.json` | nền lượt (1), nhớ (11) | Chữ khung của sổ hội thoại (ledger) và nhãn ảnh: tiêu đề, nhãn trường / trạng thái / nguồn, ghi chú chốt hàng ngoài |
-| `xem-anh.json` | đọc ảnh (2) | Lời dặn mô hình nhìn ảnh: loại ảnh (sản phẩm / biên lai / màn hình đơn / khác); schema JSON cố định trong mã |
+| `xem-anh.json` | đọc ảnh (2) | Lời dặn mô hình nhìn ảnh: loại ảnh (sản phẩm / biên lai / màn hình đơn / khác); schema JSON cố định trong mã. Không đoán phiên bản/đời khi không đọc được chữ (01/10/2026) |
+| `so-anh-catalog.json` | đọc ảnh (2) | Lời dặn so ảnh khách với ảnh catalog của chính shop: cùng phiên bản / trùng màu; viết nhận xét trước khi chọn (01/10/2026) |
 | `phan-tich-ngu-canh.json` | LLM#1 (3) | Lời dặn chung LLM#1: đọc cả hội thoại, rút ý định + thực thể + mẫu chính, không kết luận giá / tồn / chính sách; `lenhTraCuu`, `schema`, `nhan` |
 | `cham-diem-chung.json` | sự thật (5) | Trọng số chấm điểm, ngưỡng giữ ứng viên, hình dạng SKU, luật đọc nhãn size, cổng "chưa rõ mẫu thì hỏi lại" (`uncertain`), câu chữ sự thật tồn kho (`texts`) |
 | `xac-nhan-catalog.json` | sự thật (5) | Lời dặn LLM#2: ứng viên nào đúng là mẫu khách nói, được phép trả "không mã nào" |

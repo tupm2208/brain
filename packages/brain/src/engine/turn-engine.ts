@@ -36,6 +36,13 @@ export interface HandleInput {
    * the same id) is used instead of keyword scoring; a hint no pack intent answers is ignored.
    */
   intentHint?: string | undefined;
+  /**
+   * What the customer already said they are looking for, in words ("giày đa năng đi hằng ngày, chạy
+   * nhẹ, size 41"), from the model's reading of the conversation or the conversation ledger. Empty =
+   * nothing known. When set, the engine never asks "which model?" (30/09/2026): the customer TOLD us
+   * what they need and a rule engine cannot advise, so a person takes it instead.
+   */
+  knownNeed?: string | undefined;
 }
 
 export interface HandleResult {
@@ -53,6 +60,8 @@ export interface HandleResult {
    */
   echoed: string[];
   state: ConversationState;
+  /** Why the engine handed over, when it is not a gate's own reason (e.g. a stated need it cannot advise on). */
+  handoffReason?: string | undefined;
 }
 
 /** Item recognition threshold: fraction of the product name covered by the customer's sentence. */
@@ -477,6 +486,11 @@ export class TurnEngine {
 
     let action: HandleResult["action"] = "send";
     let reply = draft.text;
+    let handoffReason: string | undefined;
+    // The ask-back below asks for the ITEM when the first missing slot is the item (or none is named).
+    const wouldAsk = gate.verdict.action === "ask_back" || (wouldAskBack && gate.verdict.action === "send");
+    const knownNeedAsksItem = wouldAsk && !itemIdentified && (missing[0] ?? "item") === "item"
+      && (work.input.knownNeed ?? "").trim() !== "";
     let askedSlot: string | undefined;
     let replyMissing: string[] = [];
 
@@ -489,6 +503,13 @@ export class TurnEngine {
       if (intent?.handoff === true || state.handedOff === true || idleCount >= MAX_IDLE_TURNS) {
         state = { ...state, handedOff: true };
       }
+    } else if (knownNeedAsksItem) {
+      // The customer described a need, not a model: asking "which model?" ignores what they said
+      // (sadida 30/09: "đa năng, chân 25cm, size 41" → "cho em xin mã hoặc tên mẫu"). The episode is
+      // NOT locked: the next turn, with the model back, advises normally.
+      action = "handoff";
+      reply = renderer.render(tpl("handoff"), vars).text;
+      handoffReason = "khach da noi nhu cau nhung chua chon mau — can tu van, may luat khong tu van duoc";
     } else if (gate.verdict.action === "ask_back" || (wouldAskBack && gate.verdict.action === "send")) {
       action = "ask_back";
       askedSlot = missing[0] ?? (itemIdentified ? undefined : "item");
@@ -580,7 +601,8 @@ export class TurnEngine {
 
     return {
       action, reply, intentId: intent?.id ?? null, itemCode: item.itemCode, slots,
-      facts: work.facts, gates: gate.all, echoed: allowedEchoes, state
+      facts: work.facts, gates: gate.all, echoed: allowedEchoes, state,
+      ...(handoffReason !== undefined ? { handoffReason } : {})
     };
   }
 }

@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import "./industries.mts";
 import {
   AGENT_TOOLS, AiDeskService, BrainService, CatalogVerifier, ContextAnalyzer, DraftWriter, GatewayBreaker, ImageFetcher, LicenseLedger, LicenseService, MemoryDossierStore, MemoryLogger,
-  ReplyDispatcher, SalesAgent, TurnPipeline, generateSigningKey,
+  ReplyDispatcher, SalesAgent, TurnPipeline, generateSigningKey, knownNeedOf, readShopProfileBundle, statedNeed,
   type ChatMessage, type ChatModelPort, type FetchLike, type ImageFetch
 } from "@sp/xeon";
 import { loadIntentRules } from "@sp/brain";
@@ -862,4 +862,61 @@ test("the AI greeting (Desk introAlreadySent): only on a thread the page never w
   const { brain: brain3 } = await brainWith(paid, { analyzer: scriptedModel([analysisOf("payment_confirmation")]), agent: scriptedModel([]), writer: null });
   await brain3.handleInbound({ ...MESSAGE, chu: "da chuyen 500k vao stk cua shop" });
   assert.equal(sentBody(paid)["chaoAi"], undefined);
+});
+
+test("(30/09) hồ sơ landing gửi chữ \"undefined\" ở ô chưa khai → bộ não đọc là CHƯA KHAI, không bao giờ thành \"không bán order / không COD\"", async () => {
+  const thread = [{ chieu: "den", boi: "khach", chu: "còn adizero boston 13 size 42 không", soAnh: 0, luc: AT }];
+  const broken = { phienBan: 0, xungHo: { khach: "bác", shop: "em" }, banHang: { coHangOrder: "undefined", codHangSan: "undefined", tiLeCoc: null, macCa: { kieu: "undefined", chiTiet: "" }, khiChot: "undefined" }, chuyenNguoi: { mucChot: "undefined" } };
+  const landing = landingWith({ thread, found: BOSTON, hoSo: broken });
+  const agent = scriptedModel(["{\"reply\":\"Dạ Boston 13 size 42 còn ạ\"}"]);
+  const { brain } = await brainWith(landing, { analyzer: scriptedModel([STOCK_ANALYSIS]), agent, writer: null });
+  await brain.handleInbound({ ...MESSAGE, chu: "còn adizero boston 13 size 42 không" });
+  const system = agent.seen[0]![0]!.content;
+  assert.doesNotMatch(system, /KHONG ban hang order/, "an unanswered choice is not a no");
+  assert.doesNotMatch(system, /KHONG COD/);
+  assert.doesNotMatch(system, /undefined/);
+  assert.match(system, /goi khach la "bác"/, "the fields the shop did answer still count");
+
+  const bundle = readShopProfileBundle({ hoSo: broken, chinhSach: null, kho: [{ ma: "k1", ten: "Kho 1", loai: "ready", uuTien: 2, chinhSach: " COD " }, { ma: "k2", loai: "la" }] });
+  assert.deepEqual([bundle.hoSo.banHang.coHangOrder, bundle.hoSo.banHang.codHangSan, bundle.hoSo.banHang.macCa.kieu, bundle.hoSo.banHang.khiChot, bundle.hoSo.chuyenNguoi.mucChot], ["", "", "", "", ""]);
+  assert.deepEqual(bundle.chinhSach, { doiTra: "", ship: "", baoHanh: "" });
+  assert.deepEqual(bundle.kho, [{ ma: "k1", ten: "Kho 1", loai: "ready", uuTien: 2, chinhSach: "COD" }], "a warehouse of an unknown kind is dropped, not guessed");
+  assert.equal(readShopProfileBundle(null).hoSo.phienBan, 0);
+  assert.equal(readShopProfileBundle({ hoSo: { banHang: { khiChot: "link-web", coHangOrder: "co", tiLeCoc: "30" } } }).hoSo.banHang.khiChot, "phieu");
+});
+
+test("(30/09) statedNeed / knownNeedOf: only the platform's product_advice is a need; the ledger's need counts inside the SAME episode only", async () => {
+  const a = (intent: string, customerGoal = "giày đa năng size 41") => ({ intent, customerGoal, contextSummary: "" });
+  assert.equal(statedNeed(a("product_advice")), "giày đa năng size 41");
+  assert.equal(statedNeed(a("greeting", "Chào hỏi và bắt đầu trò chuyện")), "", "a greeting fills customerGoal too — it is not a need");
+  assert.equal(statedNeed(a("ask_size")), "", "a bare size question names no need");
+  assert.equal(statedNeed(null), "");
+  const ledger = { customerNeed: "giày đa năng", customerNeedAt: "2026-09-30T13:03:00.000Z" };
+  assert.equal(knownNeedOf(null, { ledger, episode: { startedAt: "2026-09-30T13:01:00.000Z" } }), "giày đa năng", "model down: the ledger remembers");
+  assert.equal(knownNeedOf(null, { ledger, episode: { startedAt: "2026-10-02T09:00:00.000Z" } }), "", "a need from an older episode is stale");
+  assert.equal(knownNeedOf(a("product_advice", "áo khoác"), { ledger }), "áo khoác", "this turn wins");
+});
+
+test("(30/09, sadida lượt 5–6) AI chết, khách đã nói nhu cầu ở lượt trước → không hỏi \"xin mã / tên mẫu\"; chuyển người kèm lý do; khách giục thì nghe xin lỗi trước", async () => {
+  const earlier = "2026-09-25T08:50:00.000Z";
+  const state = {
+    tenant: "toprun", conversationId: "facebook:k1", turns: [], episodeStartedAt: earlier,
+    episode: { id: "ep1", startedAt: earlier, lastAt: earlier, openedBy: "first", turns: 2, focus: null, others: [], summary: "", stage: "tu_van", outcome: "", staleGap: "" },
+    ledger: { products: [], orders: [], aiSummaries: [], openThread: "", customerGoal: "giày đa năng", customerNeed: "giày đa năng đi hằng ngày, chạy nhẹ, tập gym; chân 25cm", customerNeedAt: earlier, updatedAt: earlier }
+  };
+  const said = "Có đôi nào size 40 2/3 không?";
+  const landing = landingWith({ thread: [{ chieu: "den", boi: "khach", chu: said, soAnh: 0, luc: AT }], found: [], state });
+  const { brain, dossier } = await brainWith(landing, { analyzer: scriptedModel([]), agent: scriptedModel([]), writer: null });
+  const result = await brain.handleInbound({ ...MESSAGE, chu: said });
+  assert.equal((result as { viSao?: string }).viSao, "chuyen_nguoi_that", JSON.stringify(result));
+  assert.ok(!landing.sent().some((s) => /xin mã hoặc tên mẫu/.test(s)), `asked for a model again: ${landing.sent().join(" | ")}`);
+  assert.match(landing.notices().join(" | "), /nhu cau/, "the shop is told WHY: a stated need the rules cannot advise on");
+  assert.equal(dossier.last()!.duongDi, "may-luat");
+
+  // Chasing (the keyword net, since no model runs): the apology comes first, in the shop's pronouns.
+  const chase = "trả lời chậm quá, có bán không thì bảo";
+  const landing2 = landingWith({ thread: [{ chieu: "den", boi: "khach", chu: chase, soAnh: 0, luc: AT }], found: [], state, hoSo: { xungHo: { khach: "anh", shop: "mình" } } });
+  const { brain: brain2 } = await brainWith(landing2, { analyzer: scriptedModel([]), agent: scriptedModel([]), writer: null });
+  await brain2.handleInbound({ ...MESSAGE, chu: chase });
+  assert.match(landing2.sent()[0] ?? "", /^Dạ mình xin lỗi anh chờ ạ, /, landing2.sent().join(" | "));
 });

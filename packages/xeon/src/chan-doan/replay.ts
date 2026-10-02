@@ -112,7 +112,10 @@ export async function replayTurn(dossier: TurnDossier, options: ReplayOptions = 
     ...kept.luot,
     ...(options.agent !== undefined ? { agent: options.agent } : {}),
     ...(options.extraContext !== undefined ? { extraContext: options.extraContext } : {}),
-    tools: replayToolBox(kept.congCu)
+    tools: replayToolBox(kept.congCu),
+    // A turn that saw photos is replayed with the same protocol (reminder, `xem_anh`); the pictures
+    // themselves are never kept in a dossier, so a look-again answers "could not fetch".
+    ...(kept.luot.xemAnh !== undefined ? { vision: { photos: [], look: async () => null } } : {})
   };
   const outcome = await agent.run(turn);
 

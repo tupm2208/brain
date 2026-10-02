@@ -60,6 +60,8 @@ export * from "./ai/ai-desk";
 export * from "./product-library/product-library";
 export * from "./product-library/image-job-queue";
 export * from "./product-library/image-tool-dispatcher";
+export * from "./product-library/image-batch-book";
+export * from "./product-library/shared-image-book";
 export * from "./http/ai-controller";
 export * from "./content/content-desk";
 export * from "./content/profile-translator";

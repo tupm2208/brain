@@ -243,6 +243,17 @@ export class LandingGateway {
     return { ok: false, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["error"] ?? `HTTP ${r.status}`) };
   }
 
+  /**
+   * Đẩy kết quả Image Tool của một lô về landing để landing tự lưu vào kho (30/09/2026, xem
+   * `product-library/image-batch-book.ts`). KHÔNG gọi lại ở đây: sổ lô tự hẹn lần gửi sau. Gửi lại
+   * vô hại — landing chỉ ghi ô đang trống và nhớ ảnh đã tải (`assetDaTai`).
+   */
+  async pushImageResults(body: { lo: string; ma: string[] }): Promise<{ ok: true; daBoSung: number } | { ok: false; viSao: string; status: number }> {
+    const r = await this.requestJson("/api/hang-kho/thu-vien/ket-qua-tu-xeon", { method: "POST", body });
+    if (r.ok) return { ok: true, daBoSung: Number(r.body["daBoSung"] ?? 0) };
+    return { ok: false, status: r.status, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["message"] ?? r.body["error"] ?? `HTTP ${r.status}`) };
+  }
+
   /** Tells the merchant a conversation needs a human. Never throws; failures are logged. */
   async notifyHandoff(notice: HandoffNotice): Promise<boolean> {
     // Landing THAY dòng cũ của cùng hội thoại chứ không nối thêm, nên báo lại không sinh hai dòng.

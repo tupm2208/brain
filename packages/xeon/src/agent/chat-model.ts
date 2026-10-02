@@ -18,6 +18,11 @@ export interface ChatMessage {
    * https addresses or `data:image/...` URLs. The adapter turns them into image parts.
    */
   images?: string[] | undefined;
+  /**
+   * A caption sent right BEFORE each picture (same order as `images`; "" = none). 01/10/2026: a
+   * model comparing one photo with ten catalogue photos mixed them up when all labels came first.
+   */
+  imageCaptions?: string[] | undefined;
 }
 
 /** Tokens one model call used, as the provider reported them (Đ7 token ledger). */
@@ -87,11 +92,15 @@ export const noChatModel: ChatModelPort = {
 
 /** A message as the OpenAI-compatible wire wants it: plain text, or text + image parts. */
 function toWireMessage(message: ChatMessage): Record<string, unknown> {
-  const images = (message.images ?? []).filter((url) => /^(https:\/\/|data:image\/)/i.test(url));
+  const captions = message.imageCaptions ?? [];
+  const images = (message.images ?? []).map((url, i) => ({ url, caption: captions[i] ?? "" })).filter((p) => /^(https:\/\/|data:image\/)/i.test(p.url));
   if (images.length === 0) return { role: message.role, content: message.content };
   return {
     role: message.role,
-    content: [{ type: "text", text: message.content }, ...images.map((url) => ({ type: "image_url", image_url: { url } }))]
+    content: [{ type: "text", text: message.content }, ...images.flatMap((p) => [
+      ...(p.caption !== "" ? [{ type: "text", text: p.caption }] : []),
+      { type: "image_url", image_url: { url: p.url } }
+    ])]
   };
 }
 

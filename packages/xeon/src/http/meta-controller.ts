@@ -273,7 +273,12 @@ export class MetaController implements RequestController {
     const pages = await this.options.graph.pagesOfUser(token.value);
     if (!pages.ok) { session.error = pages.message; page("Chưa kết nối", `Không đọc được danh sách trang: ${pages.message}`, 502); return; }
     session.pages = pages.value.map((p) => ({ ma: p.id, ten: p.name, token: p.token }));
-    page("Đã cấp quyền", `Đọc được ${session.pages.length} trang. Quay lại OMI và bấm "Hoàn tất kết nối".`);
+    // 30/09/2026: name the pages and say what happens next — "Đọc được 1 trang" alone left the
+    // person thinking it was done, and the landing never collected the token (shop sadida).
+    const names = session.pages.map((p) => p.ten || p.ma).join(", ");
+    page("Đã cấp quyền", session.pages.length === 0
+      ? "Tài khoản này không quản lý trang nào — kiểm tra lại quyền quản trị trang rồi kết nối lại."
+      : `Đọc được ${session.pages.length} trang: ${names}. Quay lại OMI — OMI tự hoàn tất kết nối trong vài giây (hoặc bấm "Hoàn tất kết nối"). Chỉ khi OMI báo "Đã nối" thì trang mới dùng được để đăng bài.`);
   }
 
   /** The landing collects the pages of ITS login session — once; the tokens are then forgotten. */

@@ -99,6 +99,13 @@ test("orders, summaries and the render match Desk's wording", () => {
   assert.match(text, /DIEN BIEN HOI THOAI/);
   assert.match(text, /MUC TIEU KHACH \(moi nhat\): mua giay chay HM/);
   assert.match(text, /CHU DE DANG DO: Khach hoi gia Boston 13/);
+  // 30/09/2026: the need is kept apart from the goal, and a later turn without one keeps it.
+  assert.equal(l.customerNeed, "");
+  l = ledger.update(l, { now: T(2), customerGoal: "tìm giày đa năng", customerNeed: "giày đa năng đi hằng ngày" });
+  l = ledger.update(l, { now: T(3), customerGoal: "hỏi size" });
+  assert.equal(l.customerNeed, "giày đa năng đi hằng ngày");
+  assert.equal(l.customerNeedAt, T(2));
+  assert.equal(ledger.normalize({}).customerNeed, "", "an old stored ledger reads with no need");
 });
 
 test("image labels: product, receipt (by content only), shortlist, OCR, unknown", () => {

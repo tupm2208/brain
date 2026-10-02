@@ -159,6 +159,19 @@ test("kb2-20 / kb2-15: asking for the account is the bank script; impatience is 
   assert.equal(router.route({ message: "hàng lỗi, em muốn khiếu nại", ...shop }).decision.kind, "human_handoff", "a real complaint still goes to a person");
 });
 
+test("(30/09) impatience read from the MEANING (LLM#1 riskFlags), any wording: apology opener, the customer's intent kept; a complaint is still a person's", () => {
+  const advice = { intent: "product_advice", confidence: 0.9, matched: ["llm1"] };
+  const waiting = router.route({ message: "A đang chờ em tư vấn mà", ...shop, aiIntent: advice, aiFlags: ["khach_giuc"] });
+  assert.equal(waiting.decision.kind, "agent_draft");
+  assert.equal(waiting.decision.reason, "impatience");
+  assert.equal(waiting.intent.intent, "product_advice", "still looking for shoes — not small talk");
+  assert.match(waiting.decision.kind === "agent_draft" ? waiting.decision.hint : "", /xin lỗi bác chờ/);
+  const plain = router.route({ message: "A đang chờ em tư vấn mà", ...shop, aiIntent: advice });
+  assert.notEqual(plain.decision.kind === "agent_draft" ? plain.decision.reason : "", "impatience", "without the model's flag the keyword net decides");
+  const upset = router.route({ message: "hàng lỗi, em muốn khiếu nại", ...shop, aiIntent: { intent: "complaint_or_human", confidence: 0.9, matched: ["llm1"] }, aiFlags: ["khach_buc"] });
+  assert.equal(upset.decision.kind, "human_handoff");
+});
+
 test("the deposit question and a policy question inside a size question go to the agent", () => {
   assert.equal(router.route({ message: "Có cách nào không chuyển khoản cọc vẫn mua được ko em", ...shop }).decision.reason, "deposit_instruction");
   const policy = router.route({ message: "neu lech thi cho doi size k", ...shop });

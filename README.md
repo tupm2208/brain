@@ -44,6 +44,7 @@ Lần chạy đầu nó sinh khoá ký Ed25519 ở `du-lieu/xeon.ky.key.pem` (06
 | `XEON_AI_CHAT_URL`, `XEON_AI_CHAT_KEY`, `XEON_AI_CHAT_MODEL` | mô hình cho agent trả lời khách và mọi việc AI của Đ7 (nháp, hộp cát, phân tích, đọc ảnh) | agent tắt, máy luật soạn; cửa phân tích / đọc ảnh trả 503 |
 | `XEON_SHOP_SUA_BANG_GIA` | danh sách shop (phẩy) được sửa bảng giá AI dùng chung từ OMI | không shop nào sửa được; mọi shop chỉ xem |
 | `XEON_AI_PHAN_TICH_MS` | trần thời gian của LLM#1 (phân tích ngữ cảnh) mỗi lượt, ms (25/09/2026) | 15000 |
+| `XEON_AGENT_XEM_ANH` | `tat` = agent không còn tự xem ảnh khách, chỉ đọc ghi chú như trước 02/10/2026 (công tắc chung để gỡ sự cố, không phải lựa chọn theo shop) | bật |
 | `XEON_CAU_DAO_LOI` | **cầu dao cổng AI**: số lỗi tạm thời trong 5 phút thì mở cầu dao (25/09/2026) | 3 |
 | `XEON_CAU_DAO_MO_MS` | cầu dao mở bao lâu, ms; đang mở thì mỗi phút thử một lệnh nhẹ, thành công là đóng | 600000 (10 phút) |
 | `SHOP_JSON`, `MA_NHAN_TIN` | **chế độ cũ, chỉ để chạy thử**: shop khai tay, một mã chung | không dùng |
@@ -112,6 +113,45 @@ Quy tắc cứng:
 - Cửa cho tab Chatbot: `POST /ai/mau-ho-so` (gợi ý + khối + vân tay) và `POST /ai/loi-dan-xem-thu` (lời dặn thật cho shop lúc này).
 - Đánh giá: `node bo-nao/scripts/danh-gia-chatbot.mjs that|kich-ban …` chạy hội thoại qua hộp cát, ghi `logs/danh-gia/`.
 
+### Nhận ảnh khách: so với ảnh catalog (01/10/2026)
+
+Mô hình nhìn ảnh **không đọc được đời/phiên bản** của hàng chụp ngoài đời (ca sadida: Pegasus 41 đọc thành 40,
+mọi model thử đều có lúc sai, tự chấm 0.95). Nên ở bước [2]:
+
+1. Lời dặn đọc ảnh chỉ cho ghi phiên bản khi **đọc được chữ** trên ảnh.
+2. Ảnh không khớp vân tay → tra kho bằng **tên dòng đầy đủ** đọc được (từ khoá ngắn chỉ khi không ra), lấy tối đa 10 ảnh
+   catalog (mỗi tên một ảnh trước), thu nhỏ 512/256 px (`sharp`), đặt **nhãn ngay trước từng ảnh**, gọi model **2 lần song song**.
+3. Bốn cơ chế nền, không phụ thuộc ca nào: chỉ điều **hai lần cùng chọn** mới là "cùng mẫu"; **chữ đọc được thắng hình đoán**
+   (số đời đọc trên ảnh loại ứng viên mang số khác); nhóm "cùng mẫu" chứa **nhiều số đời theo tên kho** = ảnh không phân biệt
+   được → tất cả thành "có thể"; chỉ kết luận "kho không có" khi ứng viên **đúng dòng** đã đọc.
+4. Ghi chú cho agent: giống / cùng mẫu khác màu / không có đúng đời / CHƯA CHẮC — luôn "em thấy giống…" + khách xác nhận
+   trên ảnh shop (khối `anh-khach-gui` của `loi-chung/agent-chung.json`).
+
+Đo bằng ảnh thật: `node bo-nao/scripts/do-nhan-anh.mjs [--lan 3]` (ảnh + đáp án ở `bo-nao/bo-do-anh/`, chấm theo AN TOÀN:
+đúng / chưa chắc / nguy hiểm). 01/10: 10 đúng, 3 chưa chắc (Evo SL ↔ Evo SL 2 — ảnh catalog hai đời giống hệt), 0 nguy hiểm.
+
+### Agent tự xem ảnh khách (02/10/2026, anh chốt: mặc định cho mọi shop)
+
+Đo 30 ảnh thật × 2 lần (kho tin Desk + sadida + `bo-do-anh`): agent chỉ đọc ghi chú ảnh **72%** đúng; ghi chú **+ agent
+tự nhìn ảnh** **87%** đúng, 0 nhận nhầm; agent nhìn một mình (bỏ bước [2]) 77–85% nhưng **5% nhận nhầm**; model đắt
+hơn không đúng hơn. Nên giữ bước [2] và thêm:
+
+1. Ảnh của lượt (đã tải ở bước [2], thu về 1600 px) **đính kèm tin lịch sử** của agent (`AgentVision`, sống như `tools`,
+   không ghi vào hồ sơ lượt — hồ sơ chỉ giữ địa chỉ ở `xemAnh.anh`).
+2. Công cụ `xem_anh`: chỉ mở ảnh khách gửi trong 30 phút gần nhất (`[ANH url=...]` trong lịch sử, `LOOK_BACK_MS`) hoặc ảnh
+   trong trường `anh` của kết quả `tra_kho` — địa chỉ model tự bịa bị từ chối.
+3. Mỗi lần gọi kết thúc bằng câu nhắc `xemAnh.nhacSauAnh` + chế độ JSON: thiếu nó, Gemini nhìn ảnh hay trả lời bằng
+   function call mà cổng không mang được (`malformed_function_call`, rỗng ~½ số lần).
+4. Ghi chú bước [2] viết thành **gợi ý để agent kiểm lại** (mã đã chốt vẫn là sự thật, cấm đổi); LLM#3 không thấy ảnh nên
+   nhận bản ghi chú cũ (`noteBlind`). Hai lần so bất đồng nói "CHƯA CHẮC", không còn "không mẫu nào cùng dòng".
+5. Vân tay đối chiếu với tên dòng đọc được (`crossCheckFingerprint`): đo được vân tay một mình chưa chốt đúng ca nào, các
+   kết quả "hơi giống / ảnh dùng chung" đều sai mã → chỉ giữ mã mang tên dòng đọc được; vân tay khớp mà lệch tên dòng chỉ
+   còn là "có thể"; mã in đọc được giữ nguyên.
+6. Tên dòng chưa xác nhận được nhớ thành nhãn `[ảnh: đoán là … — chưa xác nhận]` thay cho "không đọc được".
+
+Lời dặn ở `loi-chung/agent-chung.json` (mục `xemAnh` + khối `anh-khach-gui`). Tắt cho cả nền tảng khi có sự cố:
+`XEON_AGENT_XEM_ANH=tat` trong `bo-nao/.env` rồi bật lại Xeon — không có ô bật/tắt theo shop.
+
 ### Đường đi một lượt (tầng 1 Desk, 24–25/09/2026)
 
 Từ 24/09 tầng 1 không còn là "ống dẫn + vòng agent" nữa: **thứ tự Sales Desk trả lời một tin**
@@ -132,12 +172,12 @@ tin khách ─► [1] nền lượt ─► [2] đọc ảnh ─► [3] LLM#1 ─
 | # | Bước | Mã | Là gì |
 |---|---|---|---|
 | 1 | Nền lượt | `TurnContextBuilder` (`turn-context.ts`) | đọc `conversation.recent`, dán nhãn ba loại tác giả (bot / người / không rõ), tin khách đang trả lời vào, thẻ người trực vừa gửi trong 30 phút, sổ hội thoại + phiên mua trong bộ nhớ, **khung hội thoại** (`dialogue-frame.ts`: "42", "ok" là câu trả lời cho câu page vừa hỏi). Người trực vừa nhắn <5 phút → bot im. Hồ sơ shop (tầng 3) đọc **một lần** đầu lượt. |
-| 2 | Đọc ảnh | `ImageIntake` (`image-intake.ts`) | tải ảnh về (thử lại 1,5 s vì CDN Meta), hỏi mô hình ảnh là **loại gì** (sản phẩm / biên lai / màn hình đơn / khác), khớp catalog qua `catalog.matchImage`; ảnh page vừa xin để đo size là **tham chiếu**, không phải hàng bán. Biên lai → câu trung tính + gọi người, **không mô hình nào viết**. |
+| 2 | Đọc ảnh | `ImageIntake` (`image-intake.ts`) | tải ảnh về (thử lại 1,5 s vì CDN Meta), hỏi mô hình ảnh là **loại gì** (sản phẩm / biên lai / màn hình đơn / khác), khớp catalog qua `catalog.matchImage`; ảnh không khớp vân tay thì **so với ảnh catalog của chính shop** (01/10/2026, xem dưới); ảnh page vừa xin để đo size là **tham chiếu**, không phải hàng bán. Biên lai → câu trung tính + gọi người, **không mô hình nào viết**. |
 | 3 | LLM#1 | `ContextAnalyzer` (`context-analyzer.ts`) | đọc cả hội thoại, trả ý định + mẫu (tách hãng/dòng/đời) + biến thể + nhu cầu + mẫu chính + tối đa 3 lệnh tra cứu; nhiệt độ 0, JSON; hỏng → `null`, lượt vẫn chạy. Trần `XEON_AI_PHAN_TICH_MS`; chỉ tối đa 15 s của nó tính vào ngân sách 60 s của lượt. |
 | 4 | Bộ định tuyến | `RuleRouter` (`rule-router.ts`, `intent-rules.ts`, `entities.ts`) | 15 ý định Desk + ba bộ nhận diện ngữ nghĩa (`paidMoney`, `deposit`, chào thuần), trích thực thể (size, SĐT, hãng, mã, nhu cầu, ngân sách, địa chỉ, tín hiệu chốt), sửa theo khung hội thoại, hoà giải với LLM#1 (`local_script_override`, `payment_claim_demoted`…). Kết quả: `script_reply` gửi ngay · `ask_clarification` gửi và đếm · `human_handoff` (khiếu nại, báo đã chuyển tiền) · `agent_draft`. Mọi câu là JSON (`kich-ban-chung.json` ⊕ `kich-ban.json`); chỗ trống shop chưa khai → **không dùng kịch bản đó**. |
 | 5 | Sự thật | `groundTruth` trong pipeline + `catalog-score.ts`, `catalog-resolver.ts`, `uncertain-product.ts`, `focus-resolver.ts`, `stock-facts.ts`, `CatalogVerifier` | Desk bước 5–7, **trước khi mô hình nào viết**: bậc thang tồn (`catalog.resolveStock` của landing, hoặc Xeon tự đi từng nấc `catalog.find` theo `planStockCascade`), chấm điểm ứng viên, kết luận một/nhiều/không mẫu (`needVerify`), **LLM#2** xác nhận khi chỉ có một phỏng đoán yếu, chọn mẫu đang nói tới theo thứ tự tin cậy Desk, dựng sự thật tồn theo size/kho, tra đơn + nhận khách (`order.lookup`, `customer.recognize`) theo SĐT khách **tự gõ**. Cổng "chưa chắc mẫu" có thể kết thúc lượt ở đây (hỏi lại **một lần**, hãng không bán, link danh mục). |
 | 6 | Ghi chú | `FactNoteComposer` (`fact-note.ts`) + `ledger.ts`, `episode.ts` | ghi chú hệ thống 9 khối của Desk (VAN_DON đứng đầu vì cắt 4000 ký tự từ cuối) + khung + mẫu chính + ảnh + đọc của LLM#1. |
-| 7 | Agent tầng 2 | `SalesAgent` | chạy khi có mô hình, ngành có sổ tay, landing mở đủ công cụ, còn quota. Cổng sập cả lượt → nghỉ 5 s, chạy lại **một** lần (bỏ dấu vết lần đầu). |
+| 7 | Agent tầng 2 | `SalesAgent` | chạy khi có mô hình, ngành có sổ tay, landing mở đủ công cụ, còn quota. Cổng sập cả lượt → nghỉ 5 s, chạy lại **một** lần (bỏ dấu vết lần đầu). Lượt có ảnh: agent **tự xem ảnh** + công cụ `xem_anh` (02/10/2026, xem trên). |
 | 8 | LLM#3 nháp | `DraftWriter` (`draft-writer.ts`) | lưới dưới agent: **một** lần gọi, không công cụ, prompt gọn (`LEAN_CORE` + luật theo tình huống + 8–12 câu người trực thật + guardrails cắt 12k) từ sự thật đã có; qua **cùng** bộ soát của agent. |
 | 9 | Máy luật | `TurnEngine` | lưới cuối, nhận ý định của bộ định tuyến làm gợi ý. Đã thử mô hình mà máy luật cũng không hiểu → chuyển người + báo shop, không nói câu chào suông. |
 | 10 | Cổng soát, gửi kèm, gửi | `ReplyGate` (`reply-gate.ts`), `ReplyDispatcher` (`dispatcher.ts`) | vòng 2 **sau** khi mô hình viết (Desk `enforceReplyEvidence` + `enforcePolicyClaims`): **sửa** chứ không chặn — cắt câu, đổi số, thay câu an toàn, nối link tra cứu, `needsHuman` không bao giờ lật lại. Rồi quyết định gửi kèm: ≤2 thẻ sản phẩm (≥3 mã còn hàng → link lọc), phiếu đặt hàng (`order.formLink`) khi chốt được mã + size và shop chốt qua phiếu, ảnh đo chân, chào AI lần đầu — landing gửi qua `POST /api/hop-thu/gui`, trả `ketQua.daGui`. |
@@ -155,7 +195,7 @@ thử một lệnh nhẹ, thành công là đóng.
 | Bước dùng | `loi-chung/` (mọi ngành) | `nganh/<id>/` (một ngành) |
 |---|---|---|
 | 1 khung hội thoại, phiên mua, sổ | `khung-hoi-thoai.json`, `so-hoi-thoai.json` | `khung-hoi-thoai.json` |
-| 2 đọc ảnh | `xem-anh.json` | `xem-anh.json` |
+| 2 đọc ảnh | `xem-anh.json`, `so-anh-catalog.json` | `xem-anh.json`, `so-anh-catalog.json` |
 | 3 LLM#1 | `phan-tich-ngu-canh.json` | `phan-tich-ngu-canh.json` |
 | 4 định tuyến | `y-dinh-chung.json`, `thuc-the-chung.json`, `kich-ban-chung.json` | `y-dinh.json`, `thuc-the.json`, `bang-size.json`, `kich-ban.json` |
 | 5 sự thật | `cham-diem-chung.json`, `xac-nhan-catalog.json` | `cham-diem.json`, `xac-nhan-catalog.json`, `line-dna.json` (bậc thang dòng tương đương) |

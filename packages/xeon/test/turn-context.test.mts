@@ -75,6 +75,29 @@ test("the customer replies to a photo message: that photo is this turn's photo a
   assert.equal(labelled.focusedProduct?.by, "reply_to");
 });
 
+test("a photo then words (sadida 01/10): the unread photo just before is this turn's photo; a page line, a label or 30 minutes stop it", () => {
+  // The photo's own turn was folded into the next message before its reading was saved.
+  const tin = (photoAgo: number, between: Line[] = []) => ({ tin: [
+    line({ maTin: "m1", chieu: "di", boi: "bo-nao", chu: "Dạ bên em chưa có ASICS ạ", soAnh: 0, luc: minutesAgo(400) }),
+    line({ maTin: "m2", chieu: "den", boi: "khach", chu: "", soAnh: 1, luc: minutesAgo(photoAgo), anh: ["https://cdn.example/peg40.jpg"] }),
+    ...between,
+    line({ maTin: "m3", chieu: "den", boi: "khach", chu: "E có đôi này ko", soAnh: 0, luc: minutesAgo(0) })
+  ] });
+  const build = (recent: { tin: Line[] }, imageLabels: Record<string, string> = {}) => builder.build({
+    tenant: "sadida", conversationId: "facebook:1", message: { maTin: "m3", chu: "E có đôi này ko", luc: minutesAgo(0) }, recent, now: NOW,
+    state: { tenant: "sadida" as never, conversationId: "facebook:1" as never, turns: [], imageLabels }
+  });
+  const ctx = build(tin(1));
+  assert.deepEqual(ctx.photos.map((p) => [p.url, p.maTin]), [["https://cdn.example/peg40.jpg", "m2"]]);
+  assert.deepEqual(ctx.history.at(-1)?.imageUrls, ["https://cdn.example/peg40.jpg"]);
+  // Already read (labelled): the transcript carries the words, no second reading.
+  assert.equal(build(tin(1), { m2: "[ảnh: Nike Pegasus 40]" }).photos.length, 0);
+  // The page answered in between: that photo was the earlier turn's business.
+  assert.equal(build(tin(2, [line({ maTin: "m9", chieu: "di", boi: "bo-nao", chu: "Dạ bác chờ em chút", soAnh: 0, luc: minutesAgo(1) })])).photos.length, 0);
+  // Too old to be what "đôi này" points at.
+  assert.equal(build(tin(45)).photos.length, 0);
+});
+
 test("burst text joins the customer's messages since the page's last sentence", () => {
   const recent = { tin: [
     line({ maTin: "m1", chieu: "di", boi: "bo-nao", chu: "Dạ bác cần gì ạ", soAnh: 0, luc: minutesAgo(3) }),

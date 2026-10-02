@@ -17,6 +17,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
     "@sp/brain": "0.0.1",
-    "@sp/contract": "0.0.1"
+    "@sp/contract": "0.0.1",
+    "sharp": "^0.34.5"
   }
 }

@@ -332,6 +332,42 @@ test("ẢNH KHÁCH GỬI: bộ não đọc ảnh trước lượt, hỏi landing
   assert.match(model.seen[1]![0]!.content, /ẢNH KHÁCH GỬI: adidas Boston 13 xanh\. Ảnh trùng ảnh catalog của mã JP9252 \(ADIZERO BOSTON 13 M\)/);
 });
 
+test("ẢNH KHÁCH GỬI (02/10/2026): bật công tắc thì AGENT TỰ XEM ảnh — ảnh đi kèm lịch sử, dòng nhắc cuối, chế độ JSON, công cụ xem_anh; tắt thì như cũ", async () => {
+  const photo = "https://scontent.test/boston.jpg";
+  const thread = [{ chieu: "den", boi: "khach", chu: "còn mẫu này không shop", soAnh: 1, luc: "2026-09-16T10:59:50.000Z" }];
+  const khopAnh = { chot: { ket: "tu_tin", ma: "JP9252", viSao: "catalog_gallery_fingerprint" }, ungVien: [{ ma: "JP9252", ten: "ADIZERO BOSTON 13 M" }], khoangCach: 4, loiNhan: "" };
+  const read = "{\"loai\":\"san_pham\",\"brand\":\"adidas\",\"model\":\"Boston 13\",\"tuKhoa\":\"boston\",\"color\":\"xanh\",\"code\":\"\",\"confidence\":0.8}";
+  const png = Buffer.from("89504e470d0a1a0a0000", "hex");
+  const imageFetch = async () => ({ ok: true, status: 200, headers: { get: () => "image/png" }, arrayBuffer: async () => png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength) });
+  const imageShrink = async (picture: Buffer) => Buffer.concat([Buffer.from("nho"), picture]);
+  const options: { json?: boolean }[] = [];
+  const run = async (agentSeesPhotos: boolean) => {
+    const landing = fakeLanding({ thread, khopAnh });
+    const base = scriptedModel([ANALYSIS, "{\"reply\":\"Dạ em thấy giống mẫu Boston 13 JP9252 ạ, bác xác nhận giúp em nhé?\"}"]);
+    const model: ChatModelPort & { seen: ChatMessage[][] } = { seen: base.seen, ready: () => true, complete: (m, o) => { options.push(o ?? {}); return base.complete(m, o); } };
+    const { brain } = await licensedBrain(landing, model, { vision: scriptedModel([read, read]), imageFetch, imageShrink, agentSeesPhotos });
+    const result = await brain.handleInbound({ ...MESSAGE, chu: "còn mẫu này không shop", soAnh: 1, anh: [photo] });
+    assert.equal(result.daTraLoi, true, JSON.stringify(result));
+    return model.seen[1]!;
+  };
+  const tier1 = loadCommonAgent().xemAnh!;
+  const sees = await run(true);
+  assert.ok(isAgentCall(sees));
+  assert.equal(sees[1]!.images?.length, 1, "the customer's photo rides on the transcript");
+  assert.match(sees[1]!.images![0]!, /^data:image\/jpeg;base64,/);
+  assert.equal(sees.at(-1)!.content, tier1.nhacSauAnh);
+  assert.equal(options.at(-1)?.json, true);
+  assert.match(sees[0]!.content, /"tool":"xem_anh"/);
+  assert.match(sees[0]!.content, /ban NHIN THAY anh/);
+  assert.match(sees[0]!.content, /Mã này ĐÃ CHỐT: KHÔNG đổi sang mã khác/, "the fingerprint agreed with the line read: it stays a fact");
+
+  const blind = await run(false);
+  assert.equal(blind[1]!.images, undefined);
+  assert.notEqual(blind.at(-1)!.content, tier1.nhacSauAnh);
+  assert.doesNotMatch(blind[0]!.content, /"tool":"xem_anh"/);
+  assert.match(blind[0]!.content, /he thong DA doc anh truoc luot/);
+});
+
 test("ẢNH KHÁCH GỬI: ảnh dùng chung nhiều mã thì CẤM agent tự chọn; landing đời cũ không mở công cụ thì vẫn trả lời như trước", async () => {
   const photo = "https://scontent.test/chung.jpg";
   const ask = fakeLanding({

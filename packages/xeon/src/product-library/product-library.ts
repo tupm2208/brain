@@ -126,22 +126,31 @@ export class ProductLibrary {
   list(status?: LibraryStatus): LibraryProduct[] { return this.document.products.filter((p) => !status || p.status === status); }
 
   recoverAsset(code: string, oldUrl: string, bytes: Buffer, publicBase = ""): { assetId: string; path: string; contentHash: string; type: string } {
+    const { assetId, path: assetPath, contentHash, type } = this.storeAsset(bytes);
+    const publicUrl = `${publicBase.replace(/\/$/, "")}${assetPath}`;
+    const product = this.lookup(code).product;
+    if (product && oldUrl) { for (const media of product.media) if (media.assetUrl === oldUrl || media.storageUrl === oldUrl) { media.id = assetId; media.assetUrl = publicUrl; media.storageUrl = publicUrl; } this.save(); }
+    return { assetId, path: assetPath, contentHash, type };
+  }
+
+  /**
+   * Cất một ảnh vào kho asset của Xeon, tên tệp = sha256 nội dung (ghi một lần, không ghi đè).
+   * Dùng cho ảnh phục hồi và (02/10/2026) ảnh shop chia sẻ đã gỡ logo.
+   */
+  storeAsset(bytes: Buffer): { assetId: string; name: string; path: string; contentHash: string; type: string } {
     if (this.directory === null) throw new Error("Storage trung tâm chưa được cấu hình.");
-    if (bytes.length === 0 || bytes.length > 15 * 1024 * 1024) throw new Error("Ảnh phục hồi phải từ 1 byte đến 15 MB.");
+    if (bytes.length === 0 || bytes.length > 15 * 1024 * 1024) throw new Error("Ảnh phải từ 1 byte đến 15 MB.");
     let extension = "", type = "";
     if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) { extension = ".png"; type = "image/png"; }
     else if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) { extension = ".jpg"; type = "image/jpeg"; }
     else if (bytes.length >= 12 && bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP") { extension = ".webp"; type = "image/webp"; }
     else if (bytes.length >= 12 && /^(avif|avis)$/.test(bytes.subarray(8, 12).toString("ascii"))) { extension = ".avif"; type = "image/avif"; }
-    else throw new Error("Ảnh phục hồi chỉ nhận JPEG, PNG, WebP hoặc AVIF.");
-    const contentHash = crypto.createHash("sha256").update(bytes).digest("hex"); const assetId = `ast_${contentHash}`;
+    else throw new Error("Ảnh chỉ nhận JPEG, PNG, WebP hoặc AVIF.");
+    const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
     const directory = path.join(this.directory, "product-assets"); fs.mkdirSync(directory, { recursive: true });
     const name = `${contentHash}${extension}`; const file = path.join(directory, name);
     if (!fs.existsSync(file)) fs.writeFileSync(file, bytes, { flag: "wx" });
-    const assetPath = `/thu-vien-san-pham/asset/${name}`; const publicUrl = `${publicBase.replace(/\/$/, "")}${assetPath}`;
-    const product = this.lookup(code).product;
-    if (product && oldUrl) { for (const media of product.media) if (media.assetUrl === oldUrl || media.storageUrl === oldUrl) { media.id = assetId; media.assetUrl = publicUrl; media.storageUrl = publicUrl; } this.save(); }
-    return { assetId, path: assetPath, contentHash, type };
+    return { assetId: `ast_${contentHash}`, name, path: `/thu-vien-san-pham/asset/${name}`, contentHash, type };
   }
 
   readAsset(name: string): { data: Buffer; type: string } | null {

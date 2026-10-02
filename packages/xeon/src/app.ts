@@ -50,6 +50,8 @@ import { ProductLibraryController } from "./http/product-library-controller";
 import { ProductLibrary } from "./product-library/product-library";
 import { ImageJobQueue } from "./product-library/image-job-queue";
 import { ImageToolDispatcher } from "./product-library/image-tool-dispatcher";
+import { SharedImageBook } from "./product-library/shared-image-book";
+import { ImageBatchBook } from "./product-library/image-batch-book";
 import { ImageWorkerController } from "./http/image-worker-controller";
 import { KnowledgeDesk } from "./knowledge/knowledge-desk";
 import { installIndustryPacks } from "./knowledge/industry-files";
@@ -65,6 +67,7 @@ import { MetaPassthrough } from "./meta/meta-passthrough";
 import { systemClock, type Clock } from "./support/clock";
 import { ActivityLog } from "./support/activity-log";
 import { consoleLogger, type Logger } from "./support/logger";
+import { sharpShrink } from "./brain/image-shrink";
 
 /** How often to knock again while codes are waiting. A minute is far below the cost of a scrape. */
 const IMAGE_TOOL_SWEEP_MS = 60_000;
@@ -141,6 +144,9 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
   const prices = new PriceTable(config.dataDirectory);
   const productLibrary = new ProductLibrary(config.dataDirectory, () => clock.now());
   const imageJobs = new ImageJobQueue(config.dataDirectory, () => clock.now());
+  // 02/10/2026: ảnh shop chia sẻ — chờ gỡ logo ở máy chủ ảnh, chờ người duyệt trong OMI.
+  const sharedImages = new SharedImageBook(config.dataDirectory, () => clock.now());
+  if (config.imageReviewers.length === 0) logger.warn("[anh-chia-se] CHUA co XEON_SHOP_DUYET_ANH — anh shop chia se se nam cho duyet, khong den shop khac.");
   // 21/09/2026: Xeon knocks on the image tool instead of the tool asking for work. A knock can be
   // lost (tunnel restart, tool down), so a timer knocks again while anything is waiting — otherwise
   // one dropped call strands a code until somebody happens to enqueue another one.
@@ -160,11 +166,12 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
   // ledger tells them apart by agent (`context_analysis`, `draft_l3`).
   const imageFetch: ImageFetch = (url, init) => fetch(url, { signal: init.signal, redirect: "follow" });
   const agentOptions = {
-    agent, vision: chatModel, imageFetch, breaker,
+    agent, vision: chatModel, imageFetch, imageShrink: sharpShrink(), breaker,
     analyzer: new ContextAnalyzer({ model: chatModel, logger, timeoutMs: config.analysisTimeoutMs }),
     writer: new DraftWriter({ model: chatModel, logger }),
     verifier: new CatalogVerifier({ model: chatModel, logger }),
-    agentTurnsPerHour: config.agentTurnsPerHour, burstWaitMs: config.burstWaitMs, imageWaitMs: config.imageWaitMs
+    agentTurnsPerHour: config.agentTurnsPerHour, burstWaitMs: config.burstWaitMs, imageWaitMs: config.imageWaitMs,
+    agentSeesPhotos: config.agentSeesPhotos
   };
 
   // TURN DOSSIERS (21/09/2026): off unless a folder is named. See `KE-HOACH-NHAT-KY-CHAN-DOAN.md`.
@@ -195,6 +202,8 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
   const metaReady = config.metaAppSecret !== "" && config.metaVerifyToken !== "";
   if (!metaReady) logger.warn("[meta] CHUA du FACEBOOK_APP_SECRET + FACEBOOK_VERIFY_TOKEN — /meta/webhook se tu choi cho toi khi dien.");
   const meta = new MetaForwarder({ license, clock, logger, dataDirectory: config.dataDirectory, activityLog });
+  // 30/09/2026: xong một lô ảnh thì Xeon tự đẩy kết quả về landing của shop — không chờ màn OMI mở.
+  const imageBatches = new ImageBatchBook({ queue: imageJobs, license, clock, logger, dataDirectory: config.dataDirectory, activityLog });
 
   const pages = new StaticPageStore(PAGES_DIRECTORY);
   const writerModel = config.writerApiKey === "" ? noTextModel : new MeteredTextModel(new AnthropicTextModel({ apiKey: config.writerApiKey, model: config.writerModel, logger }), ledger, clock, config.writerModel || DEFAULT_WRITER_MODEL);
@@ -249,14 +258,20 @@ export async function buildXeonApp(options: BuildAppOptions): Promise<XeonApp> {
         desk: new KnowledgeDesk({ dataDirectory: config.dataDirectory, packs: knowledgePacks, model: writerModel, clock }),
         license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger
       }),
-      new ProductLibraryController({ library: productLibrary, queue: imageJobs, dispatcher: imageTool, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger }),
-      new ImageWorkerController({ queue: imageJobs, library: productLibrary, key: config.imageWorkerKey }),
+      new ProductLibraryController({
+        library: productLibrary, queue: imageJobs, dispatcher: imageTool, batches: imageBatches, license, sharedToken: legacyMode ? config.sharedInboxToken : "", logger,
+        shared: sharedImages, reviewers: config.imageReviewers, onShared: () => void imageTool.sweepLogo(sharedImages.pendingLogoCount())
+      }),
+      new ImageWorkerController({ queue: imageJobs, library: productLibrary, key: config.imageWorkerKey, onSettled: () => void imageBatches.deliverReady(), shared: sharedImages }),
       new VideoController({ license, studioAddress: config.videoStudioAddress, clock, logger }),
       // 25/09/2026: the developer's SPX app signs every landing's SPX request; the secret stays here.
       new SpxController({ license, appId: config.spxAppId, appSecret: config.spxAppSecret, clock, logger })
     ]
   });
-  const imageToolSweep = imageTool.ready() ? setInterval(() => void imageTool.sweep(), IMAGE_TOOL_SWEEP_MS) : null;
+  const imageToolSweep = imageTool.ready() ? setInterval(() => { void imageTool.sweep(); void imageTool.sweepLogo(sharedImages.pendingLogoCount()); }, IMAGE_TOOL_SWEEP_MS) : null;
   imageToolSweep?.unref();
-  return { server, license, brain, meta, activityLog, ledger, imageTool, stopImageToolSweep: () => { if (imageToolSweep) clearInterval(imageToolSweep); } };
+  // Lô chờ gửi lại (landing mất mạng lúc xong lô) và lô có mã hẹn lại được xét mỗi phút.
+  const imageBatchSweep = setInterval(() => void imageBatches.deliverReady(), IMAGE_TOOL_SWEEP_MS);
+  imageBatchSweep.unref();
+  return { server, license, brain, meta, activityLog, ledger, imageTool, stopImageToolSweep: () => { if (imageToolSweep) clearInterval(imageToolSweep); clearInterval(imageBatchSweep); } };
 }

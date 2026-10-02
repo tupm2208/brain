@@ -310,6 +310,16 @@ export function parseCommonAgent(raw: unknown): CommonAgent {
     handoffReplyPattern: r.text(o["handoffReplyPattern"], "loi-chung.handoffReplyPattern", true),
     cauCam: r.texts(o["cauCam"], "loi-chung.cauCam", true)
   };
+  // 02/10/2026: the words for an agent that sees the photos itself. All four or none.
+  if (o["xemAnh"] !== undefined && o["xemAnh"] !== null) {
+    const x = r.object(o["xemAnh"], "loi-chung.xemAnh");
+    common.xemAnh = {
+      nangLuc: r.longText(x["nangLuc"], "loi-chung.xemAnh.nangLuc"),
+      congCu: r.longText(x["congCu"], "loi-chung.xemAnh.congCu"),
+      nhacSauAnh: r.longText(x["nhacSauAnh"], "loi-chung.xemAnh.nhacSauAnh"),
+      chuThichAnh: r.text(x["chuThichAnh"], "loi-chung.xemAnh.chuThichAnh")
+    };
+  }
   if (r.problems.length > 0) throw new PackShapeError("loi-chung", r.problems);
   return common;
 }

@@ -61,13 +61,15 @@ export interface RawPackFiles {
   imageRead?: unknown;
   /** `xac-nhan-catalog.json` — the industry's part of the LLM#2 catalog-verification prompt. */
   catalogVerify?: unknown;
+  /** `so-anh-catalog.json` — the industry's part of the photo-against-catalogue comparison prompt (01/10/2026). */
+  imageCompare?: unknown;
   /** `cong-soat.json` — the industry's part of the reply gate (stage 6, 25/09/2026). */
   replyGate?: unknown;
 }
 
 /** Tier 1's files beside `agent-chung.json`, by their operator-facing names. */
 export type CommonFileName = "khung-hoi-thoai" | "so-hoi-thoai" | "ghi-chu-he-thong" | "phan-tich-ngu-canh" | "soan-nhap"
-  | "y-dinh-chung" | "thuc-the-chung" | "kich-ban-chung" | "cham-diem-chung" | "cong-soat-chung" | "xem-anh" | "xac-nhan-catalog";
+  | "y-dinh-chung" | "thuc-the-chung" | "kich-ban-chung" | "cham-diem-chung" | "cong-soat-chung" | "xem-anh" | "xac-nhan-catalog" | "so-anh-catalog";
 
 /** Where raw packs come from. Implemented by the adapter (disk) and by the tests. */
 export interface PackSource {
@@ -167,9 +169,9 @@ export class PackRegistry {
    * beside the pack rather than inside `IndustryPack`, so `parsePack` and its callers stay as they
    * are; `clear()` forgets them with the packs.
    */
-  private readonly promptCache = new Map<string, { contextAnalysis: ContextAnalysisText; draft: DraftText; humanExamples: HumanExamples; imageRead: OneShotPromptText; catalogVerify: OneShotPromptText }>();
+  private readonly promptCache = new Map<string, { contextAnalysis: ContextAnalysisText; draft: DraftText; humanExamples: HumanExamples; imageRead: OneShotPromptText; catalogVerify: OneShotPromptText; imageCompare: OneShotPromptText }>();
 
-  private promptsFor(id: string): { contextAnalysis: ContextAnalysisText; draft: DraftText; humanExamples: HumanExamples; imageRead: OneShotPromptText; catalogVerify: OneShotPromptText } {
+  private promptsFor(id: string): { contextAnalysis: ContextAnalysisText; draft: DraftText; humanExamples: HumanExamples; imageRead: OneShotPromptText; catalogVerify: OneShotPromptText; imageCompare: OneShotPromptText } {
     const cached = this.promptCache.get(id);
     if (cached !== undefined) return cached;
     this.load(id); // an unknown or broken industry fails here, with its own message
@@ -179,14 +181,16 @@ export class PackRegistry {
       contextAnalysis: parseContextAnalysisText(file("phan-tich-ngu-canh"), "loi-chung/phan-tich-ngu-canh"),
       draft: parseDraftText(file("soan-nhap"), "loi-chung/soan-nhap"),
       imageRead: parseOneShotPromptText(file("xem-anh"), "loi-chung/xem-anh"),
-      catalogVerify: parseOneShotPromptText(file("xac-nhan-catalog"), "loi-chung/xac-nhan-catalog")
+      catalogVerify: parseOneShotPromptText(file("xac-nhan-catalog"), "loi-chung/xac-nhan-catalog"),
+      imageCompare: parseOneShotPromptText(file("so-anh-catalog"), "loi-chung/so-anh-catalog")
     };
     const prompts = {
       contextAnalysis: mergeContextAnalysisText(common.contextAnalysis, raw?.contextAnalysis === undefined ? undefined : parseContextAnalysisText(raw.contextAnalysis, `${id}/phan-tich-ngu-canh`)),
       draft: mergeDraftText(common.draft, raw?.draft === undefined ? undefined : parseDraftText(raw.draft, `${id}/soan-nhap`)),
       humanExamples: parseHumanExamples(raw?.humanExamples, `${id}/vi-du-nguoi-truc`),
       imageRead: mergeOneShotPromptText(common.imageRead, raw?.imageRead === undefined ? undefined : parseOneShotPromptText(raw.imageRead, `${id}/xem-anh`)),
-      catalogVerify: mergeOneShotPromptText(common.catalogVerify, raw?.catalogVerify === undefined ? undefined : parseOneShotPromptText(raw.catalogVerify, `${id}/xac-nhan-catalog`))
+      catalogVerify: mergeOneShotPromptText(common.catalogVerify, raw?.catalogVerify === undefined ? undefined : parseOneShotPromptText(raw.catalogVerify, `${id}/xac-nhan-catalog`)),
+      imageCompare: mergeOneShotPromptText(common.imageCompare, raw?.imageCompare === undefined ? undefined : parseOneShotPromptText(raw.imageCompare, `${id}/so-anh-catalog`))
     };
     this.promptCache.set(id, prompts);
     return prompts;
@@ -222,6 +226,11 @@ export class PackRegistry {
   /** The LLM#2 catalog-verification prompt of an industry (tier 1 ⊕ industry). */
   catalogVerifyFor(id: string): OneShotPromptText {
     return this.promptsFor(id).catalogVerify;
+  }
+
+  /** The photo-against-catalogue comparison prompt of an industry (tier 1 ⊕ industry). */
+  imageCompareFor(id: string): OneShotPromptText {
+    return this.promptsFor(id).imageCompare;
   }
 
   private readonly linesCache = new Map<string, CascadeLine[]>();
@@ -387,6 +396,11 @@ export function loadImageReadText(id: string): OneShotPromptText {
 /** The LLM#2 catalog-verification prompt of an industry. */
 export function loadCatalogVerifyText(id: string): OneShotPromptText {
   return registry.catalogVerifyFor(id);
+}
+
+/** The prompt that compares a customer's photo with the shop's own catalogue photos (01/10/2026). */
+export function loadImageCompareText(id: string): OneShotPromptText {
+  return registry.imageCompareFor(id);
 }
 
 /** The industry's product lines for the stock cascade (`line-dna.json`); empty when the industry ships none. */

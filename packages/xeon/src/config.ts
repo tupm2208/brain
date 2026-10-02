@@ -25,6 +25,8 @@
  *   XEON_CAU_DAO_LOI       gateway breaker: transient AI failures within 5 minutes that open it (default 3)
  *   XEON_CAU_DAO_MO_MS     how long the breaker stays open, ms (default 600000 = 10 minutes)
  *   XEON_AI_PHAN_TICH_MS   LLM#1 (context analysis) ceiling, ms (default 15000)
+ *   XEON_AGENT_XEM_ANH     "tat" = the agent no longer sees the customer's photos (notes only, as before 02/10/2026).
+ *                          Default ON for every shop: one switch to back out of a fault, not a per-shop choice.
  *   FACEBOOK_APP_SECRET    App Secret of the developer's Meta app: checks every webhook signature.
  *                          Held ONLY here, never on a merchant's hosting. Absent = /meta/webhook answers 503.
  *   FACEBOOK_VERIFY_TOKEN  the string Meta echoes when the webhook address is registered
@@ -37,6 +39,8 @@
  *                          hosting. The merchant only types its own User ID + Secret Key. Absent = 503.
  *   XEON_VIDEO_DIA_CHI     public address of the Video Studio service (Đ9; `dist/video/main.js`). Empty = /video/ve answers 503.
  *   XEON_SHOP_SUA_BANG_GIA shops (comma list) allowed to edit the shared AI price table from their OMI (Đ7). Empty = nobody.
+ *   XEON_SHOP_DUYET_ANH   shops (comma list) whose OMI may REVIEW photos other shops share into the common
+ *                          library (02/10/2026). Empty = nobody reviews, so no shared photo reaches another shop.
  *   XEON_HO_SO_THU_MUC    folder for TURN DOSSIERS (21/09/2026), e.g. bo-nao/logs/ho-so. EMPTY = OFF,
  *                         nothing is written. A dossier keeps some of the customer's own data so the
  *                         bug can be reproduced — switch it on deliberately, and see
@@ -91,6 +95,8 @@ export interface XeonConfig {
   /** The gateway breaker (25/09/2026): transient failures within five minutes that open it, and how long it stays open. */
   breakerErrors: number;
   breakerOpenMs: number;
+  /** The agent sees the customer's photos (`XEON_AGENT_XEM_ANH`, default on; "tat" = off). */
+  agentSeesPhotos: boolean;
   /** LLM#1's own ceiling in ms (`XEON_AI_PHAN_TICH_MS`, default 15000). */
   analysisTimeoutMs: number;
   /**
@@ -113,6 +119,8 @@ export interface XeonConfig {
   spxAppSecret: string;
   /** Shops that may change the one AI price table every shop reads (Đ7). */
   priceEditors: string[];
+  /** Shops whose OMI reviews photos shared into the common library (02/10/2026). */
+  imageReviewers: string[];
   imageWorkerKey: string;
   /**
    * The image tool behind its Cloudflare tunnel (21/09/2026). Xeon knocks here when a code needs
@@ -170,6 +178,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv, defaultDataDirectory: stri
     breakerErrors: numberOr(env["XEON_CAU_DAO_LOI"], 3),
     breakerOpenMs: numberOr(env["XEON_CAU_DAO_MO_MS"], 10 * 60_000),
     analysisTimeoutMs: numberOr(env["XEON_AI_PHAN_TICH_MS"], 15_000),
+    agentSeesPhotos: String(env["XEON_AGENT_XEM_ANH"] ?? "").trim().toLowerCase() !== "tat",
     metaAppSecret: String(env["FACEBOOK_APP_SECRET"] || "").trim(),
     metaVerifyToken: String(env["FACEBOOK_VERIFY_TOKEN"] || "").trim(),
     metaAppId: String(env["FACEBOOK_APP_ID"] || "").trim(),
@@ -180,6 +189,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv, defaultDataDirectory: stri
     spxAppId: String(env["SPX_APP_ID"] || "").trim(),
     spxAppSecret: String(env["SPX_APP_SECRET"] || "").trim(),
     priceEditors: String(env["XEON_SHOP_SUA_BANG_GIA"] || "").split(",").map((s) => s.trim()).filter(Boolean),
+    imageReviewers: String(env["XEON_SHOP_DUYET_ANH"] || "").split(",").map((s) => s.trim()).filter(Boolean),
     imageWorkerKey: String(env["XEON_IMAGE_WORKER_KEY"] || "").trim(),
     imageToolUrl: String(env["XEON_IMAGE_TOOL_DIA_CHI"] || "").trim(),
     imageToolKey: String(env["XEON_IMAGE_TOOL_MA"] || "").trim(),

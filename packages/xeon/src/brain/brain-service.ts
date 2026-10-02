@@ -28,6 +28,7 @@ import type { DraftWriter } from "./draft-writer";
 import type { CatalogVerifier } from "./catalog-verifier";
 import type { GatewayBreaker } from "../agent/gateway-breaker";
 import { ImageFetcher, ImageIntake, type ImageFetch, type PhotoReading } from "./image-intake";
+import type { ImageShrink } from "./image-shrink";
 import { SUPERSEDED, TurnPipeline, type DossierDraft } from "./turn-pipeline";
 import { currentTrace } from "../chan-doan/trace-context";
 import { DOSSIER_VERSION, nullDossierStore, type DossierStore, type TurnDossier, type TurnOutcomeKind } from "../chan-doan/turn-dossier";
@@ -65,6 +66,10 @@ export interface BrainServiceOptions {
   vision?: ChatModelPort | undefined;
   /** Downloads the customer's photos for the vision model (GĐ5). Absent = the address is sent as is (tests, older setups). */
   imageFetch?: ImageFetch | null | undefined;
+  /** Shrinks photos for the catalogue comparison (01/10/2026). Absent = full size (slower, same answer). */
+  imageShrink?: ImageShrink | null | undefined;
+  /** The agent sees the customer's photos itself (02/10/2026; `XEON_AGENT_XEM_ANH`, on in production). Absent = off. */
+  agentSeesPhotos?: boolean | undefined;
   /** LLM#2 (25/09/2026): confirms a weak catalog guess before the agent quotes it. Absent = the guess is flagged, not confirmed. */
   verifier?: CatalogVerifier | null | undefined;
   /** The gateway breaker (25/09/2026). Absent = every turn tries the models. */
@@ -158,7 +163,7 @@ export class BrainService {
       vision: options.vision ?? null,
       intake: new ImageIntake({
         vision: options.vision ?? null, logger: this.logger, clock: this.clock,
-        fetcher: options.imageFetch ? new ImageFetcher({ fetch: options.imageFetch, sleep: this.sleep }) : null
+        fetcher: options.imageFetch ? new ImageFetcher({ fetch: options.imageFetch, sleep: this.sleep, shrink: options.imageShrink ?? null }) : null
       }),
       verifier: options.verifier ?? null,
       breaker: options.breaker ?? null,
@@ -168,7 +173,8 @@ export class BrainService {
       takeAgentTurn: (tenant, now) => this.takeAgentTurn(tenant, now),
       // Licensed mode: memory on the merchant's own landing. Legacy mode: RAM.
       memoryFor: (binding) => (this.license !== null ? binding.gateway.memory : this.memory),
-      refreshTools: (tenant, binding) => this.refreshTools(tenant, binding)
+      refreshTools: (tenant, binding) => this.refreshTools(tenant, binding),
+      agentSeesPhotos: options.agentSeesPhotos === true
     });
 
     if (this.license === null) {

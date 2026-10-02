@@ -53,7 +53,9 @@ export const COMMON_FILES: Record<CommonFileName, string> = {
   "cong-soat-chung": "cong-soat-chung.json",
   /** GĐ5 / LLM#2 (25/09/2026): the photo-reading prompt and the catalog-verification prompt as data. */
   "xem-anh": "xem-anh.json",
-  "xac-nhan-catalog": "xac-nhan-catalog.json"
+  "xac-nhan-catalog": "xac-nhan-catalog.json",
+  /** 01/10/2026: the customer's photo laid beside the shop's own catalogue photos. */
+  "so-anh-catalog": "so-anh-catalog.json"
 };
 export function commonFilePath(industryDirectory: string, name: CommonFileName): string {
   return path.join(industryDirectory, "..", "loi-chung", COMMON_FILES[name]);
@@ -84,6 +86,8 @@ export const INDUSTRY_FILES = {
   /** GĐ5 / LLM#2: the industry's part of the photo-reading and catalog-verification prompts. */
   imageRead: "xem-anh.json",
   catalogVerify: "xac-nhan-catalog.json",
+  /** 01/10/2026: the industry's part of the photo-against-catalogue comparison (what a "version" is). */
+  imageCompare: "so-anh-catalog.json",
   /** Stage 3 (25/09/2026): the industry's catalog-matching words (noise, brand hints, type rules). */
   matching: "cham-diem.json",
   /** Stage 6 (25/09/2026): the industry's part of the reply gate (stock wording, size steps, warranty). */
@@ -168,6 +172,7 @@ export class DiskPackSource implements PackSource {
     const replyGate = readIndustryJson(this.directory, id, INDUSTRY_FILES.replyGate);
     const imageRead = readIndustryJson(this.directory, id, INDUSTRY_FILES.imageRead);
     const catalogVerify = readIndustryJson(this.directory, id, INDUSTRY_FILES.catalogVerify);
+    const imageCompare = readIndustryJson(this.directory, id, INDUSTRY_FILES.imageCompare);
     return {
       rules,
       ...(agent === null ? {} : { agent }),
@@ -184,7 +189,8 @@ export class DiskPackSource implements PackSource {
       ...(lines === null ? {} : { lines }),
       ...(replyGate === null ? {} : { replyGate }),
       ...(imageRead === null ? {} : { imageRead }),
-      ...(catalogVerify === null ? {} : { catalogVerify })
+      ...(catalogVerify === null ? {} : { catalogVerify }),
+      ...(imageCompare === null ? {} : { imageCompare })
     };
   }
 

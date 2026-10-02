@@ -15,7 +15,7 @@
 import { emptyShopProfile, type ShopProfile } from "@sp/contract";
 import {
   blocksForShop, fillAgentText, redactPII, renderBlocks, renderProfile, stripDiacritics,
-  type CommonAgent, type FillValues, type IndustryPack, type PackAgent
+  type CommonAgent, type CommonPhotoTexts, type FillValues, type IndustryPack, type PackAgent
 } from "@sp/brain";
 import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
@@ -70,6 +70,24 @@ export interface AgentToolBox {
   bankAccount(): Promise<unknown>;
 }
 
+/**
+ * THE AGENT SEES THE PHOTOS (02/10/2026). Measured on 30 real photos, twice each: an agent reading
+ * only the system's note on the photo answered 72% right; the same note PLUS the photo itself, 87%,
+ * none wrong. Live, like `tools`: never written into the dossier (the pictures are data URLs).
+ */
+export interface AgentVision {
+  /** The customer's photos of this turn, already downloaded: shown with the transcript. */
+  photos: readonly { url: string; dataUrl: string }[];
+  /**
+   * A picture the agent asks to look at (`xem_anh`): a product photo from a stock result, or a photo
+   * the customer sent earlier. `null` = it could not be fetched.
+   */
+  look(url: string, kind: "khach" | "catalog"): Promise<string | null>;
+}
+
+/** The look-again tool's name; the protocol line describing it is tier 1's (`loi-chung/agent-chung.json` → `xemAnh.congCu`). */
+export const LOOK_TOOL = "xem_anh";
+
 export interface AgentTurn {
   /** Tier 2: the industry's playbook. */
   agent: PackAgent;
@@ -91,6 +109,13 @@ export interface AgentTurn {
   shopName?: string | undefined;
   history: HistoryLine[];
   tools: AgentToolBox;
+  /** The photos, when the agent may see them (tier 1 has the words for it and the turn has a photo). Absent = notes only, as before. */
+  vision?: AgentVision | undefined;
+  /**
+   * The addresses of the photos the agent was shown, kept in the dossier: the record and a replay
+   * know this turn saw pictures and had `xem_anh`. Present exactly when `vision` is.
+   */
+  xemAnh?: { anh: string[] } | undefined;
   /** Phrases that block a reply: the industry's, tier 1's and the shop's, already merged. */
   neverSay?: readonly string[] | undefined;
   /**
@@ -109,10 +134,10 @@ export interface AgentTurn {
 }
 
 /**
- * A turn WITHOUT its tool box: plain data, so it serialises into the dossier and comes back out
- * for a replay. `tools` is the only live thing in `AgentTurn`, and a replay brings its own.
+ * A turn WITHOUT its tool box and its pictures: plain data, so it serialises into the dossier and
+ * comes back out for a replay. `tools` and `vision` are the live things in `AgentTurn`; a replay brings its own.
  */
-export type AgentTurnInput = Omit<AgentTurn, "tools">;
+export type AgentTurnInput = Omit<AgentTurn, "tools" | "vision">;
 
 export interface AgentTrace {
   step: number;
@@ -340,10 +365,24 @@ export class SalesAgent {
     const allowedHosts = new Set<string>([hostOf(turn.site), ...(turn.allowedHosts ?? [])].filter(Boolean));
     const budgetAmounts = turn.history.filter((line) => line.who === "khach").flatMap((line) => moneyAmounts(line.text));
 
+    // 02/10/2026: the photos of this turn go WITH the transcript, and every call ends with tier 1's
+    // reminder (without it a model looking at a picture answers with a native function call the
+    // gateway cannot carry — an empty answer about half the time).
+    const see = photoTextsOf(turn);
+    const photos = see !== null ? turn.vision!.photos : [];
     const convo: ChatMessage[] = [
       { role: "system", content: composeSystemPrompt(turn) },
-      { role: "user", content: `LICH SU HOI THOAI (cu → moi, tin CUOI la tin can tra loi):\n${renderHistory(turn.history)}\nHay xu ly tin cuoi cua khach.` }
+      {
+        role: "user", content: `LICH SU HOI THOAI (cu → moi, tin CUOI la tin can tra loi):\n${renderHistory(turn.history)}\nHay xu ly tin cuoi cua khach.`,
+        ...(photos.length > 0 ? {
+          images: photos.map((p) => p.dataUrl),
+          imageCaptions: photos.map((_, i) => (photos.length > 1 ? `${see!.chuThichAnh} (${i + 1}/${photos.length})` : see!.chuThichAnh))
+        } : {})
+      }
     ];
+    // What `xem_anh` may open: the customer's photos in the thread, and product photos the stock results showed.
+    const customerPhotos = new Set<string>([...photos.map((p) => p.url), ...turn.history.flatMap((line) => line.imageUrls ?? [])]);
+    const lookable = new Set<string>(customerPhotos);
 
     // The gateway fails now and then for no reason of ours (an empty answer, a 5xx): one retry per
     // call before the turn gives up (16/09/2026: "mô hình trả về rỗng" left a customer unanswered).
@@ -355,7 +394,9 @@ export class SalesAgent {
       for (let attempt = 1; attempt <= MODEL_ATTEMPTS; attempt += 1) {
         const left = deadline - elapsed();
         if (left < 3000) { modelDown = true; return null; }
-        const answer = await this.options.model.complete(convo, { timeoutMs: Math.min(25_000, left) });
+        const answer = see !== null
+          ? await this.options.model.complete([...convo, { role: "user", content: see.nhacSauAnh }], { timeoutMs: Math.min(25_000, left), json: true })
+          : await this.options.model.complete(convo, { timeoutMs: Math.min(25_000, left) });
         if (answer.ok) { modelAnswers.push({ text: answer.text, model: answer.model }); return answer.text; }
         trace.push({ step: trace.length + 1, error: answer.viSao });
         this.options.logger.warn(`[agent] mo hinh loi lan ${attempt}/${MODEL_ATTEMPTS}: ${answer.viSao}`);
@@ -406,9 +447,17 @@ export class SalesAgent {
       const entry: AgentTrace = { step, tool, args };
       trace.push(entry);
       convo.push({ role: "assistant", content: JSON.stringify(parsed) });
+      if (tool === LOOK_TOOL && see !== null) {
+        const shown = await this.look(turn.vision!, args, lookable, customerPhotos);
+        entry.result = shown.note;
+        convo.push(shown.message);
+        continue;
+      }
       const result = await this.runTool(tool, args, turn, knownAmounts, allowedHosts);
       entry.result = result;
       convo.push({ role: "user", content: result });
+      // Product photos a result showed may be opened next (as the model saw them, cut included).
+      if (see !== null) for (const m of result.matchAll(/"anh":"([^"\\]+)"/g)) lookable.add(m[1]!);
     }
 
     // Out of steps: make it answer with what it knows.
@@ -418,6 +467,22 @@ export class SalesAgent {
     if (!parsed || typeof parsed["reply"] !== "string") return { ok: false, viSao: raw === null ? (trace.at(-1)?.error ?? "het_gio") : "het_buoc_khong_tra_loi", steps: MAX_TOOL_STEPS + 1, trace, modelAnswers, modelDown: raw === null && modelDown };
     const done = finish(parsed["reply"], MAX_TOOL_STEPS + 1);
     return done === "retry" ? { ok: false, viSao: "het_buoc_sau_khi_bi_chan", steps: MAX_TOOL_STEPS + 1, trace, modelAnswers } : done;
+  }
+
+  /**
+   * `xem_anh`: only a picture the conversation or a stock result showed — never an address the model
+   * made up (it is fetched by Xeon). The picture goes back as a picture; the trace keeps the address only.
+   */
+  private async look(vision: AgentVision, args: Record<string, unknown>, lookable: ReadonlySet<string>, customerPhotos: ReadonlySet<string>): Promise<{ note: string; message: ChatMessage }> {
+    const url = String(args["url"] ?? "").trim();
+    if (url === "" || !lookable.has(url)) {
+      return { note: `tu choi: ${url.slice(0, 160)}`, message: { role: "user", content: `KET QUA ${LOOK_TOOL}: chi xem duoc anh khach gui trong hoi thoai ([ANH url=...]) hoac truong "anh" trong ket qua tra_kho — dung dung dia chi do.` } };
+    }
+    const picture = await vision.look(url, customerPhotos.has(url) ? "khach" : "catalog").catch(() => null);
+    if (picture === null) {
+      return { note: `khong tai duoc: ${url.slice(0, 160)}`, message: { role: "user", content: `KET QUA ${LOOK_TOOL}: LOI — khong tai duoc anh nay. Khong duoc bia; dua vao dieu da biet.` } };
+    }
+    return { note: `da xem: ${url.slice(0, 160)}`, message: { role: "user", content: `KET QUA ${LOOK_TOOL} — day la anh vua tai (${url.slice(0, 160)}):`, images: [picture] } };
   }
 
   private async runTool(tool: string, args: Record<string, unknown>, turn: AgentTurn, knownAmounts: Set<number>, allowedHosts: Set<string>): Promise<string> {
@@ -483,10 +548,20 @@ export function fillValuesOf(turn: AgentTurnInput): FillValues {
   return { site: turn.site, tenShop: turn.shopName ?? turn.site, hoSo: turn.hoSo ?? emptyShopProfile() };
 }
 
-/** The tool protocol, generated from the pack's tool list: one JSON per step, `reply` when done. */
+/**
+ * Tier 1's words for an agent that sees the photos, or `null` when this turn has none to show
+ * (no vision, or tier 1 has no words for it — then the agent works from the notes, as before).
+ */
+export function photoTextsOf(turn: AgentTurnInput & { vision?: AgentVision | undefined }): CommonPhotoTexts | null {
+  return turn.vision !== undefined && turn.xemAnh !== undefined ? turn.chung?.xemAnh ?? null : null;
+}
+
+/** The tool protocol, generated from the pack's tool list (+ tier 1's `xem_anh` when the turn sees photos): one JSON per step, `reply` when done. */
 export function renderToolProtocol(turn: AgentTurnInput): string {
   const values = fillValuesOf(turn);
   const lines = turn.agent.tools.map((t, i) => `${i + 1}. ${fillAgentText(t.moTa, values)}`);
+  const look = turn.xemAnh !== undefined ? turn.chung?.xemAnh?.congCu ?? "" : "";
+  if (look !== "") lines.push(`${lines.length + 1}. ${fillAgentText(look, values)}`);
   return [
     "## CONG CU (moi luot chi goi MOT cong cu, tra ve JSON thuan tuy khong markdown)",
     ...lines,
@@ -521,13 +596,17 @@ export function composeSystemPrompt(turn: AgentTurnInput): string {
  * to be a hand-written sentence in the industry pack, which is how the pack kept saying "chưa xem
  * được ảnh" after Xeon had started reading photos.
  */
-export function systemCapabilities(input: { open: readonly string[]; visionReady: boolean; hoSo?: ShopProfile | null | undefined; chaoAi?: boolean | undefined; guiKem?: boolean | undefined }): string[] {
+export function systemCapabilities(input: {
+  open: readonly string[]; visionReady: boolean; hoSo?: ShopProfile | null | undefined; chaoAi?: boolean | undefined; guiKem?: boolean | undefined;
+  /** The agent sees the photos this turn: tier 1's line (`xemAnh.nangLuc`) replaces "the system read the photo before the turn". */
+  photoLine?: string | undefined;
+}): string[] {
   const lines: string[] = [];
   // Giai đoạn 7: the landing prepends its own greeting to the opening reply — the agent must not greet again.
   if (input.chaoAi === true) lines.push("HE THONG TU CHEN CAU CHAO dau hoi thoai TRUOC cau nay: KHONG tu chao (\"Dạ em nghe ạ\", \"chào bác\"...), vao thang noi dung tra loi.");
   if (input.guiKem === true) lines.push("HE THONG TU GUI THE ANH cua toi da 2 ma ban NEU TEN/MA trong cau tra loi — KHONG noi \"khong gui duoc anh\", KHONG bao khach bam link de xem anh; neu khach xin anh thi neu ma va noi \"em gửi ảnh mẫu bên dưới\".");
   if (input.open.includes("order.formLink")) lines.push("PHIEU DAT HANG do HE THONG tu gui kem khi khach chot du mau + size con hang (theo ho so shop): KHONG tu ghep link phieu, chi xac nhan mau + size + gia roi noi phieu se gui kem.");
-  lines.push(input.visionReady
+  lines.push((input.photoLine ?? "") !== "" ? input.photoLine! : input.visionReady
     ? "ANH KHACH GUI: he thong DA doc anh truoc luot va ghi ket qua o dong \"ẢNH KHÁCH GỬI\" (neu doc duoc). KHONG co dong do = khong doc duoc: khong doan mau, xin ten mau hoac ma tren tem/hop."
     : "CHUA xem duoc anh. Tin co \"[khach gui N anh]\" → KHONG doan mau trong anh; xin khach ten mau hoac ma tren tem/hop.");
   lines.push("He thong KHONG tu gui anh the san pham hay anh huong dan do chan. KHONG noi \"em gửi ảnh bên dưới\". Muon khach xem mau → gui LINK trang san pham lay tu tra_kho.");

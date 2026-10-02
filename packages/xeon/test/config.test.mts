@@ -32,3 +32,10 @@ test("loadEnvFile: reads dotenv lines, quotes and comments; variables already se
 
   assert.equal(loadEnvFile(path.join(dir, "khong-co.env"), env), 0);
 });
+
+test("XEON_AGENT_XEM_ANH: the agent sees photos unless the switch says \"tat\" — one switch for the platform, on by default", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "xeon-env-"));
+  assert.equal(configFromEnv({}, dir).agentSeesPhotos, true);
+  assert.equal(configFromEnv({ XEON_AGENT_XEM_ANH: "bat" }, dir).agentSeesPhotos, true);
+  assert.equal(configFromEnv({ XEON_AGENT_XEM_ANH: " TAT " }, dir).agentSeesPhotos, false);
+});

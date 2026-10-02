@@ -63,6 +63,14 @@ export interface Ledger {
   aiSummaries: LedgerSummary[];
   openThread: string;
   customerGoal: string;
+  /**
+   * What the customer said they NEED, in words, and when (30/09/2026). Unlike `customerGoal` (which
+   * a greeting also fills: "chào hỏi"), this is written only on a turn where the model read a real
+   * need. The engine reads it so it never asks "which model?" of a customer who already described
+   * what they want.
+   */
+  customerNeed: string;
+  customerNeedAt: string;
   updatedAt: string;
 }
 
@@ -113,6 +121,8 @@ export interface TurnEvidence {
   /** The model's one-line context summary of this turn. */
   summary?: string | undefined;
   customerGoal?: string | undefined;
+  /** Set only when the model read a real need this turn (see `Ledger.customerNeed`). */
+  customerNeed?: string | undefined;
   customerMessage?: string | undefined;
 }
 
@@ -122,6 +132,8 @@ export type RecognizedImage =
   | { kind: "product"; code: string; name: string }
   | { kind: "product_choices"; choices: ProductRef[] }
   | { kind: "ocr"; brand: string; code: string; name: string }
+  /** A line read off the photo that nothing confirmed (02/10/2026): a guess, said as one, never "not read". */
+  | { kind: "guess"; brand: string; name: string }
   | { kind: "unknown" };
 
 /** Neutral shape of the image pipeline's output, mapped by the adapter from Desk's router result. */
@@ -134,6 +146,11 @@ export interface ImageEvidence {
   match?: { action?: string | undefined; primary?: ProductRef | undefined; selected?: ProductRef[] | undefined } | undefined;
   /** Entities OCR read (brand / name / code) when the catalog did not match. */
   ocr?: { brand?: string | undefined; code?: string | undefined; name?: string | undefined } | undefined;
+  /**
+   * A line the reading named but nothing confirmed (02/10/2026). Before, it became "not read" and a
+   * later "cứ đoán đi" found nothing to go on; the label now keeps it, marked as a guess.
+   */
+  guess?: { brand?: string | undefined; name?: string | undefined } | undefined;
   /** Vision ran successfully on at least one image (so "unknown" is a real verdict, not a failure). */
   visionOk?: boolean | undefined;
 }
@@ -170,7 +187,7 @@ export class ConversationLedger {
   constructor(private readonly texts: LedgerTexts) {}
 
   static empty(): Ledger {
-    return { products: [], orders: [], aiSummaries: [], openThread: "", customerGoal: "", updatedAt: "" };
+    return { products: [], orders: [], aiSummaries: [], openThread: "", customerGoal: "", customerNeed: "", customerNeedAt: "", updatedAt: "" };
   }
 
   /** A ledger from whatever was persisted: missing lists become empty, limits re-applied. */
@@ -185,6 +202,8 @@ export class ConversationLedger {
       aiSummaries: (Array.isArray(source.aiSummaries) ? source.aiSummaries : []).filter((s) => s && s.text).slice(-LEDGER_SUMMARY_LIMIT),
       openThread: String(source.openThread ?? ""),
       customerGoal: String(source.customerGoal ?? ""),
+      customerNeed: String(source.customerNeed ?? ""),
+      customerNeedAt: String(source.customerNeedAt ?? ""),
       updatedAt: String(source.updatedAt ?? "")
     };
   }
@@ -293,6 +312,7 @@ export class ConversationLedger {
     // The model's per-turn summaries: this is what used to be thrown away after every turn.
     const summaries = ledger.aiSummaries.map((s) => ({ ...s }));
     const summary = (ev.summary ?? "").trim();
+    const need = (ev.customerNeed ?? "").trim();
     const last = summaries[summaries.length - 1];
     if (summary !== "" && !(last !== undefined && last.text === summary)) {
       summaries.push({ at: now, text: summary.slice(0, 300), customerMessage: (ev.customerMessage ?? "").slice(0, 80) });
@@ -303,6 +323,8 @@ export class ConversationLedger {
       aiSummaries: summaries.slice(-LEDGER_SUMMARY_LIMIT),
       openThread: summary !== "" ? summary : ledger.openThread,
       customerGoal: (ev.customerGoal ?? "").trim() || ledger.customerGoal,
+      customerNeed: need !== "" ? need.slice(0, 300) : ledger.customerNeed,
+      customerNeedAt: need !== "" ? now : ledger.customerNeedAt,
       updatedAt: now
     };
   }
@@ -333,6 +355,10 @@ export class ConversationLedger {
     if (ocr !== undefined && ((ocr.code ?? "") !== "" || (ocr.name ?? "") !== "")) {
       return { kind: "ocr", brand: ocr.brand ?? "", code: ocr.code ?? "", name: ocr.name ?? "" };
     }
+    const guess = ev.guess;
+    if (guess !== undefined && (guess.name ?? "") !== "" && (this.texts.imageLabels["guess"] ?? "") !== "") {
+      return { kind: "guess", brand: guess.brand ?? "", name: guess.name ?? "" };
+    }
     if (ev.visionOk === true) return { kind: "unknown" };
     return null;
   }
@@ -352,6 +378,8 @@ export class ConversationLedger {
         return fillText(labels["choices"] ?? "", { ten: image.choices.map(joinName).join(" / ") });
       case "ocr":
         return fillText(labels["ocr"] ?? "", { ten: [image.brand, image.name, image.code].filter((x) => x !== "").join(" ") });
+      case "guess":
+        return fillText(labels["guess"] ?? "", { ten: [image.brand, image.name].filter((x) => x !== "").join(" ") });
       case "unknown":
         return labels["unknown"] ?? "";
     }

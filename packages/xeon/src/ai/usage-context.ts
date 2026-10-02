@@ -19,6 +19,7 @@ export const AGENTS = {
   verify_match: { label: "Xác nhận mẫu (LLM#2)", group: "tra_loi_khach" },
   ai_draft: { label: "Nháp gợi ý cho người trực", group: "tra_loi_khach" },
   image_match: { label: "Đọc ảnh khách gửi", group: "tra_loi_khach" },
+  image_compare: { label: "So ảnh khách với ảnh catalog", group: "tra_loi_khach" },
   web_advisor: { label: "Trợ lý AI trên web", group: "tra_loi_khach" },
   external_product_vision: { label: "Đọc ảnh hàng ngoài catalog", group: "tra_loi_khach" },
   sandbox: { label: "Demo AI (hộp cát)", group: "training" },

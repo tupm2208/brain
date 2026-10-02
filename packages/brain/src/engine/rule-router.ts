@@ -61,6 +61,12 @@ export interface RouterInput {
   attachmentKinds?: readonly string[] | undefined;
   /** The intent a model proposed for this message, if one ran. */
   aiIntent?: IntentVerdict | null | undefined;
+  /**
+   * The model's reading of the customer's mood (LLM#1 `riskFlags`, 30/09/2026): "khach_giuc" (waiting,
+   * chasing — however it is phrased) and "khach_buc" (unhappy with how they are being served). The
+   * keyword pattern stays as the net for when no model ran.
+   */
+  aiFlags?: readonly string[] | undefined;
   /** The dialogue frame built outside (`DialogueFrameBuilder.build`). */
   frame?: DialogueFrame | null | undefined;
   profile?: ShopProfile | null | undefined;
@@ -171,7 +177,7 @@ export class RuleRouter {
     mark(this.ackContinuation(message, intent, turns), "ack_continuation");
     mark(this.postPaymentContinuation(message, intent, entities, turns, input.currentOrder ?? null), "post_payment_continuation");
     mark(this.customerRequestsPhotos(message, intent, input.attachments ?? 0), "customer_requests_photos");
-    mark(this.impatience(message, intent), "impatience");
+    mark(this.impatience(message, intent, input.aiFlags ?? []), "impatience");
     mark(this.policyQuestionForm(message, intent), "policy_question_form");
     mark(this.returnExchangeReal(message, intent), "return_exchange_real");
     if (paymentFrame === null) {
@@ -330,8 +336,14 @@ export class RuleRouter {
   }
 
   /** "trả lời chậm quá, có bán không thì bảo": impatience is not a complaint about goods — the agent apologises in one clause and answers (kb2-15). */
-  private impatience(message: string, intent: IntentVerdict): IntentVerdict | null {
+  private impatience(message: string, intent: IntentVerdict, aiFlags: readonly string[]): IntentVerdict | null {
     const rc = this.cfg.intentRules.reconcile;
+    // The model read it from the meaning, in any wording: the customer is still after the SAME thing,
+    // so the intent is kept ("A đang chờ em tư vấn mà" is still product advice, not small talk).
+    if (aiFlags.includes("khach_giuc") || aiFlags.includes("khach_buc")) {
+      if (["complaint_or_human", "payment_confirmation", "return_exchange"].includes(intent.intent)) return null;
+      return intent.matched.includes("impatience") ? null : { ...intent, matched: [...intent.matched, "impatience"] };
+    }
     if (!["unknown", "small_talk", "complaint_or_human", "greeting"].includes(intent.intent)) return null;
     const n = normalize(message);
     if (!(packRegex(rc.impatience)?.test(n) ?? false)) return null;

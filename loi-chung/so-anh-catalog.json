@@ -1,0 +1,17 @@
+{
+  "_doc": "TANG 1 — loi dan SO ANH KHACH voi ANH CATALOG cua chinh shop (01/10/2026). Mo hinh nhin anh doan phien ban/doi khong on dinh, nhung SO hai anh dat canh nhau thi on dinh (do 01/10: hai doi lien ke tron lan 5/5 dung; doi khach gui khong co trong kho 3/3 dung). Schema JSON co dinh trong ma (image-intake.ts); nganh chi them \"phien ban\" cua nganh minh la gi (nganh/<id>/so-anh-catalog.json). Khong ten shop, khong so cua shop. 01/10/2026 (2): them muc cungDong — ten dong doc tu anh cung chi la doan (ca that: anh mot dong bi doc thanh dong khac cung hang), nen buoc so phai noi ung vien nao CUNG DONG truoc khi xet phien ban.",
+  "heThong": "Ban so anh khach gui voi anh catalog cua chinh shop de biet shop co dung mon do khong. Chi tra JSON.",
+  "huongDan": [
+    "Anh dau tien la anh khach gui. Sau do la cac anh ung vien tu catalog cua shop, moi anh co nhan ngay truoc no: so thu tu (tu 0) + ma + ten.",
+    "VIET nhanXet TRUOC KHI CHON: (1) mon trong anh khach co nhung dac diem hinh dang nao de nhan ra no; (2) gom ung vien thanh nhom cung hinh dang, moi nhom giong / khac anh khach o dau. Ten tren nhan chi de goi ten va CO THE SAI (ten dong lay tu mot lan doan) — giong hay khac phai dua vao HINH.",
+    "cungDong = chi so cac ung vien CUNG DONG HANG voi anh khach: cung mot dong san pham, co the khac doi / phien ban, khac mau. Hinh dang tong the khac han (dang than, de / day, cau truc) la KHAC DONG du ten tren nhan nghe giong. Khong ung vien nao cung dong thi cungDong = [].",
+    "cungPhienBan = trong cungDong, cac ung vien CUNG MAU HANG voi anh khach (cung dong, cung phien ban), mau sac co the khac. trungMau = trong cungPhienBan, ung vien trung ca mau sac. Khong ung vien nao cung mau hang thi cungPhienBan = [].",
+    "Hai phien ban lien ke cua mot dong trong rat giong nhau: chi xep vao cungPhienBan khi cac chi tiet hinh dang khop; khong chac thi de mang rong — de rong an toan hon chon nham."
+  ],
+  "nhan": {
+    "schema": "Tra DUY NHAT mot JSON:",
+    "anhKhach": "Anh khach gui:",
+    "ungVien": "UNG VIEN {i}: {ma} — {ten}",
+    "soUngVien": "Co {n} ung vien tu catalog cua shop."
+  }
+}

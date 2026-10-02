@@ -164,3 +164,66 @@ export function profileFieldSet(profile: ShopProfile, path: string): boolean {
   if (typeof v === "object") return Object.values(v as Record<string, unknown>).some((x) => x !== "" && x !== null);
   return true;
 }
+
+// ------------------------------------------------------------------ reading a profile off the wire
+
+const asText = (v: unknown, max: number): string => (typeof v === "string" || typeof v === "number" ? String(v).trim().slice(0, max) : "");
+const asList = (v: unknown, n: number, max: number): string[] => (Array.isArray(v) ? v : []).map((x) => asText(x, max)).filter(Boolean).slice(0, n);
+const asRecord = (v: unknown): Record<string, unknown> => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+/** Only a listed value counts; anything else — "undefined", "Có", a number — is "chua khai". */
+const asChoice = <T extends string>(v: unknown, allowed: readonly T[]): T | "" => (typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : "");
+
+/**
+ * The profile as a landing SENT it, made safe (30/09/2026). The brain talks to landings of every
+ * build and every vendor; one of them wrote the text "undefined" into unanswered choices, and the
+ * bot read "undefined" as "khong": "the shop sells no made-to-order goods, no COD". So nothing from
+ * the wire is trusted as-is: a choice outside its list, a wrong type or a missing key is "chua
+ * khai" — which the brain treats as "do not speak of it", never as "no".
+ */
+export function readShopProfile(raw: unknown): ShopProfile {
+  const o = asRecord(raw);
+  const xungHo = asRecord(o["xungHo"]);
+  const giong = asRecord(o["giong"]);
+  const banHang = asRecord(o["banHang"]);
+  const macCa = asRecord(banHang["macCa"]);
+  const chuyenNguoi = asRecord(o["chuyenNguoi"]);
+  const coc = banHang["tiLeCoc"];
+  const cocNumber = typeof coc === "number" ? coc : typeof coc === "string" && coc.trim() !== "" ? Number(coc) : NaN;
+  const nguon: ShopProfile["nguon"] = {};
+  for (const [k, v] of Object.entries(asRecord(o["nguon"]))) if (v === "shop" || v === "nganh") nguon[k.slice(0, 60)] = v;
+  const khoiNganh: ShopProfile["khoiNganh"] = {};
+  for (const [id, v] of Object.entries(asRecord(o["khoiNganh"])).slice(0, 60)) {
+    const b = asRecord(v);
+    const cheDo = asChoice(b["cheDo"], ["nganh", "tat", "rieng"] as const);
+    khoiNganh[id.slice(0, 40)] = { cheDo: cheDo === "" ? "nganh" : cheDo, vanBan: asText(b["vanBan"], 6000), phienBanNganh: asText(b["phienBanNganh"], 16) };
+  }
+  return {
+    phienBan: Math.max(0, Math.trunc(Number(o["phienBan"]) || 0)),
+    capNhatLuc: asText(o["capNhatLuc"], 40),
+    xungHo: { khach: asText(xungHo["khach"], 20), shop: asText(xungHo["shop"], 20) },
+    giong: { emoji: asChoice(giong["emoji"], ["co", "khong"] as const), doDai: asChoice(giong["doDai"], ["ngan", "vua"] as const), ghiChu: asText(giong["ghiChu"], 600) },
+    cauCam: asList(o["cauCam"], 40, 120),
+    hangCoBan: asList(o["hangCoBan"], 60, 60),
+    hangKhongBan: asList(o["hangKhongBan"], 60, 60),
+    monTheThao: asList(o["monTheThao"], 40, 60),
+    banHang: {
+      coHangOrder: asChoice(banHang["coHangOrder"], ["co", "khong"] as const),
+      thoiGianOrder: asText(banHang["thoiGianOrder"], 200),
+      tiLeCoc: Number.isFinite(cocNumber) && cocNumber >= 0 && cocNumber <= 100 ? Math.round(cocNumber) : null,
+      codHangSan: asChoice(banHang["codHangSan"], ["co", "khong"] as const),
+      doiTraHangOrder: asText(banHang["doiTraHangOrder"], 600),
+      doiSizeDonDaDat: asText(banHang["doiSizeDonDaDat"], 600),
+      macCa: { kieu: asChoice(macCa["kieu"], ["khong-giam", "giam-toi-da", "qua-tang"] as const), chiTiet: asText(macCa["chiTiet"], 400) },
+      // "link-web" was the first name of "phieu" (24/09/2026); an old landing may still send it.
+      khiChot: banHang["khiChot"] === "link-web" ? "phieu" : asChoice(banHang["khiChot"], ["phieu", "goi-nguoi"] as const),
+      cauKhongCo: asText(banHang["cauKhongCo"], 200)
+    },
+    chuyenNguoi: { chuDe: asList(chuyenNguoi["chuDe"], 40, 80), mucChot: asChoice(chuyenNguoi["mucChot"], ["khong", "dau-hieu", "sau-bao-gia"] as const), gioTruc: asText(chuyenNguoi["gioTruc"], 80) },
+    camKetHang: asText(o["camKetHang"], 300),
+    cuaHang: asText(o["cuaHang"], 300),
+    cauChaoAi: asText(o["cauChaoAi"], 500),
+    tenNguoiPhuTrach: asText(o["tenNguoiPhuTrach"], 60),
+    nguon,
+    khoiNganh
+  };
+}

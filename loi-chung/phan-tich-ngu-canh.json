@@ -80,6 +80,17 @@
         "lookupCommands: mang TOI DA 3 phan tu dang {\"command\":\"...\",\"args\":{...}} — he thong se THUC THI THAT va dua ket qua cho buoc soan tra loi. Chi dung lenh trong danh sach LENH CHO PHEP ben duoi; khong chac thi bo trong args.",
         "check_order: he thong TU dung SDT khach da cung cap, chi goi khi khach hoi ve don da dat; orderId CHI la ma don cua shop, ma van don cua hang van chuyen KHONG phai orderId."
       ]
+    },
+    {
+      "id": "cam-xuc-khach",
+      "tieuDe": "Cam xuc khach (riskFlags)",
+      "shopSua": false,
+      "loiDan": [
+        "riskFlags la mang ma co dinh, chi dung cac ma sau (khong co thi de []):",
+        "- \"khach_giuc\": khach dang CHO / GIUC shop tra loi hoac tu van tiep — ke ca noi vong, khong co chu 'cham/lau': vd \"a dang cho em tu van ma\", \"sao im vay\", \"shop oi?\", \"alo\" / \"?\" nhan lai khi page chua tra loi cau truoc, \"tu nay gio chua thay ai\". Doc theo LICH SU: page vua im, hoi lai cau khong lien quan, hoac khach phai nhac lai.",
+        "- \"khach_buc\": khach KHO CHIU / KHONG HAI LONG voi cach tu van (bi hoi lai dieu da noi, tra loi sai y, bi day di day lai) — khac khieu nai ve hang (do la complaint_or_human).",
+        "- Khach giuc thi intent van la viec khach DANG CHO (vd dang tim giay → product_advice), KHONG doi thanh small_talk / unknown; customerGoal giu nguyen nhu cau khach da noi truoc do."
+      ]
     }
   ],
   "lenhTraCuu": {

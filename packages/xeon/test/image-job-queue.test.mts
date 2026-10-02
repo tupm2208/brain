@@ -40,6 +40,7 @@ test("Image Worker queue: 'chay lai viec loi' mo lai MOI viec chet, khong chi lo
   const chet = (ma: string, loi: string) => {
     queue.enqueue(ma);
     for (let lan = 0; lan < 5; lan += 1) {
+      clock.advance(60 * 60 * 1000); // qua khoang gian sau loi
       const job = queue.claim("w1", 1_000);
       if (!job) throw new Error(`khong nhan duoc viec ${ma}`);
       queue.fail(job.id, "w1", loi);
@@ -78,6 +79,7 @@ test("Image Worker queue: control() dem viec chet cua CA hang doi", () => {
   const queue = new ImageJobQueue(null, () => clock.now());
   queue.enqueue("IY7228");
   for (let lan = 0; lan < 5; lan += 1) {
+    clock.advance(60 * 60 * 1000);
     const job = queue.claim("w1"); assert.ok(job);
     queue.fail(job.id, "w1", "FeatureNotFound: lxml");
   }
@@ -109,4 +111,36 @@ test("Image Worker queue: viec mang theo HANG xuong tan bo cao", () => {
   const bietSau = queue.enqueue("KD8461", { brand: "Adidas" });
   assert.equal(bietSau.id, chuaBiet.id, "van la mot viec");
   assert.equal(bietSau.brand, "Adidas", "biet muon con hon khong bao gio biet");
+});
+
+test("Image Worker queue: viec bao LOI duoc hen lai gian dan, khong nhan lai ngay", () => {
+  // 30/09/2026: bo cao nghi bi chan thi bao loi thay vi "xong, 0 anh" (thu dong dau khoa 7 ngay).
+  // Nhan lai ngay thi 5 luot chay het trong vai phut khi trang con dang chan.
+  const clock = new ManualClock(new Date("2026-09-30T00:00:00Z"));
+  const queue = new ImageJobQueue(null, () => clock.now());
+  queue.enqueue("JM5689", { brand: "adidas" });
+  const lan1 = queue.claim("w1"); assert.ok(lan1);
+  queue.fail(lan1.id, "w1", "ScrapeLooksBroken: thay trang nhung khong tai duoc anh");
+  assert.equal(queue.claim("w1"), null, "vua loi thi chua nhan lai");
+  assert.equal(queue.control().waiting, 1, "van nam trong hang cho, khong mat");
+  clock.advance(14 * 60 * 1000); assert.equal(queue.claim("w1"), null);
+  clock.advance(60 * 1000); const lan2 = queue.claim("w1"); assert.equal(lan2?.id, lan1.id);
+  queue.fail(lan2!.id, "w1", "loi");
+  clock.advance(29 * 60 * 1000); assert.equal(queue.claim("w1"), null, "lan hai gian 30 phut");
+  clock.advance(60 * 1000); assert.ok(queue.claim("w1"));
+
+  // Viec moi khong bi viec loi chan hang.
+  queue.enqueue("JR7155"); assert.equal(queue.claim("w2")?.code, "JR7155");
+  // Nguoi bam "Chay lai viec loi" thi chay ngay.
+  const q2 = new ImageJobQueue(null, () => clock.now()); q2.enqueue("A1");
+  for (let i = 0; i < 5; i += 1) { clock.advance(60 * 60 * 1000); const j = q2.claim("w1"); q2.fail(j!.id, "w1", "x"); }
+  q2.retryFailed(); assert.equal(q2.claim("w1")?.code, "A1");
+});
+
+test("Image Worker queue: viec mang TEN de bo cao doan hang", () => {
+  const queue = new ImageJobQueue(null);
+  const job = queue.enqueue("DO7815-058", { brand: "", name: "  Giày Nike Pegasus  " });
+  assert.equal(job.name, "Giày Nike Pegasus");
+  assert.equal(queue.enqueue("X9").name, undefined);
+  assert.equal(queue.enqueue("X9", { name: "adidas Duramo" }).name, "adidas Duramo", "biet muon van bo sung");
 });

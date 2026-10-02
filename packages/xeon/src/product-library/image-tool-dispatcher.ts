@@ -61,17 +61,30 @@ export class ImageToolDispatcher {
 
   /** Knock for one code. Never throws: a failed knock is a warning, not a lost job. */
   async knock(code: string): Promise<boolean> {
+    return this.post("/jobs", { code }, `ma ${code}`);
+  }
+
+  /**
+   * 02/10/2026: knock on the LOGO door when shops' shared photos wait for logo removal. Same shape as
+   * the scrape door — the tool claims a shop's batch through `/image-worker/logo-nhan` and drains.
+   */
+  async sweepLogo(waiting: number): Promise<boolean> {
+    if (!this.ready() || waiting <= 0) return false;
+    return this.post("/logo/viec", { waiting }, `${waiting} anh cho go logo`);
+  }
+
+  private async post(route: string, body: Record<string, unknown>, what: string): Promise<boolean> {
     if (!this.ready()) return false;
     const stop = new AbortController();
     const timer = setTimeout(() => stop.abort(), this.timeoutMs);
     try {
-      const reply = await this.send(`${this.url}/jobs`, {
+      const reply = await this.send(`${this.url}${route}`, {
         method: "POST",
         signal: stop.signal,
         headers: { Authorization: `Bearer ${this.key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
+        body: JSON.stringify(body)
       });
-      if (!reply.ok) { this.warn(`[image-tool] ${this.url} tra HTTP ${reply.status} cho ma ${code}`); return false; }
+      if (!reply.ok) { this.warn(`[image-tool] ${this.url}${route} tra HTTP ${reply.status} (${what})`); return false; }
       return true;
     } catch (error) {
       this.warn(`[image-tool] khong goi duoc ${this.url}: ${error instanceof Error ? error.message : String(error)}`);

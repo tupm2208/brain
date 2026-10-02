@@ -245,6 +245,26 @@ export interface CommonAgent {
   handoffReplyPattern: string;
   /** Phrases no shop may say. */
   cauCam: string[];
+  /**
+   * What the agent is told when it SEES the customer's photos itself (02/10/2026: measured 87%
+   * right against 72% for a note-only agent, none wrong). Absent = the built-in wording.
+   */
+  xemAnh?: CommonPhotoTexts | undefined;
+}
+
+/** Tier 1's words for an agent that sees photos: its capability line, its look-again tool, the reminder after a picture. */
+export interface CommonPhotoTexts {
+  /** The capability line that replaces "the system read the photo before the turn". */
+  nangLuc: string;
+  /** How the look-again tool is described in the tool protocol (`{"tool":"xem_anh","args":{"url":"..."}}`). */
+  congCu: string;
+  /**
+   * Sent after the pictures on every call: some models answer a picture with a native function call
+   * the gateway cannot carry (`malformed_function_call`, an empty answer about half the time).
+   */
+  nhacSauAnh: string;
+  /** The caption right before the customer's photo. */
+  chuThichAnh: string;
 }
 
 export interface IndustryPack {
