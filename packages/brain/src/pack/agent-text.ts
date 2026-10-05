@@ -125,11 +125,15 @@ export function renderProfile(hoSo: ShopProfile | null | undefined, chinhSach?: 
   if (set("giong.emoji")) lines.push(`- Bieu tuong cam xuc: ${p.giong.emoji === "co" ? "duoc dung khi hop (vd :D)" : "KHONG dung"}.`);
   if (set("giong.doDai")) lines.push(`- Do dai tin: ${p.giong.doDai === "ngan" ? "ngan nhu nguoi that nhan tin (khoang 7-15 tu), moi luot MOT tin" : "vua phai, toi da 3-4 cau, moi luot MOT tin"}.`);
   // 02/10/2026: no "hãng có / không bán" here any more — what the shop sells is its stock, read by tra_kho each turn.
-  say("banHang.coHangOrder", p.banHang.coHangOrder === "co"
-    ? `HANG ORDER: shop CO ban hang order. Noi "dang dat duoc", KHONG noi "co san"; CAM noi "hang dang ve/sap ve".${set("banHang.thoiGianOrder") ? ` Thoi gian: ${p.banHang.thoiGianOrder}.` : ""}${p.banHang.tiLeCoc !== null ? ` Coc truoc toi thieu ${p.banHang.tiLeCoc}% de giu don, con lai tra khi nhan.` : ""}`
-    : "HANG ORDER: shop KHONG ban hang order — chi tu van hang co san.", "hàng order");
-  if (p.banHang.coHangOrder === "co" && p.banHang.tiLeCoc === null) missing.push("tỷ lệ cọc hàng order");
-  if (p.banHang.coHangOrder === "co" && !set("banHang.thoiGianOrder")) missing.push("thời gian hàng order về");
+  // 05/10/2026: no "shop sells made-to-order: yes / no" any more. Whether a size is made-to-order is a
+  // fact of the stock — tra_kho states it per size (`loai`, `dieu_kien`) from the warehouse it would ship
+  // from — so the profile never makes the bot hide goods the stock offers. The profile's order fields
+  // are only the general terms for an order warehouse that declared no policy of its own.
+  const orderTerms = [
+    set("banHang.thoiGianOrder") ? `thoi gian: ${p.banHang.thoiGianOrder}` : "",
+    p.banHang.tiLeCoc !== null ? `coc truoc toi thieu ${p.banHang.tiLeCoc}% de giu don, con lai tra khi nhan` : ""
+  ].filter(Boolean);
+  lines.push(`- HANG ORDER: hang san hay hang order la theo KET QUA tra_kho (loai / dieu_kien cua tung size, theo kho du kien xuat) — KHONG theo ho so. Size la hang order: noi "dang dat duoc", KHONG noi "co san"; CAM noi "hang dang ve/sap ve". Dieu kien cua size (dieu_kien) uu tien${orderTerms.length > 0 ? `; size order khong ghi dieu kien rieng thi dung dieu kien chung cua shop: ${orderTerms.join("; ")}` : ""}. Khach hoi coc / thoi gian hang order ma ca dieu_kien lan dieu kien chung deu khong co thi KHONG doan, goi nguoi phu trach.`);
   say("banHang.codHangSan", `HANG SAN: giao ngay${p.banHang.codHangSan === "co" ? ", COD duoc (nhan hang kiem tra roi tra tien)" : ", KHONG COD — thanh toan truoc"}.`, "COD hàng sẵn");
   if (set("banHang.doiTraHangOrder")) lines.push(`- DOI TRA HANG ORDER: ${p.banHang.doiTraHangOrder}`);
   if (set("banHang.doiSizeDonDaDat")) lines.push(`- DOI SIZE DON DA DAT: ${p.banHang.doiSizeDonDaDat}`);

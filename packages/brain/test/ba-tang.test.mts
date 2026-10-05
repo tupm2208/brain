@@ -71,18 +71,18 @@ test("khối mở: shop tắt hoặc viết bản riêng thì đổi; khối kho
 
 test("hồ sơ trống: lời dặn liệt kê từng ô chưa khai và bảo gọi người; hồ sơ đầy: nói đúng số của shop", () => {
   const missing = renderProfile(emptyShopProfile(), { doiTra: "", ship: "", baoHanh: "" });
-  assert.match(missing, /CHUA KHAI \(shop chua dien\): xưng hô; tên người phụ trách; hàng order; COD hàng sẵn; mặc cả; khách chốt thì làm gì; mức mời chốt; cam kết về hàng \(chính hãng\?\); cửa hàng, giờ mở cửa; chính sách đổi trả; chính sách ship; chính sách bảo hành/);
+  assert.match(missing, /CHUA KHAI \(shop chua dien\): xưng hô; tên người phụ trách; COD hàng sẵn; mặc cả; khách chốt thì làm gì; mức mời chốt; cam kết về hàng \(chính hãng\?\); cửa hàng, giờ mở cửa; chính sách đổi trả; chính sách ship; chính sách bảo hành/);
   assert.doesNotMatch(missing, /20%|3-7 ngay/, "no number of any shop leaks into an empty profile");
   const empty = emptyShopProfile();
   const full = renderProfile(profileWith({
     xungHo: { khach: "bác", shop: "em" },
-    banHang: { ...empty.banHang, coHangOrder: "co", thoiGianOrder: "3–7 ngày", tiLeCoc: 20, codHangSan: "co", macCa: { kieu: "khong-giam", chiTiet: "" }, khiChot: "phieu" },
+    banHang: { ...empty.banHang, thoiGianOrder: "3–7 ngày", tiLeCoc: 20, codHangSan: "co", macCa: { kieu: "khong-giam", chiTiet: "" }, khiChot: "phieu" },
     chuyenNguoi: { chuDe: ["xin biên lai"], mucChot: "dau-hieu", gioTruc: "7:00–23:00" },
     cauHoiRieng: [{ cauHoi: "Có xuất hoá đơn VAT không?", traLoi: "Có, báo trước khi đặt." }],
     quyTrinhRieng: [{ quyTac: "Khách hỏi size thì hỏi chiều dài bàn chân trước.", khoi: "" }]
   }), { doiTra: "Hàng sẵn đổi size.", ship: "", baoHanh: "" });
   assert.match(full, /goi khach la "bác"/);
-  assert.match(full, /Coc truoc toi thieu 20%/);
+  assert.match(full, /coc truoc toi thieu 20%/);
   // 02/10/2026: no "hãng có / không bán" lines; the shop's own questions and procedures are spoken.
   assert.doesNotMatch(full, /HANG CO BAN|HANG KHONG BAN|KHI KHONG CO MAU/);
   assert.match(full, /CAU HOI RIENG CUA SHOP[\s\S]*Hoi: Có xuất hoá đơn VAT không\? → Tra loi: Có, báo trước khi đặt\./);
@@ -143,4 +143,34 @@ test("công cụ chinh_sach / tai_khoan_shop là tầng 1: ngành giả không k
   // No agent.json = no agent: tier 1's tools do not create one.
   const none = new PackRegistry({ ids: () => ["nha-thuoc"], read: () => ({ rules: json("nganh/nha-thuoc/bo-luat.json") }), common: () => json("loi-chung/agent-chung.json") });
   assert.equal(none.load("nha-thuoc").agent, undefined);
+});
+
+test("05/10/2026 bỏ ô 'Có hàng order': hồ sơ không còn ô; lời dặn nói hàng order theo kết quả tra kho; điều kiện chung chỉ khi shop khai (tầng 1 + 3)", () => {
+  assert.ok(!SHOP_PROFILE_FIELDS.some((f) => f.path === "banHang.coHangOrder"));
+  const old = readShopProfile({ banHang: { coHangOrder: "khong", thoiGianOrder: "về sau vài hôm", tiLeCoc: 30 }, nguon: { "banHang.coHangOrder": "shop", "banHang.tiLeCoc": "shop" } });
+  assert.ok(!("coHangOrder" in old.banHang), "an old profile's switch falls off on read");
+  assert.deepEqual(old.nguon, { "banHang.tiLeCoc": "shop" });
+  const said = renderProfile(old, { doiTra: "", ship: "", baoHanh: "" });
+  assert.doesNotMatch(said, /KHONG ban hang order|chi tu van hang co san/);
+  assert.match(said, /HANG ORDER: hang san hay hang order la theo KET QUA tra_kho \(loai \/ dieu_kien cua tung size, theo kho du kien xuat\)/);
+  assert.match(said, /dieu kien chung cua shop: thoi gian: về sau vài hôm; coc truoc toi thieu 30%/);
+  // Empty profile: the conduct line stays, no general terms, and "hàng order" is never listed as missing.
+  const empty = renderProfile(emptyShopProfile(), { doiTra: "", ship: "", baoHanh: "" });
+  assert.match(empty, /HANG ORDER: hang san hay hang order la theo KET QUA tra_kho/);
+  assert.doesNotMatch(empty, /dieu kien chung cua shop/);
+  assert.doesNotMatch(empty, /CHUA KHAI[^\n]*(hàng order|tỷ lệ cọc|thời gian hàng order)/);
+  // Only the lead time set: said alone, no invented deposit.
+  const lead = renderProfile(profileWith({ banHang: { ...emptyShopProfile().banHang, thoiGianOrder: "về sau vài hôm" } }), { doiTra: "", ship: "", baoHanh: "" });
+  assert.match(lead, /dieu kien chung cua shop: thoi gian: về sau vài hôm\./);
+  assert.doesNotMatch(lead, /coc truoc toi thieu/);
+});
+
+test("05/10/2026 tầng 2 (gói giày thật): khối hàng order không còn hỏi ô 'Có hàng order' — giữ cho mọi shop, kể cả hồ sơ trống; mẫu hồ sơ không gợi ý ô đó", () => {
+  const agent = runningShoesPack.agent!;
+  assert.doesNotMatch(JSON.stringify(agent), /coHangOrder/);
+  assert.equal(agent.mauHoSo.goiY["banHang.coHangOrder"], undefined);
+  assert.deepEqual(checkBlocksFree(agent.khoi, "giay-chay"), []);
+  const block = (hoSo: ShopProfile) => fillAgentText(blocksForShop(agent.khoi, hoSo).find((b) => b.id === "hang-san-va-order")!.loiDan, { site: "s", tenShop: "T", hoSo });
+  assert.match(block(emptyShopProfile()), /Size tra_kho ghi HANG ORDER: noi "đang đặt được"/);
+  assert.match(block(readShopProfile({ banHang: { coHangOrder: "khong" } })), /Size tra_kho ghi HANG ORDER/, "an old 'no' does not drop the line");
 });

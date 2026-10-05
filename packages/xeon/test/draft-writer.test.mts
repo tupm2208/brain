@@ -42,10 +42,9 @@ const HISTORY: HistoryLine[] = [
 function input(extra: Partial<DraftInput> = {}): DraftInput {
   const hoSo = emptyShopProfile();
   hoSo.xungHo = { khach: "bác", shop: "em" };
-  hoSo.banHang.coHangOrder = "co";
   hoSo.banHang.tiLeCoc = 30;
   hoSo.banHang.thoiGianOrder = "5–9 ngày";
-  hoSo.nguon = { "xungHo.khach": "shop", "banHang.coHangOrder": "shop", "banHang.tiLeCoc": "shop", "banHang.thoiGianOrder": "shop" };
+  hoSo.nguon = { "xungHo.khach": "shop", "banHang.tiLeCoc": "shop", "banHang.thoiGianOrder": "shop" };
   return {
     turn: { history: HISTORY, burstText: "size 42 nhé", replyNote: "", focusedProduct: { code: "JP9252", name: "ADIZERO BOSTON 13 M", by: "human_page" } },
     intent: "ask_size",

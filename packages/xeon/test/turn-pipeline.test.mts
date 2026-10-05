@@ -881,7 +881,8 @@ test("(30/09) hồ sơ landing gửi chữ \"undefined\" ở ô chưa khai → b
   assert.match(system, /goi khach la "bác"/, "the fields the shop did answer still count");
 
   const bundle = readShopProfileBundle({ hoSo: broken, chinhSach: null, kho: [{ ma: "k1", ten: "Kho 1", loai: "ready", uuTien: 2, chinhSach: " COD " }, { ma: "k2", loai: "la" }] });
-  assert.deepEqual([bundle.hoSo.banHang.coHangOrder, bundle.hoSo.banHang.codHangSan, bundle.hoSo.banHang.macCa.kieu, bundle.hoSo.banHang.khiChot, bundle.hoSo.chuyenNguoi.mucChot], ["", "", "", "", ""]);
+  assert.ok(!("coHangOrder" in bundle.hoSo.banHang), "the retired field never reaches the brain");
+  assert.deepEqual([bundle.hoSo.banHang.codHangSan, bundle.hoSo.banHang.macCa.kieu, bundle.hoSo.banHang.khiChot, bundle.hoSo.chuyenNguoi.mucChot], ["", "", "", ""]);
   assert.deepEqual(bundle.chinhSach, { doiTra: "", ship: "", baoHanh: "" });
   assert.deepEqual(bundle.kho, [{ ma: "k1", ten: "Kho 1", loai: "ready", uuTien: 2, chinhSach: "COD" }], "a warehouse of an unknown kind is dropped, not guessed");
   assert.equal(readShopProfileBundle(null).hoSo.phienBan, 0);

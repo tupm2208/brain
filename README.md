@@ -99,12 +99,12 @@ phải tuân?* → tầng 1; *mọi shop giày phải?* → tầng 2; còn lại
 |---|---|---|---|
 | 1 — nền tảng | ống dẫn tin, vòng agent, cổng an toàn (mã) + `loi-chung/agent-chung.json` (khối lời dặn chung, mẫu "phải người thật", câu cấm) | mã Xeon + `loi-chung/` | đội phát triển |
 | 2 — ngành | `nganh/<id>/agent.json`: `khoi[]` (id, tieuDe, shopSua, loiDan), `mauHoSo` (gợi ý cho shop mới), `tools[].moTa`; `bo-luat.json` cho máy luật | `nganh/` | anh / chuyên gia ngành |
-| 3 — shop | hồ sơ shop (xưng hô, hãng, hàng order/cọc/COD, mặc cả, chốt đơn, câu "không có", chủ đề chuyển người, khối ngành đã tắt/viết lại) + ba ô chính sách + chính sách từng kho | landing của shop, doc `tro-ly-ai-ho-so-chatbot`; Xeon đọc qua công cụ `shop.profile` mỗi lượt, không lưu | shop, trên OMI → Huấn luyện AI → **Chatbot** (máy trực, hoặc chủ shop / người được cấp quyền trên web) |
+| 3 — shop | hồ sơ shop (xưng hô, điều kiện chung hàng order/cọc/COD, mặc cả, chốt đơn, câu "không có", chủ đề chuyển người, khối ngành đã tắt/viết lại) + ba ô chính sách + chính sách từng kho | landing của shop, doc `tro-ly-ai-ho-so-chatbot`; Xeon đọc qua công cụ `shop.profile` mỗi lượt, không lưu | shop, trên OMI → Huấn luyện AI → **Chatbot** (máy trực, hoặc chủ shop / người được cấp quyền trên web) |
 
 Quy tắc cứng:
 - Con số của một shop (cọc %, số ngày, giá) **không bao giờ** nằm trong `nganh/` hay `loi-chung/`: bộ soi
   (`checkBlocksFree`) từ chối và Xeon không khởi động. Khối ngành dùng chỗ trống `{banHang.tiLeCoc}`,
-  dòng `[?banHang.coHangOrder] …` chỉ giữ khi shop đã khai.
+  dòng `[?banHang.thoiGianOrder] …` chỉ giữ khi shop đã khai. Hàng sẵn hay order là loại kho (kết quả `tra_kho`), không có ô khai riêng (05/10/2026).
 - Ô tầng 3 chưa khai → lời dặn ghi "CHUA KHAI" và bot chuyển người, không lấy gợi ý ngành, không lấy số shop khác.
 - Đoạn "năng lực hệ thống" trong lời dặn **tự sinh** (`systemCapabilities`) từ công cụ landing đang mở và mô hình
   nhìn có sẵn — không viết tay nữa.

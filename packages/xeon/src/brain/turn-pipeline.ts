@@ -2358,10 +2358,11 @@ export class TurnPipeline {
     const hoSo = shop?.hoSo ?? null;
     if (hoSo !== null) {
       const terms: string[] = [];
-      if (hoSo.banHang.coHangOrder === "co") {
-        terms.push(`Hang order: ${hoSo.banHang.thoiGianOrder || "(thoi gian chua khai)"}; coc toi thieu ${hoSo.banHang.tiLeCoc !== null ? `${hoSo.banHang.tiLeCoc}%` : "(chua khai)"}.`);
-        if (hoSo.banHang.doiTraHangOrder) terms.push(`Doi tra hang order: ${hoSo.banHang.doiTraHangOrder}`);
-      } else if (hoSo.banHang.coHangOrder === "khong") terms.push("Shop khong ban hang order.");
+      // 05/10/2026: no "shop sells made-to-order: yes / no" — that is the stock's kind, per warehouse. These
+      // are the general order terms, for an order warehouse without a policy of its own; said only when set.
+      const order = [hoSo.banHang.thoiGianOrder ? `thoi gian ${hoSo.banHang.thoiGianOrder}` : "", hoSo.banHang.tiLeCoc !== null ? `coc toi thieu ${hoSo.banHang.tiLeCoc}%` : ""].filter(Boolean);
+      if (order.length > 0) terms.push(`Hang order (dieu kien chung, khi kho order khong khai chinh sach rieng): ${order.join("; ")}.`);
+      if (hoSo.banHang.doiTraHangOrder) terms.push(`Doi tra hang order: ${hoSo.banHang.doiTraHangOrder}`);
       if (hoSo.banHang.codHangSan) terms.push(`Hang san: ${hoSo.banHang.codHangSan === "co" ? "COD duoc" : "khong COD, thanh toan truoc"}.`);
       if (hoSo.banHang.doiSizeDonDaDat) terms.push(`Doi size don da dat: ${hoSo.banHang.doiSizeDonDaDat}`);
       if (terms.length > 0) parts.push(`## DIEU KIEN BAN (ho so shop)\n${terms.join("\n")}`);

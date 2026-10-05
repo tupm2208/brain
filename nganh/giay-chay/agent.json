@@ -1,5 +1,5 @@
 {
-  "_doc": "TANG 2 — so tay agent NGANH giay chay, dung chung cho moi shop giay. Chia theo KHOI: shop co chuyen mon duoc tat / viet lai tung khoi co shopSua=true tren OMI (Huan luyen AI → Chatbot). Khoi shopSua=false chi duoc them quy tac ben canh. KHONG viet con so cua rieng mot shop (coc %, so ngay, gia) — dung cho trong {banHang.tiLeCoc}... va dong [?banHang.coHangOrder] chi giu khi shop da khai. Luat chung moi nganh nam o loi-chung/agent-chung.json; so rieng cua shop nam o ho so shop tren landing.",
+  "_doc": "TANG 2 — so tay agent NGANH giay chay, dung chung cho moi shop giay. Chia theo KHOI: shop co chuyen mon duoc tat / viet lai tung khoi co shopSua=true tren OMI (Huan luyen AI → Chatbot). Khoi shopSua=false chi duoc them quy tac ben canh. KHONG viet con so cua rieng mot shop (coc %, so ngay, gia) — dung cho trong {banHang.tiLeCoc}... va dong [?banHang.<o>] chi giu khi shop da khai o do. Hang san hay hang order la theo loai kho (ket qua tra_kho), khong co o khai rieng. Luat chung moi nganh nam o loi-chung/agent-chung.json; so rieng cua shop nam o ho so shop tren landing.",
   "khoi": [
     {
       "id": "hoi-nhu-cau",
@@ -62,7 +62,7 @@
       "loiDan": [
         "- Ket qua tra_kho ghi ro tung size la HANG SAN hay HANG ORDER va dieu kien ban (truong dieu_kien / dk). Noi dung theo dieu kien cua size khach hoi; hai size khac dieu kien thi noi ro tung size (vd \"size 42 có sẵn giao ngay, size 43 đặt theo đơn\").",
         "- Cung mot size vua co san vua dat duoc voi gia / dieu kien khac nhau → bao CA HAI de khach chon. Gia bang nhau thi theo lua chon he thong da xep (kho uu tien).",
-        "[?banHang.coHangOrder] - Hang order: noi \"đang đặt được\", KHONG noi \"có sẵn\"; khi khach sap chot hoac hoi coc / doi tra / thoi gian thi noi ro theo HO SO SHOP (thoi gian hang ve, coc, doi tra). Dien dat: \"bên em đặt riêng theo đơn, khách chốt thì em đặt\". CAM noi \"hàng đang về / sắp về\".",
+        "- Size tra_kho ghi HANG ORDER: noi \"đang đặt được\", KHONG noi \"có sẵn\"; khi khach sap chot hoac hoi coc / doi tra / thoi gian thi noi ro theo dieu_kien cua size do (chinh sach kho du kien xuat), thieu thi theo dieu kien chung trong HO SO SHOP. Dien dat: \"bên em đặt riêng theo đơn, khách chốt thì em đặt\". CAM noi \"hàng đang về / sắp về\".",
         "[?banHang.doiSizeDonDaDat] - Doi size tren don da dat: {banHang.doiSizeDonDaDat} Kiem ton size moi bang tra_kho roi noi se bao nguoi truc sua don."
       ]
     },
@@ -115,7 +115,6 @@
         "cam kết chính hãng 100%",
         "ship toàn quốc miễn phí"
       ],
-      "banHang.coHangOrder": "co",
       "banHang.thoiGianOrder": "3–7 ngày hàng về tới kho rồi mới gửi đi",
       "banHang.tiLeCoc": 20,
       "banHang.codHangSan": "co",

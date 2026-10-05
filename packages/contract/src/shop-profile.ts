@@ -22,7 +22,12 @@
 export type ProfileChoice = "co" | "khong" | "";
 
 export interface ShopProfileSelling {
-  coHangOrder: ProfileChoice;
+  /*
+   * 05/10/2026: no "coHangOrder" (sells made-to-order: yes / no) any more. Whether a size is
+   * made-to-order is a FACT of the stock — the kind of the warehouse it would ship from — and the
+   * selling policy is chosen per warehouse. The fields below are only the general terms for an
+   * order warehouse that declared no policy of its own.
+   */
   /** Free text: "3–7 ngày hàng về tới kho rồi mới gửi đi". */
   thoiGianOrder: string;
   /** Minimum deposit for made-to-order goods, in percent. `null` = chua khai. */
@@ -131,7 +136,7 @@ export function emptyShopProfile(): ShopProfile {
     xungHo: { khach: "", shop: "" },
     giong: { emoji: "", doDai: "", ghiChu: "" },
     cauCam: [],
-    banHang: { coHangOrder: "", thoiGianOrder: "", tiLeCoc: null, codHangSan: "", doiTraHangOrder: "", doiSizeDonDaDat: "", macCa: { kieu: "", chiTiet: "" }, khiChot: "", hanDonTreoNgay: null },
+    banHang: { thoiGianOrder: "", tiLeCoc: null, codHangSan: "", doiTraHangOrder: "", doiSizeDonDaDat: "", macCa: { kieu: "", chiTiet: "" }, khiChot: "", hanDonTreoNgay: null },
     chuyenNguoi: { chuDe: [], mucChot: "", gioTruc: "", phutNhuong: null },
     camKetHang: "",
     cuaHang: "",
@@ -156,7 +161,6 @@ export const SHOP_PROFILE_FIELDS: readonly { path: string; nhan: string }[] = [
   { path: "giong.doDai", nhan: "Độ dài tin nhắn" },
   { path: "giong.ghiChu", nhan: "Giọng nói" },
   { path: "cauCam", nhan: "Câu cấm riêng của shop" },
-  { path: "banHang.coHangOrder", nhan: "Có hàng order" },
   { path: "banHang.thoiGianOrder", nhan: "Thời gian hàng order" },
   { path: "banHang.tiLeCoc", nhan: "Cọc tối thiểu hàng order (%)" },
   { path: "banHang.codHangSan", nhan: "COD hàng sẵn" },
@@ -190,6 +194,12 @@ export function profileFieldSet(profile: ShopProfile, path: string): boolean {
 
 // ------------------------------------------------------------------ reading a profile off the wire
 
+/**
+ * Paths an older profile may still carry that no longer mean anything (05/10/2026: `banHang.coHangOrder`
+ * — made-to-order or not is the stock's kind, read per warehouse). Dropped on read, from `nguon` too.
+ */
+export const RETIRED_PROFILE_PATHS: readonly string[] = ["banHang.coHangOrder"];
+
 const asText = (v: unknown, max: number): string => (typeof v === "string" || typeof v === "number" ? String(v).trim().slice(0, max) : "");
 const asList = (v: unknown, n: number, max: number): string[] => (Array.isArray(v) ? v : []).map((x) => asText(x, max)).filter(Boolean).slice(0, n);
 const asRecord = (v: unknown): Record<string, unknown> => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -217,7 +227,7 @@ export function readShopProfile(raw: unknown): ShopProfile {
   const hanNumber = typeof han === "number" ? han : typeof han === "string" && han.trim() !== "" ? Number(han) : NaN;
   const cocNumber = typeof coc === "number" ? coc : typeof coc === "string" && coc.trim() !== "" ? Number(coc) : NaN;
   const nguon: ShopProfile["nguon"] = {};
-  for (const [k, v] of Object.entries(asRecord(o["nguon"]))) if (v === "shop" || v === "nganh" || v === "ai") nguon[k.slice(0, 60)] = v;
+  for (const [k, v] of Object.entries(asRecord(o["nguon"]))) if ((v === "shop" || v === "nganh" || v === "ai") && !RETIRED_PROFILE_PATHS.includes(k)) nguon[k.slice(0, 60)] = v;
   const khoiNganh: ShopProfile["khoiNganh"] = {};
   for (const [id, v] of Object.entries(asRecord(o["khoiNganh"])).slice(0, 60)) {
     const b = asRecord(v);
@@ -231,7 +241,6 @@ export function readShopProfile(raw: unknown): ShopProfile {
     giong: { emoji: asChoice(giong["emoji"], ["co", "khong"] as const), doDai: asChoice(giong["doDai"], ["ngan", "vua"] as const), ghiChu: asText(giong["ghiChu"], 600) },
     cauCam: asList(o["cauCam"], 40, 120),
     banHang: {
-      coHangOrder: asChoice(banHang["coHangOrder"], ["co", "khong"] as const),
       thoiGianOrder: asText(banHang["thoiGianOrder"], 200),
       tiLeCoc: Number.isFinite(cocNumber) && cocNumber >= 0 && cocNumber <= 100 ? Math.round(cocNumber) : null,
       codHangSan: asChoice(banHang["codHangSan"], ["co", "khong"] as const),
@@ -250,7 +259,7 @@ export function readShopProfile(raw: unknown): ShopProfile {
     cuaHang: asText(o["cuaHang"], 300),
     cauChaoAi: asText(o["cauChaoAi"], 500),
     tenNguoiPhuTrach: asText(o["tenNguoiPhuTrach"], 60),
-    // Old landings still send hangCoBan / hangKhongBan / monTheThao / banHang.cauKhongCo: ignored on purpose.
+    // Old landings still send hangCoBan / hangKhongBan / monTheThao / banHang.cauKhongCo / banHang.coHangOrder: ignored on purpose.
     cauHoiRieng: (Array.isArray(o["cauHoiRieng"]) ? o["cauHoiRieng"] : []).map(asRecord)
       .map((x) => ({ cauHoi: asText(x["cauHoi"], 300), traLoi: asText(x["traLoi"], 1000) })).filter((x) => x.cauHoi !== "" && x.traLoi !== "").slice(0, 80),
     quyTrinhRieng: (Array.isArray(o["quyTrinhRieng"]) ? o["quyTrinhRieng"] : []).map(asRecord)
