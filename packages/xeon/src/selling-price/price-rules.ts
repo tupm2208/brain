@@ -54,7 +54,7 @@ export interface PriceCondition {
 export interface LineBody { kieu: AddMode; tien: number; pt: number; phi: number; giaThapNhat: number | null; giaCaoNhat: number | null; khongQuaNiemYet: boolean }
 export interface PriceLine extends LineBody { dk: PriceCondition[] }
 export interface MarginFloor { dk: PriceCondition[]; tien: number; pt: number }
-export interface RoundingRule { dk: PriceCondition[]; buoc: number; huong: "gan" | "len" | "xuong"; tru: number; tronTram: boolean }
+export interface RoundingRule { dk: PriceCondition[]; buoc: number; /** `dep` (05/10/2026) = giá đẹp đuôi …90.000 như bảng lãi tự động của kho (buoc, tru bỏ qua). */ huong: "gan" | "len" | "xuong" | "dep"; tru: number; tronTram: boolean }
 
 /** The landing's `PriceTable` minus `suaLuc` (the landing stamps it). */
 export interface PriceRuleTable {
@@ -302,7 +302,7 @@ export function cleanPriceRules(raw: unknown, options: CleanOptions = {}): Clean
     const step = Number(r["buoc"]);
     const buoc = ROUNDING_STEPS.includes(step) ? step : 10000;
     if (!ROUNDING_STEPS.includes(step) && r["buoc"] !== undefined) notes.push(`Bước làm tròn “${str(r["buoc"], 20)}” không có — dùng ${money(buoc)}.`);
-    const huong = r["huong"] === "len" || r["huong"] === "xuong" ? r["huong"] : "gan";
+    const huong = r["huong"] === "len" || r["huong"] === "xuong" || r["huong"] === "dep" ? r["huong"] : "gan";
     const rule = { buoc, huong, tru: nonNegative(r["tru"]), tronTram: r["tronTram"] === true } as const;
     const dk = cleanConditions(r["dk"], ROUND_FIELDS, choices, droppedValues);
     if (!dk.ok) { notes.push(`Bỏ một cách làm tròn (bước ${money(buoc)}): ${dk.why}.`); continue; }
