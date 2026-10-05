@@ -16,7 +16,7 @@
  */
 
 import { emptyShopProfile, type ShopProfile } from "@sp/contract";
-import { fillAgentText, redactPII, renderBlocks, type ContextAnalysisText, type FillValues } from "@sp/brain";
+import { SESSION_GAP_MS, fillAgentText, redactPII, renderBlocks, type ContextAnalysisText, type FillValues } from "@sp/brain";
 import type { Logger } from "../support/logger";
 import type { ChatMessage, ChatModelPort } from "../agent/chat-model";
 import { parseAgentJson, type HistoryLine } from "../agent/sales-agent";
@@ -31,10 +31,8 @@ export const CONTEXT_HISTORY_LINES = 30;
 const PAGE_FACT_LINES = 10;
 const PAGE_FACT_CHARS = 160;
 const MAX_LOOKUPS = 3;
-/** A photo older than this is history, not "the picture the customer just sent" (Desk v17). */
-const OLD_IMAGE_MS = 6 * 3600 * 1000;
-/** Two lines further apart than this open a new session in the transcript (Desk episode gap). */
-const SESSION_GAP_MS = 6 * 3600 * 1000;
+/** A photo of an EARLIER session is tagged "CU" (Desk v17); 05/10/2026: the one session gap of every rule (`SESSION_GAP_MS`). */
+const OLD_IMAGE_MS = SESSION_GAP_MS;
 
 /** What the model is asked to return; every field is checked, missing ones are empty. */
 export interface ContextAnalysis {

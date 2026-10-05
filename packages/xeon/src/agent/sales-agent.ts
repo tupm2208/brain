@@ -14,7 +14,7 @@
 
 import { emptyShopProfile, type ShopProfile } from "@sp/contract";
 import {
-  blocksForShop, fillAgentText, redactPII, renderBlocks, renderProfile, stripDiacritics,
+  SESSION_GAP_MS, blocksForShop, fillAgentText, redactPII, renderBlocks, renderProfile, stripDiacritics,
   type CommonAgent, type CommonPhotoTexts, type FillValues, type IndustryPack, type PackAgent
 } from "@sp/brain";
 import type { Clock } from "../support/clock";
@@ -58,10 +58,11 @@ export interface HistoryLine {
   note?: string | undefined;
 }
 
-/** A photo older than this is history, not "the picture the customer just sent" (Desk v17, Hana Heng). */
-const OLD_IMAGE_MS = 6 * 3600 * 1000;
-/** Two lines further apart than this open a new session in the transcript (Desk episode gap). */
-const SESSION_GAP_MS = 6 * 3600 * 1000;
+/**
+ * A photo of an EARLIER session is tagged "CU" in the transcript (Desk v17, Hana Heng). 05/10/2026: the one
+ * session gap of every rule (`SESSION_GAP_MS`, conversation-state.ts), not a clock of its own.
+ */
+const OLD_IMAGE_MS = SESSION_GAP_MS;
 
 /** What the agent may call. Each returns data for the model; errors come back as data too. */
 export interface AgentToolBox {
@@ -600,6 +601,12 @@ export function systemCapabilities(input: {
   open: readonly string[]; visionReady: boolean; hoSo?: ShopProfile | null | undefined; chaoAi?: boolean | undefined; guiKem?: boolean | undefined;
   /** The agent sees the photos this turn: tier 1's line (`xemAnh.nangLuc`) replaces "the system read the photo before the turn". */
   photoLine?: string | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk "thẻ đặt hàng không đi"): the customer is closing and the order form WILL go with
+   * this reply (`se-gui`) or will NOT (`khong-gui`: item / variant not settled, a running order, a person
+   * closes). Absent = not a closing turn, or the caller does not know (the general line stands).
+   */
+  phieu?: "se-gui" | "khong-gui" | undefined;
 }): string[] {
   const lines: string[] = [];
   // Giai đoạn 7: the landing prepends its own greeting to the opening reply — the agent must not greet again.
@@ -615,7 +622,10 @@ export function systemCapabilities(input: {
   // link + `?size=`) while the `order.formLink` line above said the system attaches it — both went
   // into the same prompt, so a customer could get two different links. The slip is the landing's
   // standard order page, and only the system attaches it.
-  if (khiChot === "phieu" && input.open.includes("order.formLink")) {
+  if (khiChot === "phieu" && input.open.includes("order.formLink") && input.phieu === "khong-gui") {
+    // 05/10/2026: the system already knows the form will NOT go this turn — the agent must not promise it.
+    lines.push("KHACH DANG CHOT nhung LUOT NAY HE THONG KHONG GUI PHIEU DAT HANG (chua du mau + bien the con hang, hoac khach dang co don, hoac can nguoi len don): KHONG noi \"gui phieu / form / link dat hang\". Thieu mau hoac bien the thi hoi dung phan con thieu; da du ma van khong gui duoc thi noi: \"Dạ để em báo người phụ trách lên đơn cho {khach} ngay ạ.\" KHONG tu ghep link, KHONG xin dia chi.");
+  } else if (khiChot === "phieu" && input.open.includes("order.formLink")) {
     lines.push("KHACH CHOT (da co mau + size con hang): HE THONG tu gui kem PHIEU DAT HANG. Khach dien thong tin nhan hang tren phieu, chon cach thanh toan, he thong tu hien ma QR chuyen khoan. Noi: \"Dạ em gửi phiếu đặt hàng bên dưới, {khach} điền giúp em thông tin nhận hàng, xong hệ thống tự ra mã QR để {khach} chuyển khoản ạ.\" KHONG tu ghep link phieu, KHONG gui link trang san pham thay phieu, KHONG tu xin ten/SDT/dia chi de go don.");
   } else if (khiChot === "phieu") {
     lines.push("KHACH CHOT: landing chua mo phieu dat hang trong luot nay. KHONG tu ghep link phieu, KHONG xin dia chi. Noi: \"Dạ để em báo người phụ trách lên đơn cho {khach} ngay ạ.\"");

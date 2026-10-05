@@ -29,7 +29,7 @@ import type { CatalogVerifier } from "./catalog-verifier";
 import type { GatewayBreaker } from "../agent/gateway-breaker";
 import { ImageFetcher, ImageIntake, type ImageFetch, type PhotoReading } from "./image-intake";
 import type { ImageShrink } from "./image-shrink";
-import { SUPERSEDED, TurnPipeline, type DossierDraft } from "./turn-pipeline";
+import { HumanTookOver, ReplyNotSent, ReplyRefused, SUPERSEDED, TurnPipeline, type DossierDraft } from "./turn-pipeline";
 import { currentTrace } from "../chan-doan/trace-context";
 import { DOSSIER_VERSION, nullDossierStore, type DossierStore, type TurnDossier, type TurnOutcomeKind } from "../chan-doan/turn-dossier";
 import type { Clock } from "../support/clock";
@@ -91,7 +91,32 @@ export interface BrainServiceOptions {
    * merchant who has not turned it on pays neither disk nor privacy for it.
    */
   dossier?: DossierStore | undefined;
+  /**
+   * 05/10/2026: the clock that hands a yielded conversation back when its window ends. Returns a cancel
+   * function. Absent = `setTimeout` (unref'd). Tests pass a manual one.
+   */
+  timer?: ((run: () => void, ms: number) => () => void) | undefined;
 }
+
+/**
+ * 05/10/2026 (phiếu Desk "nhường xong phải tiếp quản"): only a Fanpage Messenger conversation is handed
+ * back by the clock — a Zalo group or a personal account is the shop's own people talking, and a public
+ * comment is answered by the engine alone. The person's "bot trả lời tiếp" works on every channel.
+ */
+const TAKEOVER_CHANNELS: ReadonlySet<string> = new Set(["facebook"]);
+/** A customer message older than this is not handed back by the clock any more (Desk: six hours). */
+export const TAKEOVER_MAX_AGE_MS = 6 * 3600 * 1000;
+/** Asked a little after the window ends, so the landing's clock and ours never disagree on "ended". */
+const TAKEOVER_MARGIN_MS = 2000;
+
+/**
+ * 05/10/2026 (phiếu Desk "kết quả phân tích mù ảnh … gửi lỗi thì lần quét sau phải gửi lại"): a reply the landing
+ * could not send is tried ONCE more after this long — the landing hands the turn back only if the customer is
+ * still the last to speak (`/api/hop-thu/tiep-quan`). A second failure on the same message is left to a person.
+ */
+export const SEND_RETRY_MS = 60 * 1000;
+/** Conversations whose last retried message is remembered (bounded: a retry is a minute away). */
+const SEND_RETRY_REMEMBER = 500;
 
 /** An old message (replayed after a restart) has no photo on its way any more. */
 const IMAGE_WAIT_FRESH_MS = 2 * 60 * 1000;
@@ -105,7 +130,7 @@ function outcomeKind(result: InboundResult | null): TurnOutcomeKind {
   if (result.daTraLoi) return "da-tra-loi";
   if (result.viSao === "chuyen_nguoi_that") return "chuyen-nguoi-that";
   // Deliberate silence: a human was answering, or a newer message in the burst took over.
-  if (result.viSao === "nguoi_dang_truc" || result.viSao === "gop_vao_tin_sau") return "im";
+  if (result.viSao === "nguoi_dang_truc" || result.viSao === "gop_vao_tin_sau" || result.viSao === "da_tra_loi_tin_nay") return "im";
   return "hong";
 }
 
@@ -143,6 +168,11 @@ export class BrainService {
   /** Per conversation: number of the newest message seen, and the turn being answered right now. */
   private readonly burstSeq = new Map<string, number>();
   private readonly burstRuns = new Map<string, Promise<InboundResult>>();
+  /** Per merchant + conversation: the pending "hand the turn back" when its yield window ends. */
+  private readonly takeovers = new Map<string, () => void>();
+  /** Per merchant + conversation: the customer message whose failed reply was already retried once. */
+  private readonly sendRetried = new Map<string, string>();
+  private readonly timer: (run: () => void, ms: number) => () => void;
 
   constructor(options: BrainServiceOptions = {}) {
     this.agent = options.agent ?? null;
@@ -150,6 +180,7 @@ export class BrainService {
     this.imageWaitMs = Math.max(0, options.imageWaitMs ?? 0);
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.dossier = options.dossier ?? nullDossierStore;
+    this.timer = options.timer ?? ((run, ms) => { const t = setTimeout(run, ms); t.unref?.(); return () => clearTimeout(t); });
     this.agentTurnsPerHour = options.agentTurnsPerHour ?? 120;
     this.license = options.license ?? null;
     this.memory = options.memory ?? new InMemoryConversationMemory();
@@ -212,6 +243,8 @@ export class BrainService {
     if (binding.gateway.toolListStale()) await this.refreshTools(tenant, binding);
 
     const conversationId = String(message.maHoiThoai || `${message.kenh || "facebook"}:${message.nguoi}`);
+    // A new message decides afresh: any pending hand-back of this conversation is dropped.
+    this.cancelTakeover(tenant, conversationId);
 
     // BURST GATHERING (Sales Desk): customers type "shop ơi" / "còn đôi này không" / "size 42" as
     // three messages. Each message waits; a newer one in the same conversation takes over, and only
@@ -231,11 +264,77 @@ export class BrainService {
     const run = this.answer(tenant, binding, message, conversationId, isLatest);
     this.burstRuns.set(conversationId, run);
     try {
-      return await run;
+      const result = await run;
+      if (result.daTraLoi === false && result.viSao === "nguoi_dang_truc" && result.nhuongDen !== undefined) this.scheduleTakeover(tenant, binding, message, conversationId, result.nhuongDen);
+      return result;
     } finally {
       if (this.burstRuns.get(conversationId) === run) this.burstRuns.delete(conversationId);
       if (isLatest()) this.burstSeq.delete(conversationId);
     }
+  }
+
+  /**
+   * The yield window of a conversation ends at `until`: then the LANDING is asked to hand the turn back
+   * (it checks the bot may still answer there and that the customer is still the last to speak). Lost on a
+   * restart — the person's "bot trả lời tiếp" button is the way back then.
+   */
+  private scheduleTakeover(tenant: string, binding: MerchantBinding, message: InboundMessageBody, conversationId: string, until: string): void {
+    if (!TAKEOVER_CHANNELS.has(String(message.kenh || "facebook"))) return;
+    const now = this.clock.now().getTime();
+    const sentAt = Date.parse(String(message.luc ?? ""));
+    if (Number.isFinite(sentAt) && now - sentAt > TAKEOVER_MAX_AGE_MS) return;
+    const endsAt = Date.parse(until);
+    if (!Number.isFinite(endsAt)) return;
+    const key = `${tenant}|${conversationId}`;
+    this.cancelTakeover(tenant, conversationId);
+    const cancel = this.timer(() => {
+      if (this.takeovers.get(key) !== cancel) return;
+      this.takeovers.delete(key);
+      void binding.gateway.requestTakeover(conversationId)
+        .then((r) => this.logger.info(`[nhuong] ${tenant}/${conversationId}: het cua so nhuong — ${r.ok ? (r.tiepQuan ? "landing giao lai luot" : `khong tiep quan (${r.viSao})`) : `chua hoi duoc landing (${r.viSao})`}`))
+        .catch((e: unknown) => this.logger.warn(`[nhuong] ${tenant}/${conversationId}: ${e instanceof Error ? e.message : String(e)}`));
+    }, Math.max(0, endsAt - now) + TAKEOVER_MARGIN_MS);
+    this.takeovers.set(key, cancel);
+  }
+
+  /**
+   * The reply to `message` did not go out: asks the landing, once, after `SEND_RETRY_MS`, to hand the turn back
+   * (same door as the end of a yield window — a new customer message cancels it, a person who answered meanwhile
+   * makes the landing refuse). The second failure on the same message is not retried.
+   */
+  private scheduleResend(tenant: string, binding: MerchantBinding, message: InboundMessageBody, conversationId: string): void {
+    if (!TAKEOVER_CHANNELS.has(String(message.kenh || "facebook"))) return;
+    const key = `${tenant}|${conversationId}`;
+    const maTin = String(message.maTin ?? "");
+    if (maTin !== "" && this.sendRetried.get(key) === maTin) {
+      this.logger.warn(`[gui-lai] ${tenant}/${conversationId}: tin ${maTin} gui lai van hong — de nguoi truc xu ly`);
+      return;
+    }
+    this.sendRetried.delete(key);
+    this.sendRetried.set(key, maTin);
+    for (const old of [...this.sendRetried.keys()].slice(0, Math.max(0, this.sendRetried.size - SEND_RETRY_REMEMBER))) this.sendRetried.delete(old);
+    this.cancelTakeover(tenant, conversationId);
+    const cancel = this.timer(() => {
+      if (this.takeovers.get(key) !== cancel) return;
+      this.takeovers.delete(key);
+      void binding.gateway.requestTakeover(conversationId)
+        .then((r) => this.logger.info(`[gui-lai] ${tenant}/${conversationId}: gui hong — ${r.ok ? (r.tiepQuan ? "landing giao lai luot" : `khong chay lai (${r.viSao})`) : `chua hoi duoc landing (${r.viSao})`}`))
+        .catch((e: unknown) => this.logger.warn(`[gui-lai] ${tenant}/${conversationId}: ${e instanceof Error ? e.message : String(e)}`));
+    }, SEND_RETRY_MS);
+    this.takeovers.set(key, cancel);
+  }
+
+  private cancelTakeover(tenant: string, conversationId: string): void {
+    const key = `${tenant}|${conversationId}`;
+    const cancel = this.takeovers.get(key);
+    if (cancel === undefined) return;
+    this.takeovers.delete(key);
+    cancel();
+  }
+
+  /** Conversations waiting for their yield window to end (diagnostics, tests). */
+  pendingTakeovers(): string[] {
+    return [...this.takeovers.keys()];
   }
 
   /** How long a message waits for the rest of its burst. */
@@ -267,8 +366,25 @@ export class BrainService {
 
   /** Answers one message (the latest of its burst): the pipeline, in "gui" mode. */
   private async answerTurn(tenant: string, binding: MerchantBinding, message: InboundMessageBody & { tenant: string }, conversationId: string, isLatest: () => boolean, draft: DossierDraft): Promise<InboundResult> {
-    const outcome = await this.pipeline.run({ tenant, binding, conversationId, message, mode: "gui", isLatest, draft, usageAgent: "bot_l2" });
-    return outcome.result;
+    try {
+      const outcome = await this.pipeline.run({ tenant, binding, conversationId, message, mode: "gui", isLatest, draft, usageAgent: "bot_l2" });
+      return outcome.result;
+    } catch (error) {
+      // 05/10/2026: a person took over while the reply was being written; the landing sent nothing.
+      if (error instanceof HumanTookOver) {
+        this.logger.info(`[agent] ${conversationId}: nguoi truc tiep quan trong luc bot soan — bo cau tra loi`);
+        return { daTraLoi: false, viSao: "nguoi_dang_truc" };
+      }
+      // 05/10/2026: the landing's send door judged the reply stale (the customer wrote again — that message has
+      // its own turn) or a repeat (another turn already answered this message). Nothing went out.
+      // 05/10/2026: the landing could not send the reply — the turn runs again once, a minute later.
+      if (error instanceof ReplyNotSent) this.scheduleResend(tenant, binding, message, conversationId);
+      if (error instanceof ReplyRefused) {
+        this.logger.info(`[agent] ${conversationId}: ${error.why === "tin-moi" ? "khach nhan them sau tin luot nay da thay — bo cau, tin moi co luot rieng" : "tin nay da duoc tra loi — bo cau trung"}`);
+        return error.why === "tin-moi" ? SUPERSEDED : { daTraLoi: false, viSao: "da_tra_loi_tin_nay" };
+      }
+      throw error;
+    }
   }
 
   /** Assembles the dossier and hands it to the store. Never throws: bookkeeping owes the customer nothing. */

@@ -146,7 +146,7 @@ export class StockFactsBuilder {
     // The size: the cheapest warehouse that has it (rows are per label; the finder already picked the warehouse).
     const matches = this.sizes.matches(rows, size);
     const best = [...matches].sort((a, b) => (a.gia || Number.MAX_SAFE_INTEGER) - (b.gia || Number.MAX_SAFE_INTEGER))[0];
-    let stock: SizeStock | null = best !== undefined ? { size: best.size, qty: best.so_luong, approximate: !this.exactLabel(best.size, size), row: best } : this.sizes.nearest(rows, size);
+    let stock: SizeStock | null = best !== undefined ? { size: best.size, qty: best.so_luong, approximate: !this.exactLabel(best.size, size) && !this.sizes.saidAs(best, size), row: best } : this.sizes.nearest(rows, size);
     if (stock !== null && best === undefined && stock.approximate) {
       // A neighbouring step only: keep it, the customer is told it is approximate.
     }
@@ -198,7 +198,7 @@ export class StockFactsBuilder {
       const kho = row.kho ?? "";
       if (kho === "" || kho === chosen) continue;
       const entry = perKho.get(kho) ?? { has: false, price: 0 };
-      const has = this.sizes.same(row.size, size);
+      const has = this.sizes.rowIs(row, size);
       if (has) entry.has = true;
       if (row.gia > 0 && (entry.price === 0 || (has && row.gia < entry.price))) entry.price = row.gia;
       perKho.set(kho, entry);
@@ -234,7 +234,7 @@ export class StockFactsBuilder {
       for (const row of inStockRows(item)) {
         const label = row.size.trim();
         if (label === "" || seen.has(label)) continue;
-        if (size !== "" && !this.sizes.same(label, size)) continue;
+        if (size !== "" && !this.sizes.rowIs(row, size)) continue;
         seen.add(label); sizes.push(label);
       }
       if (sizes.length === 0) continue;
@@ -264,6 +264,15 @@ export class StockFactsBuilder {
 /** Desk `buildStockFacts` as a function: the items the finder returned, the code and size asked, the industry's matching data. */
 export function buildStockFacts(found: readonly FoundItem[], query: StockFactsQuery, cfg: MatchingConfig, options: StockFactsOptions = {}): StockFacts | null {
   return new StockFactsBuilder(cfg).build(found, query, options);
+}
+
+/**
+ * Whether the customer asks for the OTHER variants of the item in focus ("còn màu khác không", "size này còn những …
+ * nào") — Desk's `asksColors`. The words are data (`hoiBienTheKhac`: tier 1's general words ⊕ the industry's nouns).
+ */
+export function asksOtherVariants(cfg: MatchingConfig, message: string): boolean {
+  const text = normalize(message);
+  return cfg.otherVariantsAsked.some((p) => packRegex(p)?.test(text) ?? false);
 }
 
 /** The `MAU_KHAC` block of the system note from the facts (empty when the customer did not ask for colours). */
@@ -343,4 +352,19 @@ export function planStockCascade(query: CascadeQuery, lines: readonly CascadeLin
     }
   }
   return steps;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "vai trò ảnh khách gửi", vai 3): the in-stock variants of one item as the note
+ * lists them ("40 (2)"). When the variants do not all cost the same, each carries its own price — one
+ * "from" price for a two-tier item made the model quote the cheap tier for every size. When the customer
+ * asked one variant, the nearest ones come first (the note keeps only the first few), not the start of the list.
+ */
+export function variantsForNote(rows: readonly FoundSize[], requested: string, sizes: SizeMatcher): string[] {
+  const priced = rows.filter((r) => Number(r.gia) > 0);
+  const tiers = new Set(priced.map((r) => Number(r.gia)));
+  const want = requested.trim() === "" ? NaN : sizes.toNumber(requested);
+  const order = rows.map((r, i) => ({ r, i, d: Number.isFinite(want) && Number.isFinite(sizes.toNumber(r.size)) ? Math.abs(sizes.toNumber(r.size) - want) : Number.POSITIVE_INFINITY }));
+  if (Number.isFinite(want)) order.sort((a, b) => (a.d - b.d) || (a.i - b.i));
+  return order.map(({ r }) => `${r.size}${r.so_luong !== undefined ? ` (${r.so_luong})` : ""}${tiers.size > 1 && Number(r.gia) > 0 ? `: ${Number(r.gia).toLocaleString("vi-VN")}đ` : ""}`);
 }

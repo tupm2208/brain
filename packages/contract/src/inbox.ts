@@ -46,6 +46,30 @@ export interface InboxSendBody {
   anhHuongDan?: "do-chan" | undefined;
   /** Prepend the AI greeting; the landing sends it once per conversation (`conversation.recent` -> `hoiThoai.daChaoAi`). */
   chaoAi?: boolean | undefined;
+  /**
+   * 05/10/2026: a person on duty pressed "bot trả lời tiếp" for this conversation. Without it the landing
+   * DROPS a brain reply when a person wrote, or typed, after the customer's last message (`nhuongNguoi`).
+   */
+  tiepQuan?: boolean | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk "chống gửi trùng", "tin khách đến trong lúc AI chạy"): the newest customer message
+   * (`maTin`) the turn had seen when it started. The landing drops the reply when a customer message came after
+   * it (`tinMoi`), or when that message was already answered (`daTraLoi`) and this is not the one correction.
+   * Absent = not judged (older brains, public comments).
+   */
+  theoTin?: string | undefined;
+  /** 05/10/2026 (phiếu Desk "lượt trước đã gửi câu gì"): what this reply rests on — the landing keeps it to allow one correction. */
+  bangChung?: InboxReplyEvidence | undefined;
+}
+
+/** What a brain reply rests on. A WEAK reply (`yeu`) may be corrected once by a later turn with stronger evidence. */
+export interface InboxReplyEvidence {
+  /** The reply asks the customer back, or the customer's photo named no product. */
+  yeu: boolean;
+  /** Customer photos the turn really read. */
+  soAnh: number;
+  /** The turn had product facts (a lookup found the item). */
+  suThat: boolean;
 }
 
 /** Why the landing dropped a card the brain asked for. */
@@ -68,4 +92,10 @@ export interface InboxSentExtras {
 /** The reply of `/api/hop-thu/gui`: sent now (Meta's fields spread in) or queued for the on-duty machine. */
 export type InboxSendResult =
   | { guiNgay: true; daGui?: InboxSentExtras | undefined; chaoAi?: boolean | undefined; [meta: string]: unknown }
-  | { guiNgay: false; xepHang: true; id: string; daGui?: InboxSentExtras | undefined; chaoAi?: boolean | undefined };
+  | { guiNgay: false; xepHang: true; id: string; daGui?: InboxSentExtras | undefined; chaoAi?: boolean | undefined }
+  /** 05/10/2026: a person took this conversation over while the bot was writing — nothing was sent. */
+  | { guiNgay: false; nhuongNguoi: true }
+  /** 05/10/2026: the customer wrote again after `theoTin` — nothing was sent; that message has its own turn. */
+  | { guiNgay: false; tinMoi: true }
+  /** 05/10/2026: `theoTin` was already answered and this reply is no correction — nothing was sent. */
+  | { guiNgay: false; daTraLoi: true };

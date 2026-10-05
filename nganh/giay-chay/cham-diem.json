@@ -9,6 +9,7 @@
   "lineGenericTokens": ["pro", "air", "max", "zoom", "run", "low", "mid"],
   "lineNoiseTokens": ["giay", "chay", "bo", "the", "thao", "nam", "nu", "unisex", "shoes", "shoe", "running", "run", "size", "mau", "ban", "m", "w", "men", "women"],
   "ambiguousVersion": { "min": 35, "max": 52 },
+  "hoiBienTheKhac": ["\\bcon (nhung |cac )?doi (nao|gi)\\b", "\\bdoi nao (con|khac)\\b"],
   "brandLineHints": {
     "adidas": ["adizero", "ultraboost", "ultra boost", "supernova", "solarboost", "solar glide", "duramo", "samba", "gazelle", "campus", "superstar", "boston", "takumi", "prime x", "evo sl", "adistar", "terrex"],
     "nike": ["pegasus", "vaporfly", "alphafly", "zoomx", "zoom fly", "invincible", "structure", "infinity", "air max", "air force", "jordan", "vomero", "streakfly", "winflo", "revolution"],
@@ -49,6 +50,26 @@
     "nonPrimaryTypes": ["ao", "quan", "balo", "tui", "tat", "mu"],
     "primaryTypes": ["giay", "dep"],
     "labels": { "quan": "Quần áo", "ao": "Quần áo", "balo": "Balo", "tui": "Túi xách", "mu": "Mũ", "tat": "Tất" }
+  },
+  "nhomHang": {
+    "_doc": "05/10/2026 (phieu Desk 08/09 + 30/09): tu DOI THUONG khach goi mot NHOM HANG → ten nhom tren bo loc web cua landing (Loai / Mon: 'Giày', 'Quần áo', 'Bóng đá'...). Xeon gui kem moi lan tra kho; landing chi nhan khi catalog cua shop CO nhom do. Khoa CO DAU chi khop chu khach go co dau, khoa KHONG DAU chi khop chu khach go khong dau ('da bong' go tron = đá bóng; 'da bóng' la giay da lang). Ten nhom trung nguyen van voi nhan cua landing thi KHONG can khai o day. khongPhai: cum chua chu giong ten nhom ma khong phai nhom.",
+    "biDanh": {
+      "đá bóng": "bóng đá", "da bong": "bong da", "dabong": "bong da", "bongda": "bong da",
+      "đá banh": "bóng đá", "da banh": "bong da", "sân cỏ": "bóng đá", "san co": "bong da",
+      "football": "bong da", "soccer": "bong da", "futsal": "bong da",
+      "bongro": "bong ro", "basketball": "bong ro", "bball": "bong ro",
+      "gol": "golf",
+      "quần vợt": "tennis", "quan vot": "tennis", "pickleball": "tennis", "padel": "tennis",
+      "running": "chay bo",
+      "gym": "tap luyen", "training": "tap luyen", "yoga": "tap luyen",
+      "hiking": "leo nui", "trekking": "leo nui",
+      "bơi": "bơi lội", "swim": "boi loi",
+      "áo": "quần áo", "ao": "quan ao", "quần": "quần áo", "quan": "quan ao", "váy": "quần áo",
+      "vớ": "tất", "nón": "mũ",
+      "ba lô": "balo", "ba lo": "balo", "túi": "túi xách", "tui": "tui xach",
+      "dép": "giày", "dep": "giay", "sneaker": "giay"
+    },
+    "khongPhai": ["tất cả", "tat ca", "tất nhiên", "tat nhien", "quan tâm", "quan tam"]
   },
   "uncertain": {
     "genericItemTokens": ["giay", "dep", "chay", "bo", "adidas", "nike", "asics", "hoka", "puma", "mizuno", "saucony", "brooks", "salomon", "new", "balance", "converse", "vans", "skechers", "mlb", "reebok", "fila", "under", "armour", "altra", "topo", "sneaker", "running", "tap", "gym", "di", "slide", "sandal", "quai", "recovery", "lot", "dai", "xo", "ngon", "bit", "hau"]

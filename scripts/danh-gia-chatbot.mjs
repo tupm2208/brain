@@ -32,9 +32,9 @@ const mode = process.argv[2];
 
 async function inboxToken() {
   if (process.env.MA_NHAN_TIN) return process.env.MA_NHAN_TIN;
-  const require = createRequire(path.join(root, "server-khach", "package.json"));
+  const require = createRequire(path.join(root, "landing_page", "package.json"));
   const mysql = require("mysql2/promise");
-  const env = Object.fromEntries(fs.readFileSync(path.join(root, "server-khach", ".env"), "utf8").split(/\r?\n/).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).trim()]));
+  const env = Object.fromEntries(fs.readFileSync(path.join(root, "landing_page", ".env"), "utf8").split(/\r?\n/).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1).trim()]));
   const url = new URL(env.TOPRUN_MYSQL_URL);
   const conn = await mysql.createConnection({ host: url.hostname, port: Number(url.port || 3306), user: decodeURIComponent(url.username), password: decodeURIComponent(url.password), database: url.pathname.slice(1) });
   const [rows] = await conn.execute("SELECT noi_dung FROM so_du_lieu WHERE ten = ?", ["khung-nen-tang-xeon"]);

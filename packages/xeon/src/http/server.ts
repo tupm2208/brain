@@ -23,6 +23,7 @@ export type RequestListener = (req: IncomingMessage, res: ServerResponse) => Pro
 /** Maps a request path to the broad activity kind for the ring buffer. */
 function kindForPath(path: string): ActivityKind {
   if (path === "/meta/webhook") return "meta-webhook";
+  if (path === "/meta/xoa-du-lieu" || path === "/meta/go-app") return "meta-xoa";
   if (path === "/tin-den") return "tin-den";
   if (path === "/viet-bai") return "viet-bai";
   if (path.startsWith("/license/")) return "license";

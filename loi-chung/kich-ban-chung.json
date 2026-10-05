@@ -44,6 +44,23 @@
       "safeToAutoSend": true,
       "reply": "Dạ {shop} nhận được ảnh rồi ạ, {shop} báo người phụ trách đối chiếu và báo lại {khach} ngay ạ."
     },
+    "product_rejected": {
+      "_doc": "05/10/2026 (phieu Desk 'bot xac nhan mau thay khach'): khach phan bac mau / mau bot vua dua, TRUOC khi co hang — cau TRUNG TINH, khong khang dinh lai, goi nguoi.",
+      "action": "human_handoff",
+      "safeToAutoSend": true,
+      "reply": "Dạ {shop} xin lỗi {khach}, {shop} báo người phụ trách kiểm tra lại đúng món {khach} cần rồi báo lại {khach} ngay ạ."
+    },
+    "product_rejected_again": {
+      "_doc": "05/10/2026: khach phan bac LAN HAI trong cung hoi thoai — cau trung tinh, goi nguoi VA bot dung hoi thoai nay cho toi khi nguoi truc xac nhan (bat lai bot / bam xong tren muc can nguoi).",
+      "action": "human_handoff",
+      "safeToAutoSend": true,
+      "reply": "Dạ {shop} đã báo người phụ trách kiểm tra lại cho {khach} rồi ạ, {khach} chờ {shop} một chút, người phụ trách sẽ nhắn {khach} ngay ạ."
+    },
+    "order_notice_ack": {
+      "_doc": "05/10/2026 (phieu Desk 'khach da co don'): khach chi 'ok/cam on' NGAY SAU tin page bao ve DON DANG CHAY (tin co ma don / ma van don / link tra cuu cua don do, hoac nguoi truc bao da nhan tien). Cau ngan co dinh, KHONG hoi them, KHONG tra kho; khach 'ok' lan nua sau cau nay thi bot im. Bo dinh tuyen tu nhan (khong theo y dinh mo hinh doan).",
+      "action": "script_reply",
+      "reply": "Dạ vâng ạ, có gì {khach} cứ nhắn {shop} nhé."
+    },
     "image_unclear": {
       "action": "ask_clarification",
       "reply": "Dạ {khach} đang tìm mẫu này để {shop} kiểm tra giúp ạ? {Khach} cho {shop} xin tên mẫu hoặc mã sản phẩm nhé."

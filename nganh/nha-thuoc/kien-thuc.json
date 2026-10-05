@@ -2,6 +2,7 @@
   "id": "nha-thuoc",
   "name": "Nhà thuốc",
   "tradeWords": "thuốc và thực phẩm chức năng",
+  "countUnit": "sản phẩm",
   "families": [
     {
       "id": "other",

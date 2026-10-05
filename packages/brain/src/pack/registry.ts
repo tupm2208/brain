@@ -26,6 +26,8 @@ import {
 import type { CommonAgent, CommonPack, DialogueConfig, EntityConfig, IndustryPack, IntentRules, LedgerTexts, MatchingConfig, ReplyGateConfig, ScriptTexts, SystemNoteTexts } from "./types";
 import { assertPackValid, checkBlocksFree, checkDialogueConfig, checkEntityConfig, checkIntentRules, checkMatchingConfig, checkReplyGateConfig, checkScriptTexts } from "./validator";
 import type { CascadeLine } from "../engine/stock-facts";
+import { emptySizeAdviceConfig, parseSizeAdvice, type SizeAdviceConfig } from "./size-advice";
+import { emptyConsultProfileConfig, parseConsultProfile, type ConsultProfileConfig } from "./consult-profile";
 import {
   mergeContextAnalysisText, mergeDraftText, mergeOneShotPromptText, parseContextAnalysisText, parseDraftText, parseHumanExamples, parseOneShotPromptText,
   type ContextAnalysisText, type DraftText, type HumanExamples, type OneShotPromptText
@@ -263,6 +265,40 @@ export class PackRegistry {
     return lines;
   }
 
+  private readonly adviceCache = new Map<string, SizeAdviceConfig>();
+
+  /**
+   * 05/10/2026: the industry's "variant from measurements" data (`bang-size.json` `rows` + `tuVan`);
+   * empty when the industry has none. A broken block throws naming the field, like a broken pack.
+   */
+  sizeAdviceFor(id: string): SizeAdviceConfig {
+    const cached = this.adviceCache.get(id);
+    if (cached !== undefined) return cached;
+    this.load(id);
+    const raw = this.source.read(id)?.sizeChart;
+    const { config, problems } = raw === undefined ? { config: emptySizeAdviceConfig(), problems: [] } : parseSizeAdvice(raw, `${id}/bang-size`);
+    if (problems.length > 0) throw new PackShapeError(id, problems);
+    this.adviceCache.set(id, config);
+    return config;
+  }
+
+  private readonly consultCache = new Map<string, ConsultProfileConfig>();
+
+  /**
+   * 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): the industry's consultation profile (`thuc-the.json`
+   * `hoSoTuVan`); empty when the industry has none. A broken block throws naming the field.
+   */
+  consultProfileFor(id: string): ConsultProfileConfig {
+    const cached = this.consultCache.get(id);
+    if (cached !== undefined) return cached;
+    this.load(id);
+    const raw = this.source.read(id)?.entities;
+    const { config, problems } = raw === undefined ? { config: emptyConsultProfileConfig(), problems: [] } : parseConsultProfile(raw, `${id}/thuc-the`);
+    if (problems.length > 0) throw new PackShapeError(id, problems);
+    this.consultCache.set(id, config);
+    return config;
+  }
+
   /** The industry ids on offer, sorted, for the admin screens and error messages. */
   ids(): string[] {
     return [...this.source.ids()].sort();
@@ -277,9 +313,15 @@ export class PackRegistry {
       const known = this.ids();
       throw new Error(`Khong co bo luat nganh "${id}". Cac nganh dang co: ${known.length > 0 ? known.join(", ") : "(chua co nganh nao)"}.`);
     }
-    const pack = parsePack(raw.rules, raw.agent, raw.dialogue, raw.systemNote, {
+    const parsed = parsePack(raw.rules, raw.agent, raw.dialogue, raw.systemNote, {
       intentRules: raw.intentRules, entities: raw.entities, sizeChart: raw.sizeChart, scripts: raw.scripts, matching: raw.matching, replyGate: raw.replyGate
     });
+    // 05/10/2026: tier 1's agent tools join an industry that HAS an agent, after its own; same name = the industry's.
+    const commonTools = parsed.agent !== undefined ? this.common().tools ?? [] : [];
+    const own = new Set((parsed.agent?.tools ?? []).map((t) => t.name));
+    const pack: IndustryPack = commonTools.length > 0 && parsed.agent !== undefined
+      ? { ...parsed, agent: { ...parsed.agent, tools: [...parsed.agent.tools, ...commonTools.filter((t) => !own.has(t.name))] } }
+      : parsed;
     if (pack.id !== id) throw new Error(`Bo luat nganh "${id}" khai id la "${pack.id}" — ten thu muc va \`id\` phai giong nhau.`);
     assertPackValid(pack);
     this.cache.set(id, pack);
@@ -289,7 +331,7 @@ export class PackRegistry {
   /** Loads every pack and tier 1, so a broken one is found at start-up instead of by a customer. */
   selfCheck(): void {
     this.commonPack();
-    for (const id of this.source.ids()) this.load(id);
+    for (const id of this.source.ids()) { this.load(id); this.sizeAdviceFor(id); this.consultProfileFor(id); }
   }
 
   /** Forgets the parsed packs, so edited JSON is picked up without a restart. */
@@ -297,6 +339,8 @@ export class PackRegistry {
     this.cache.clear();
     this.promptCache.clear();
     this.linesCache.clear();
+    this.adviceCache.clear();
+    this.consultCache.clear();
     this.commonCache = null;
   }
 }
@@ -416,6 +460,16 @@ export function loadMatchingConfig(id: string): MatchingConfig {
 /** The merged reply gate config of an industry (stage 6, 25/09/2026). */
 export function loadReplyGateConfig(id: string): ReplyGateConfig {
   return registry.replyGateFor(id);
+}
+
+/** The industry's measurement → variant data (05/10/2026); empty when it ships none. */
+export function loadSizeAdvice(id: string): SizeAdviceConfig {
+  return registry.sizeAdviceFor(id);
+}
+
+/** The industry's consultation profile (05/10/2026); empty when it ships none. */
+export function loadConsultProfile(id: string): ConsultProfileConfig {
+  return registry.consultProfileFor(id);
 }
 
 /** Validates every pack on offer. Called at start-up and in the tests. */

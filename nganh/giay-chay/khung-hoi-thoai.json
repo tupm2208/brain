@@ -8,6 +8,15 @@
       "(muc dich|chay bo hay|di choi hay|dung de (chay|di)|nhu cau|chay lau chua|chay duong (nao|truong|nhua)|toc do (nao|bao)|cu ly|pace|dang chay bang|dang di (giay|doi)|hay di (choi|lam)|chay hay di|hay (duong|san|trail|leo)|duong (thuong|nhua|bang) hay|san (cung|dat) hay|nam hay nu|tap gi)"
     ]
   },
+  "_askedReferenceDoc": "05/10/2026 (phieu Desk 'vai tro anh khach gui'): page vua xin XEM doi khach DANG DI / tem trong luoi giay / so cm de canh size → anh khach gui tiep la THAM CHIEU (do size), KHONG phai mau muon mua: khong chao ban, khong tra kho mau trong anh.",
+  "askedReference": [
+    "\\btem\\b[^.?!]{0,25}\\b(ghi|in|size|bao nhieu)\\b",
+    "\\bbao nhieu (cm|phan)\\b",
+    "\\b(doi|giay) (dang|hay) (di|mang)\\b",
+    "\\bdang (di|mang) (doi|giay)\\b",
+    "\\b(doi|giay) (o nha|de o nha)\\b",
+    "\\b(canh|uom) size\\b"
+  ],
   "sizeOnly": [
     "^(3[4-9]|4[0-9]|5[0-2])(\\s*-?\\s*[12]\\s*\\/\\s*3|[.,]5|\\s*ruoi)?(\\s*(va|,|&|\\+)\\s*(3[4-9]|4[0-9]|5[0-2])(\\s*-?\\s*[12]\\s*\\/\\s*3|[.,]5)?)*$"
   ],

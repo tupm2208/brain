@@ -132,16 +132,12 @@ test("offline: no factual claims", async () => {
   assert.equal(f.calls.length, 0);
 });
 
-test("'we do not carry brand X' only with a large enough catalog", async () => {
-  const big = fakePorts({ catalogSize: 1200, items: [] });
-  const r1 = await ask(big.ports, "shop co ban salomon khong");
-  assert.equal(r1.action, "send");
-  assert.match(r1.reply, /chưa kinh doanh hàng salomon/);
-
-  const small = fakePorts({ catalogSize: 12, items: [] });
-  const r2 = await ask(small.ports, "shop co ban salomon khong");
-  assert.equal(r2.action, "ask_back");
-  assert.ok(r2.gates.some((g) => g.rule === "brand_not_carried_needs_catalog"));
+test("the rule engine never says 'we do not carry brand X' (02/10/2026: a brand the stock lacks is 'đang hết hàng')", async () => {
+  for (const catalogSize of [1200, 12]) {
+    const f = fakePorts({ catalogSize, items: [] });
+    const r = await ask(f.ports, "shop co ban salomon khong");
+    assert.doesNotMatch(r.reply, /chưa kinh doanh|không bán|không có hàng salomon/, `catalog ${catalogSize}: ${r.reply}`);
+  }
 });
 
 test("comparing with another brand still answers the real question", async () => {
@@ -256,14 +252,18 @@ test("unknown size with several sizes on the shelf: NEVER sum and label", async 
   assert.ok(!/size 42/.test(r.reply));
 });
 
-test("several prices: quote the range, not one warehouse's price", async () => {
+// 05/10/2026 (phiếu Desk "giá theo size lấy thấp nhất giữa kho"): ONE size in two warehouses at two prices is
+// quoted at the price the storefront shows for that size — the LOWEST — not as a range (the web never shows one),
+// and never the first warehouse's. A range stays for DIFFERENT variants (see gia-nhieu-kho.test.mts).
+test("one size in two warehouses at two prices: the storefront's (lowest) price, not a range, not the first warehouse's", async () => {
   const f = fakePorts({
-    rows: [row("42", 3, "w1", "Kho nha", 3190000), row("42", 4, "w2", "Kho doi tac", 3590000)]
+    rows: [row("42", 3, "w2", "Kho doi tac", 3590000), row("42", 4, "w1", "Kho nha", 3190000)]
   });
   const r = await ask(f.ports, "adizero boston 13 con size 42 khong");
   assert.equal(r.action, "send", JSON.stringify(r.gates));
   assert.match(r.reply, /Còn 7 đôi/);
-  assert.match(r.reply, /3\.190\.000đ.*3\.590\.000đ/, `One warehouse's price quoted while two differ: ${r.reply}`);
+  assert.match(r.reply, /3\.190\.000đ/, r.reply);
+  assert.doesNotMatch(r.reply, /3\.590\.000đ/, `the dearer warehouse's price reached the customer: ${r.reply}`);
 });
 
 test("money for customers uses the Vietnamese format, not a raw digit string", async () => {
@@ -283,13 +283,13 @@ test("the reply and its evidence agree AFTER formatting", async () => {
   }
 });
 
-test("loop: small catalog + unknown brand must hand off eventually", async () => {
+test("loop: small catalog + unknown brand never loops on one question, never says 'we do not carry'", async () => {
   const f = fakePorts({ catalogSize: 12, items: [] });
   const r1 = await ask(f.ports, "shop co ban salomon khong");
-  assert.equal(r1.action, "ask_back");
   f.setNow(minutes(3));
   const r2 = await ask(f.ports, "shop co ban salomon khong a");
-  assert.equal(r2.action, "handoff", "The bot loops on one question and never calls a human.");
+  if (r1.action === "ask_back") assert.equal(r2.action, "handoff", "The bot loops on one question and never calls a human.");
+  for (const r of [r1, r2]) assert.doesNotMatch(r.reply, /chưa kinh doanh|không bán/);
 });
 
 test("the old focus must not answer for the item the customer just asked about", async () => {
@@ -526,12 +526,10 @@ test("a follow-up does not lose the focus", async () => {
   assert.match(r2.reply, /Còn 6 đôi/);
 });
 
-test("the catalog threshold for 'we do not carry' comes from the PACK", async () => {
-  // The pharmacy declares 100, not the 200 hard-coded for shoes.
+test("another industry (pharmacy) never says 'we do not carry' either (02/10/2026)", async () => {
   const f = fakePorts({ items: [], catalogSize: 150 });
   const r = await ask(f.ports, "co thuoc bayer khong a", {}, "nha-thuoc");
-  assert.equal(r.action, "send", JSON.stringify(r.gates));
-  assert.match(r.reply, /không có hàng bayer/);
+  assert.doesNotMatch(r.reply, /không có hàng bayer|chưa kinh doanh|không bán/, JSON.stringify(r.gates));
 });
 
 // ===========================================================================

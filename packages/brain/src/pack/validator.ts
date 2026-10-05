@@ -26,7 +26,7 @@ export const ENGINE_VARS = [
 const ALWAYS_REQUIRED = ["greeting", "ask_item", "ask_slot", "handoff", "offline"];
 /** Optional templates the engine knows how to use. Packs may declare more. */
 export const OPTIONAL_TEMPLATES = [
-  "in_stock", "out_of_stock", "in_stock_range", "brand_not_carried",
+  "in_stock", "out_of_stock", "in_stock_range",
   "tool_failed", "ask_item_has_image"
 ];
 
@@ -113,6 +113,8 @@ export function checkIntentRules(rules: IntentRules, where: string): string[] {
   checkRegex(problems, where, pf.collected, "paymentFrame.collected");
   const rc = rules.reconcile;
   rc.carriesRequest.forEach((p, i) => checkRegex(problems, where, p, `reconcile.carriesRequest[${i}]`));
+  rc.productRejection.forEach((p, i) => checkRegex(problems, where, p, `reconcile.productRejection[${i}]`));
+  checkRegex(problems, where, rc.afterReceipt, "reconcile.afterReceipt");
   const plain = ["nudge", "pageAsked", "thanks", "pageSaidPaid", "customerReceiptImage", "buysMore", "asksForPhotos", "adviceRequest",
     "paymentContextCustomer", "paymentContextPage", "sadPhrase", "policyQuestion", "shippingFee"] as const;
   for (const key of plain) checkRegex(problems, where, rc[key], `reconcile.${key}`);
@@ -142,6 +144,7 @@ export function checkEntityConfig(config: EntityConfig, where: string): string[]
   config.sizeTagPatterns.forEach((p, i) => checkRegex(problems, where, p, `sizeTagPatterns[${i}]`));
   config.sizeBarePatterns.forEach((p, i) => checkRegex(problems, where, p, `sizeBarePatterns[${i}]`));
   config.apparelSizePatterns.forEach((p, i) => checkRegex(problems, where, p, `apparelSizePatterns[${i}]`));
+  config.sizeSystemPatterns.forEach((p, i) => checkRegex(problems, where, p, `sizeSystemPatterns[${i}]`));
   for (const key of ["range", "unitAfter", "notBefore", "footMeasure", "tagWord", "kidsText", "apparelWords", "kidsLine"] as const) {
     checkRegex(problems, where, config.bareTag[key], `bareTag.${key}`);
   }
@@ -198,7 +201,7 @@ export function checkMatchingConfig(config: MatchingConfig, where: string): stri
 export function checkReplyGateConfig(config: ReplyGateConfig, where: string): string[] {
   const problems: string[] = [];
   const loose = config as unknown as Record<string, Record<string, unknown>>;
-  const expand = (p: string): string => p.split("{money}").join(config.payment.money || "x").split("{size}").join("42");
+  const expand = (p: string): string => p.split("{money}").join(config.payment.money || "x").split("{size}").join("42").split("{doiTuong}").join("x");
   for (const [section, fields] of Object.entries(REPLY_GATE_SCHEMA)) {
     for (const [key, kind] of Object.entries(fields)) {
       const value = loose[section]?.[key];
@@ -206,8 +209,14 @@ export function checkReplyGateConfig(config: ReplyGateConfig, where: string): st
       switch (kind) {
         case "re": checkRegex(problems, where, expand(String(value ?? "")), at); break;
         case "reList": (value as string[]).forEach((p, i) => checkRegex(problems, where, expand(p), `${at}[${i}]`)); break;
-        case "reDiacritic": checkRegex(problems, where, String(value ?? ""), at, "giu"); break;
+        case "reDiacritic": checkRegex(problems, where, expand(String(value ?? "")), at, "giu"); break;
         case "reDiacriticList": (value as string[]).forEach((p, i) => checkRegex(problems, where, p, `${at}[${i}]`, "giu")); break;
+        // 05/10/2026: a rewrite map (`photoClaim.rewrite`) — its KEYS are patterns on the original text.
+        case "map":
+          if (key === "rewrite") Object.keys((value ?? {}) as Record<string, string>).forEach((p) => checkRegex(problems, where, p, `${at}[${p}]`, "giu"));
+          // 05/10/2026: the other label systems of `sizePair.alt` — their VALUES are patterns on the original text.
+          if (key === "alt") Object.entries((value ?? {}) as Record<string, string>).forEach(([k, p]) => checkRegex(problems, where, p, `${at}.${k}`, "giu"));
+          break;
         case "text": {
           const text = String(value ?? "");
           if (text === "") break;
@@ -304,7 +313,6 @@ export class PackValidator {
     const usesStock = pack.intents.some((i) => i.tools.includes("stock.lookup"));
     const required = [...ALWAYS_REQUIRED];
     if (usesStock) required.push("in_stock", "out_of_stock");
-    if (pack.lexicon.knownBrandsNotCarried.length > 0) required.push("brand_not_carried");
 
     for (const key of required) {
       const v = pack.templates[key];
@@ -421,9 +429,6 @@ export class PackValidator {
     for (const g of pack.gates) {
       if (g.kind === "ask_back_once" && g.windowMinutes <= 0) {
         report("Cong `ask_back_once` phai co cua so lon hon 0 phut.");
-      }
-      if (g.kind === "brand_not_carried_needs_catalog" && g.minItems <= 0) {
-        report("Cong `brand_not_carried_needs_catalog` phai co nguong muc luc lon hon 0.");
       }
       if (g.kind === "forbidden_patterns") {
         if (g.patterns.length === 0) report("Cong `forbidden_patterns` khong co mau nao.");

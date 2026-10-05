@@ -1,0 +1,46 @@
+{
+  "_doc": [
+    "TANG 2 — BANG GIA MAU CUA NGANH giay-chay (02/10/2026). Hien SAU cac mau chung o loi-chung/mau-bang-gia.json.",
+    "Day la bac thang gia cu cua Image Tool (22 con so an + moc mot trieu an + danh sach tu khoa giay trong ma) viet thanh dong ma shop doc va sua duoc.",
+    "Cac con so trong 'bang' la MAU cua nganh, khong phai chinh sach cua shop nao: Xeon khong bao gio ap chung vao gia. Shop chon mau thi landing chep thanh bang cua RIENG shop (tang 3), shop sua so theo cach minh ban.",
+    "Gia tri 'loai' phai dung tu vung phan loai cua landing (TYPE_CHOICES trong landing_page/src/modules/hang-kho/product-classification.ts).",
+    "Dong xet tu tren xuong, dong DAU TIEN khop la dong dung: dong cu the dung truoc dong chung. Xeon soi tep luc khoi dong, dong bi dong tren che mat la loi."
+  ],
+  "mau": [
+    {
+      "id": "giay-chay-bac-thang",
+      "ten": "Mẫu giày chạy (bậc thang Image Tool)",
+      "moTa": "Cách tính giá cũ của Image Tool (22 con số ẩn trong mã) viết lại thành 13 dòng, 2 giới hạn lãi và 2 cách làm tròn mà shop đọc và sửa được. Phụ kiện nhỏ cộng ít, giày giảm sâu cộng nhiều hơn, giày giá gốc cao cộng nhiều hơn. Đây là mẫu của ngành: chọn xong là bảng của riêng shop, sửa số theo cách shop bán.",
+      "bang": {
+        "dong": [
+          { "dk": [{ "f": "loai", "v": ["Tất"] }], "kieu": "tien", "tien": 100000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Mũ"] }, { "f": "giaGoc", "tu": null, "duoi": 1000000 }], "kieu": "tien", "tien": 100000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Mũ"] }], "kieu": "tien", "tien": 150000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Balo", "Túi xách"] }, { "f": "giaGoc", "tu": null, "duoi": 1000000 }], "kieu": "tien", "tien": 130000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Balo", "Túi xách"] }], "kieu": "tien", "tien": 180000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Quần áo", "Phụ kiện"] }, { "f": "giaGoc", "tu": null, "duoi": 1000000 }], "kieu": "tien", "tien": 150000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Quần áo", "Phụ kiện"] }], "kieu": "tien", "tien": 200000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giam", "tu": 70 }], "kieu": "tien", "tien": 300000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giam", "tu": 60 }], "kieu": "tien", "tien": 250000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giam", "tu": 50 }, { "f": "giaGoc", "tu": 2500000, "duoi": null }], "kieu": "tien", "tien": 250000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giam", "tu": 50 }], "kieu": "tien", "tien": 200000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giaGoc", "tu": 2500000, "duoi": null }], "kieu": "tien", "tien": 300000, "pt": 0 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giaGoc", "tu": 1500000, "duoi": null }], "kieu": "tien", "tien": 250000, "pt": 0 }
+        ],
+        "conLai": { "kieu": "tien", "tien": 200000, "pt": 0 },
+        "gioiHan": [
+          { "dk": [{ "f": "giaGoc", "tu": 300001, "duoi": null }], "tien": 0, "pt": 10 },
+          { "dk": [{ "f": "loai", "v": ["Giày"] }, { "f": "giaGoc", "tu": 1000001, "duoi": null }], "tien": 200000, "pt": 0 }
+        ],
+        "lamTron": [
+          {
+            "dk": [{ "f": "loai", "v": ["Quần áo", "Balo", "Túi xách", "Mũ", "Tất", "Phụ kiện"] }, { "f": "giaTruoc", "duoi": 1000000 }],
+            "buoc": 50000, "huong": "gan", "tru": 10000, "tronTram": true
+          },
+          { "dk": [], "buoc": 100000, "huong": "gan", "tru": 10000, "tronTram": false }
+        ],
+        "khongQuaNiemYet": false
+      }
+    }
+  ]
+}

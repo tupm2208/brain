@@ -20,7 +20,7 @@
  */
 
 import { redactPII, type ConversationId, type TenantId, type ToolName } from "@sp/contract";
-import { TurnEngine, applyShopProfile, blockFingerprint } from "@sp/brain";
+import { TurnEngine, applyShopProfile, blockFingerprint, priceOf } from "@sp/brain";
 import type { ChatModelPort } from "../agent/chat-model";
 import { composeSystemPrompt, parseAgentJson, systemCapabilities, type AgentTurnInput } from "../agent/sales-agent";
 import type { BrainService } from "../brain/brain-service";
@@ -337,7 +337,7 @@ export class AiDeskService {
       const found = await tools.call("catalog.find", { ...(code ? { ma: code } : {}), ...(modelName ? { ten: `${String(doc["brand"])} ${modelName}`.trim() } : {}) });
       if (found.ok && Array.isArray(found.data.ketQua)) {
         for (const item of found.data.ketQua.slice(0, 5)) {
-          ungVien.push({ ma: item.ma, ten: item.ten, anh: item.anh, link: item.link, gia: item.cac_size[0]?.gia ?? 0, sizes: item.cac_size.map((c) => c.size) });
+          ungVien.push({ ma: item.ma, ten: item.ten, anh: item.anh, link: item.link, gia: priceOf(item), sizes: item.cac_size.map((c) => c.size) });
         }
       }
     }

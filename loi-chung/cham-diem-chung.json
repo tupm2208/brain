@@ -29,6 +29,14 @@
     "limit": 5
   },
   "skuLikePattern": "(?:[a-z]{1,3}\\d{4,}|\\d{4,}[a-z]|\\d+[a-z]{1,3}\\d{3,}|\\d{2,}-\\d{2,})",
+  "_hoiBienTheKhacDoc": "05/10/2026 (phieu Desk 05/09): khach hoi cac BIEN THE KHAC cua mon dang noi (mau / ma / kieu khac, con nhung mau nao) → su that ton kho liet ke cac ban cung mau con dung bien the khach hoi. Chu chung moi nganh; nganh noi them danh tu cua minh (giay: 'doi').",
+  "hoiBienTheKhac": [
+    "\\b(mau|mau sac|phien ban|kieu)( nao| gi)? khac\\b",
+    "\\bma (nao|gi) khac\\b",
+    "\\bcon (nhung |cac )?(mau|mau sac|ma|kieu) (nao|gi)\\b",
+    "\\b(nhung|co) (mau|kieu) (nao|gi)\\b",
+    "\\b(mau|ma|kieu) nao (con|khac)\\b"
+  ],
   "sizes": {
     "_doc": "Doc nhan size kho: bo tien to he A cua quan ao ('A/88' = '88', 'A/XL' = 'XL'), XXL = 2XL, so chenh <= tolerance van coi la cung nac (adidas 42 2/3 vs 42.5), so tran >= apparelMin la size quan ao chu khong phai giay.",
     "apparelPrefix": "^A\\s*\\/?\\s*",
@@ -47,7 +55,7 @@
     "specificItemNoun": "\\b(doi|mau|cai|con|chiec|dep|giay|ao|quan|mon|the|ban|em|bo)\\s+(nay|kia|ay)\\b|\\b(doi|cai|con|chiec|dep|giay|ao|quan|mon|the|ban|em)\\s+do\\b",
     "categoryQuestion": "\\b(co|con)\\s+(ban\\s+)?[^?]{0,40}\\b(khong|ko|k)\\b",
     "sizeHint": "\\b(size|sz)\\b|\\bso\\s*\\d|\\b\\d{2}([.,]\\d)?\\b|\\b(xs|xl|xxl|2xl|3xl)\\b",
-    "genericItemTokens": ["size", "so", "doi", "mau", "cai", "chiec", "san", "hang", "the", "thao", "moi", "cu", "shop", "ben", "minh", "em", "cho", "co", "khong", "ko", "gia", "bao", "nhieu", "re", "dat", "tot", "nam", "nu", "unisex"]
+    "genericItemTokens": ["size", "so", "doi", "mau", "cai", "chiec", "san", "hang", "the", "thao", "moi", "cu", "shop", "ben", "minh", "em", "cho", "co", "khong", "ko", "gia", "bao", "nhieu", "re", "dat", "tot", "nam", "nu", "unisex", "ban", "con", "oi", "nhe", "nha", "vay", "hong", "khg", "nao", "loai", "mua", "tim", "can", "xem", "hoi"]
   },
   "texts": {
     "_doc": "Cau chu trong su that ton kho (doc cho mo hinh, khong gui khach).",

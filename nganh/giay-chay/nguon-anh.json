@@ -1,0 +1,136 @@
+{
+  "moTa": "Trang nguon anh cua nganh giay chay: trang chinh hang theo tung hang va danh sach dai ly. Xeon dung de gan nhan nguon cho tung anh (Chinh hang / Dai ly / Trang khac) va lam bac khoi diem cua so uy tin trang nguon. Mau ten mien khop tu dau ten mien hoac sau dau cham, nhu may tim anh (cong-cu-anh/engine/search_images.py, 04/10/2026).",
+  "chinhHang": {
+    "adidas": [
+      "adidas.com.vn",
+      "adidas.com",
+      "adidas.co.uk",
+      "adidas.de",
+      "adidas.co.id",
+      "adidas.com.my",
+      "adidas.co.jp",
+      "adidas.co.kr",
+      "adidas.co.th",
+      "adidas.com.au",
+      "adidas.com.sg",
+      "adidas.fr",
+      "shop.adidas.",
+      "adidas.co.",
+      "assets.adidas.com"
+    ],
+    "nike": [
+      "nike.com.vn",
+      "nike.com",
+      "nike.co.uk",
+      "nike.jp",
+      "nike.com.au",
+      "nike.com.br",
+      "nike.com.sg",
+      "nike.com.",
+      "nike.co.",
+      "static.nike.com"
+    ],
+    "puma": [
+      "puma.com",
+      "puma.com.vn",
+      "puma.com.",
+      "puma.co.",
+      "images.puma.com"
+    ],
+    "asics": [
+      "asics.com",
+      "asics.com.vn",
+      "asics.co.jp",
+      "asics.com.",
+      "asics.co."
+    ],
+    "hoka": [
+      "hoka.com",
+      "hoka.com.vn"
+    ],
+    "saucony": [
+      "saucony.com",
+      "saucony.com.vn",
+      "saucony.com.",
+      "saucony.co."
+    ],
+    "new balance": [
+      "newbalance.com",
+      "newbalance.com.vn",
+      "newbalance.co.uk",
+      "newbalance.jp",
+      "newbalance.com.au"
+    ],
+    "brooks": [
+      "brooksrunning.com"
+    ],
+    "mizuno": [
+      "mizuno.com",
+      "mizunousa.com",
+      "mizuno.jp",
+      "mizuno.com.vn",
+      "mizuno.com.",
+      "mizuno.co."
+    ],
+    "salomon": [
+      "salomon.com",
+      "salomon.com.vn"
+    ],
+    "on running": [
+      "on.com",
+      "on-running.com"
+    ]
+  },
+  "daiLy": [
+    "adidas-phoenix.com.vn",
+    "supersport",
+    "authentic-shoes.com",
+    "sportpro.vn",
+    "sport1.vn",
+    "maxxsport.com",
+    "sneakerdaily.vn",
+    "jordan1.vn",
+    "mixsport.vn",
+    "kickscrew.com",
+    "6thstreet.com",
+    "r-gol.com",
+    "olympiasports.",
+    "emmecisport.com",
+    "brandsforless.com",
+    "sneaker10.",
+    "skroutz.",
+    "flexdog.com",
+    "soccerpoint.com.ua",
+    "shopee.vn",
+    "runningwarehouse.",
+    "sportsshoes.com",
+    "runnersneed.com",
+    "zappos.com",
+    "rei.com",
+    "wiggle.",
+    "endclothing.com",
+    "sneakersnstuff.com",
+    "footlocker.",
+    "jdsports.",
+    "size.co.uk",
+    "zalando.",
+    "footshop.",
+    "43einhalb.com",
+    "afew-store.com",
+    "solebox.com",
+    "snipes.com",
+    "kith.com",
+    "finishline.com",
+    "dtlr.com",
+    "dickssportinggoods.com",
+    "sportsdirect.com",
+    "decathlon.",
+    "abc-mart.net",
+    "abc-mart.co.kr",
+    "musinsa.com",
+    "atmos-tokyo.com",
+    "zalora.",
+    "prodirectsport.com",
+    "unisportstore.com"
+  ]
+}

@@ -89,6 +89,25 @@ export class PaymentClaimKit {
     return false;
   }
 
+  /**
+   * 05/10/2026: one sentence states the CUSTOMER's money already went ("khoản cọc bác đã chuyển…") —
+   * not a question, not a condition ("khi / nếu bác đã chuyển"), not a refund.
+   */
+  sentenceClaimsCustomerPaid(sentence: string): boolean {
+    const raw = String(sentence ?? "").trim();
+    if (raw === "" || /\?\s*$/.test(raw)) return false;
+    const text = this.fold(raw);
+    if (this.refund?.test(text) === true || this.shopPays?.test(text) === true) return false;
+    for (const pattern of this.cfg.customerPaid ?? []) {
+      let re: RegExp;
+      try { re = new RegExp(pattern); } catch { continue; }
+      const match = re.exec(text);
+      if (match === null || this.negatedBefore(text, match.index)) continue;
+      return true;
+    }
+    return false;
+  }
+
   /** The customer asked whether the money arrived, or announced they sent it. */
   customerAsksPaymentReceived(customerMessage: string): boolean {
     return this.customerAsks !== null && this.customerAsks.test(this.fold(customerMessage));

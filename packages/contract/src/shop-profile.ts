@@ -2,8 +2,9 @@
  * @file THE SHOP PROFILE — tier 3 of the brain's three tiers (decided 24/09/2026).
  *
  * Tier 1 is the platform's own conduct (code + `loi-chung/`), tier 2 is an industry's know-how
- * (`nganh/<id>/`), and tier 3 is what is true of ONE shop only: how it addresses customers, what it
- * sells, how it sells (deposit, lead time, COD, bargaining), when a person must take over. Two
+ * (`nganh/<id>/`), and tier 3 is what is true of ONE shop only: how it addresses customers, how it sells (deposit, lead
+ * time, COD, bargaining), when a person must take over, and its own questions / procedures. WHAT it
+ * sells is not here: that is the shop's stock on its landing (02/10/2026, Dũng — "không cần khai"). Two
  * shops in the same industry run the same brain and still speak their own policy because of this.
  *
  * The profile LIVES ON THE SHOP'S LANDING and reaches Xeon through the `shop.profile` tool, once per
@@ -37,11 +38,12 @@ export interface ShopProfileSelling {
    */
   khiChot: "phieu" | "goi-nguoi" | "";
   /**
-   * The sentence for a model or brand the shop does not have (24/09/2026, Dũng: "Hiện nhà em không
-   * còn mẫu đó / hãng đó"). Both the agent and the rule engine say exactly this; `{hang}` / `{mau}`
-   * are filled when known.
+   * 05/10/2026: an order still open this many days after it was placed is an OLD order (the person on
+   * duty forgot to close it). `null` = chua khai: an open order always counts as running — the bot is
+   * careful not to sell the ordered item again, rather than guessing the order is over. The LANDING
+   * applies it (order stage); the brain only reads the stage.
    */
-  cauKhongCo: string;
+  hanDonTreoNgay: number | null;
 }
 
 export interface ShopProfileHandoff {
@@ -50,7 +52,18 @@ export interface ShopProfileHandoff {
   /** How forward the bot is about closing: never / only on a buying signal / after quoting. */
   mucChot: "khong" | "dau-hieu" | "sau-bao-gia" | "";
   gioTruc: string;
+  /**
+   * 05/10/2026 (phiếu Desk "nhường khi người thật đang trực"): minutes the bot keeps out of a conversation
+   * after a person on duty wrote or typed in it; then, if the customer is still the last to speak, the
+   * bot answers again. `null` = chua khai: the platform's default (`DEFAULT_HUMAN_YIELD_MINUTES`).
+   */
+  phutNhuong: number | null;
 }
+
+/** The yield window when the shop has not set `chuyenNguoi.phutNhuong` (Desk: 5 minutes). */
+export const DEFAULT_HUMAN_YIELD_MINUTES = 5;
+/** The longest yield window a shop may set: past it a waiting customer is a lost one. */
+export const MAX_HUMAN_YIELD_MINUTES = 60;
 
 /**
  * One industry block the shop touched. `nganh` = use the industry's text (the default for every
@@ -64,6 +77,15 @@ export interface ShopProfileBlock {
   phienBanNganh: string;
 }
 
+/** A question customers often ask that no field above holds, and the shop's own answer (02/10/2026). */
+export interface ShopProfileQuestion { cauHoi: string; traLoi: string }
+/**
+ * One procedure of the shop's own ("khi khách hỏi size thì hỏi chiều dài chân"). It comes AFTER the
+ * platform's rules and the industry's blocks: it may add, it can never override. `khoi` = the industry
+ * block it sits next to, when the analysis found one ("" otherwise).
+ */
+export interface ShopProfileProcedure { quyTac: string; khoi: string }
+
 export interface ShopProfile {
   /** Bumped on every save; the turn dossier records which version answered. */
   phienBan: number;
@@ -71,9 +93,6 @@ export interface ShopProfile {
   xungHo: { khach: string; shop: string };
   giong: { emoji: ProfileChoice; doDai: "ngan" | "vua" | ""; ghiChu: string };
   cauCam: string[];
-  hangCoBan: string[];
-  hangKhongBan: string[];
-  monTheThao: string[];
   banHang: ShopProfileSelling;
   chuyenNguoi: ShopProfileHandoff;
   /**
@@ -92,10 +111,17 @@ export interface ShopProfile {
    * cứng — điền vào chỗ trống `{tenNguoiPhuTrach}` của cổng soát và kịch bản. Rỗng = "người phụ trách".
    */
   tenNguoiPhuTrach: string;
-  /** Field path → who set it. Absent = chua khai. */
-  nguon: Record<string, "shop" | "nganh">;
+  /** Câu hỏi riêng của shop (02/10/2026): khách hỏi đúng ý thì bot trả theo đúng nội dung này. */
+  cauHoiRieng: ShopProfileQuestion[];
+  /** Quy trình riêng của shop (02/10/2026): sau luật chung và khối ngành, chỉ thêm, không ghi đè. */
+  quyTrinhRieng: ShopProfileProcedure[];
+  /** Field path → who set it: the shop typed it, accepted the industry's suggestion, or the AI filled it from a document the shop loaded. Absent = chua khai. */
+  nguon: Record<string, ProfileSource>;
   khoiNganh: Record<string, ShopProfileBlock>;
 }
+
+/** Who set a field (02/10/2026: "ai" = filled by the AI from a document the shop loaded). */
+export type ProfileSource = "shop" | "nganh" | "ai";
 
 /** An empty profile: every field "chua khai". */
 export function emptyShopProfile(): ShopProfile {
@@ -105,15 +131,14 @@ export function emptyShopProfile(): ShopProfile {
     xungHo: { khach: "", shop: "" },
     giong: { emoji: "", doDai: "", ghiChu: "" },
     cauCam: [],
-    hangCoBan: [],
-    hangKhongBan: [],
-    monTheThao: [],
-    banHang: { coHangOrder: "", thoiGianOrder: "", tiLeCoc: null, codHangSan: "", doiTraHangOrder: "", doiSizeDonDaDat: "", macCa: { kieu: "", chiTiet: "" }, khiChot: "", cauKhongCo: "" },
-    chuyenNguoi: { chuDe: [], mucChot: "", gioTruc: "" },
+    banHang: { coHangOrder: "", thoiGianOrder: "", tiLeCoc: null, codHangSan: "", doiTraHangOrder: "", doiSizeDonDaDat: "", macCa: { kieu: "", chiTiet: "" }, khiChot: "", hanDonTreoNgay: null },
+    chuyenNguoi: { chuDe: [], mucChot: "", gioTruc: "", phutNhuong: null },
     camKetHang: "",
     cuaHang: "",
     cauChaoAi: "",
     tenNguoiPhuTrach: "",
+    cauHoiRieng: [],
+    quyTrinhRieng: [],
     nguon: {},
     khoiNganh: {}
   };
@@ -131,9 +156,6 @@ export const SHOP_PROFILE_FIELDS: readonly { path: string; nhan: string }[] = [
   { path: "giong.doDai", nhan: "Độ dài tin nhắn" },
   { path: "giong.ghiChu", nhan: "Giọng nói" },
   { path: "cauCam", nhan: "Câu cấm riêng của shop" },
-  { path: "hangCoBan", nhan: "Hãng có bán" },
-  { path: "hangKhongBan", nhan: "Hãng không bán" },
-  { path: "monTheThao", nhan: "Môn / nhóm hàng có bán" },
   { path: "banHang.coHangOrder", nhan: "Có hàng order" },
   { path: "banHang.thoiGianOrder", nhan: "Thời gian hàng order" },
   { path: "banHang.tiLeCoc", nhan: "Cọc tối thiểu hàng order (%)" },
@@ -142,10 +164,11 @@ export const SHOP_PROFILE_FIELDS: readonly { path: string; nhan: string }[] = [
   { path: "banHang.doiSizeDonDaDat", nhan: "Đổi size đơn đã đặt" },
   { path: "banHang.macCa", nhan: "Mặc cả" },
   { path: "banHang.khiChot", nhan: "Khách chốt thì" },
-  { path: "banHang.cauKhongCo", nhan: "Câu khi không có mẫu / hãng" },
+  { path: "banHang.hanDonTreoNgay", nhan: "Đơn chưa đóng quá bao nhiêu ngày thì coi là đơn cũ" },
   { path: "chuyenNguoi.chuDe", nhan: "Chủ đề cần người thật" },
   { path: "chuyenNguoi.mucChot", nhan: "Mức chủ động mời chốt" },
   { path: "chuyenNguoi.gioTruc", nhan: "Giờ có người trực" },
+  { path: "chuyenNguoi.phutNhuong", nhan: "Người trực vừa nhắn thì bot chờ bao nhiêu phút" },
   { path: "camKetHang", nhan: "Cam kết về hàng (chính hãng…)" },
   { path: "cuaHang", nhan: "Cửa hàng, giờ mở cửa" },
   { path: "cauChaoAi", nhan: "Câu chào trợ lý AI (gửi một lần cho mỗi khách)" }
@@ -188,9 +211,13 @@ export function readShopProfile(raw: unknown): ShopProfile {
   const macCa = asRecord(banHang["macCa"]);
   const chuyenNguoi = asRecord(o["chuyenNguoi"]);
   const coc = banHang["tiLeCoc"];
+  const han = banHang["hanDonTreoNgay"];
+  const nhuong = chuyenNguoi["phutNhuong"];
+  const nhuongNumber = typeof nhuong === "number" ? nhuong : typeof nhuong === "string" && nhuong.trim() !== "" ? Number(nhuong) : NaN;
+  const hanNumber = typeof han === "number" ? han : typeof han === "string" && han.trim() !== "" ? Number(han) : NaN;
   const cocNumber = typeof coc === "number" ? coc : typeof coc === "string" && coc.trim() !== "" ? Number(coc) : NaN;
   const nguon: ShopProfile["nguon"] = {};
-  for (const [k, v] of Object.entries(asRecord(o["nguon"]))) if (v === "shop" || v === "nganh") nguon[k.slice(0, 60)] = v;
+  for (const [k, v] of Object.entries(asRecord(o["nguon"]))) if (v === "shop" || v === "nganh" || v === "ai") nguon[k.slice(0, 60)] = v;
   const khoiNganh: ShopProfile["khoiNganh"] = {};
   for (const [id, v] of Object.entries(asRecord(o["khoiNganh"])).slice(0, 60)) {
     const b = asRecord(v);
@@ -203,9 +230,6 @@ export function readShopProfile(raw: unknown): ShopProfile {
     xungHo: { khach: asText(xungHo["khach"], 20), shop: asText(xungHo["shop"], 20) },
     giong: { emoji: asChoice(giong["emoji"], ["co", "khong"] as const), doDai: asChoice(giong["doDai"], ["ngan", "vua"] as const), ghiChu: asText(giong["ghiChu"], 600) },
     cauCam: asList(o["cauCam"], 40, 120),
-    hangCoBan: asList(o["hangCoBan"], 60, 60),
-    hangKhongBan: asList(o["hangKhongBan"], 60, 60),
-    monTheThao: asList(o["monTheThao"], 40, 60),
     banHang: {
       coHangOrder: asChoice(banHang["coHangOrder"], ["co", "khong"] as const),
       thoiGianOrder: asText(banHang["thoiGianOrder"], 200),
@@ -216,13 +240,21 @@ export function readShopProfile(raw: unknown): ShopProfile {
       macCa: { kieu: asChoice(macCa["kieu"], ["khong-giam", "giam-toi-da", "qua-tang"] as const), chiTiet: asText(macCa["chiTiet"], 400) },
       // "link-web" was the first name of "phieu" (24/09/2026); an old landing may still send it.
       khiChot: banHang["khiChot"] === "link-web" ? "phieu" : asChoice(banHang["khiChot"], ["phieu", "goi-nguoi"] as const),
-      cauKhongCo: asText(banHang["cauKhongCo"], 200)
+      hanDonTreoNgay: Number.isFinite(hanNumber) && hanNumber >= 1 && hanNumber <= 365 ? Math.round(hanNumber) : null
     },
-    chuyenNguoi: { chuDe: asList(chuyenNguoi["chuDe"], 40, 80), mucChot: asChoice(chuyenNguoi["mucChot"], ["khong", "dau-hieu", "sau-bao-gia"] as const), gioTruc: asText(chuyenNguoi["gioTruc"], 80) },
+    chuyenNguoi: {
+      chuDe: asList(chuyenNguoi["chuDe"], 40, 80), mucChot: asChoice(chuyenNguoi["mucChot"], ["khong", "dau-hieu", "sau-bao-gia"] as const), gioTruc: asText(chuyenNguoi["gioTruc"], 80),
+      phutNhuong: Number.isFinite(nhuongNumber) && nhuongNumber >= 1 && nhuongNumber <= MAX_HUMAN_YIELD_MINUTES ? Math.round(nhuongNumber) : null
+    },
     camKetHang: asText(o["camKetHang"], 300),
     cuaHang: asText(o["cuaHang"], 300),
     cauChaoAi: asText(o["cauChaoAi"], 500),
     tenNguoiPhuTrach: asText(o["tenNguoiPhuTrach"], 60),
+    // Old landings still send hangCoBan / hangKhongBan / monTheThao / banHang.cauKhongCo: ignored on purpose.
+    cauHoiRieng: (Array.isArray(o["cauHoiRieng"]) ? o["cauHoiRieng"] : []).map(asRecord)
+      .map((x) => ({ cauHoi: asText(x["cauHoi"], 300), traLoi: asText(x["traLoi"], 1000) })).filter((x) => x.cauHoi !== "" && x.traLoi !== "").slice(0, 80),
+    quyTrinhRieng: (Array.isArray(o["quyTrinhRieng"]) ? o["quyTrinhRieng"] : []).map(asRecord)
+      .map((x) => ({ quyTac: asText(x["quyTac"], 600), khoi: asText(x["khoi"], 40) })).filter((x) => x.quyTac !== "").slice(0, 60),
     nguon,
     khoiNganh
   };

@@ -98,6 +98,10 @@ export function renderBlocks(blocks: readonly AgentBlock[], values: FillValues):
   return blocks.map((b) => `## ${b.tieuDe}\n${fillAgentText(b.loiDan, values)}`).join("\n\n");
 }
 
+/** How many of the shop's own questions / procedures reach the prompt (the rest stay on the landing). */
+const MAX_QUESTIONS = 40;
+const MAX_PROCEDURES = 30;
+
 const MAC_CA: Record<string, string> = { "khong-giam": "KHONG giam gia, ban dung gia niem yet", "giam-toi-da": "duoc giam, toi da theo muc shop khai", "qua-tang": "khong giam gia, co the tang kem" };
 const KHI_CHOT: Record<string, string> = { phieu: "moi khach dien phieu dat hang", "goi-nguoi": "goi nguoi phu trach vao len don" };
 const MUC_CHOT: Record<string, string> = { khong: "KHONG BAO GIO moi chot; tra loi dung thong tin roi dung", "dau-hieu": "chi moi chot khi khach TU co dau hieu mua (lay/dat/mua/ship/coc/cho dia chi-SDT)", "sau-bao-gia": "sau khi bao gia co the moi khach chot mot cau ngan" };
@@ -120,10 +124,7 @@ export function renderProfile(hoSo: ShopProfile | null | undefined, chinhSach?: 
   if (set("giong.ghiChu")) lines.push(`- GIONG: ${p.giong.ghiChu}`);
   if (set("giong.emoji")) lines.push(`- Bieu tuong cam xuc: ${p.giong.emoji === "co" ? "duoc dung khi hop (vd :D)" : "KHONG dung"}.`);
   if (set("giong.doDai")) lines.push(`- Do dai tin: ${p.giong.doDai === "ngan" ? "ngan nhu nguoi that nhan tin (khoang 7-15 tu), moi luot MOT tin" : "vua phai, toi da 3-4 cau, moi luot MOT tin"}.`);
-  if (set("hangCoBan")) lines.push(`- HANG CO BAN: ${p.hangCoBan.join(", ")}.`);
-  if (set("hangKhongBan")) lines.push(`- HANG KHONG BAN: ${p.hangKhongBan.join(", ")}. Khach hoi hang nay thi noi thang, khong tra kho.`);
-  if (set("monTheThao")) lines.push(`- MON / NHOM HANG CO BAN: ${p.monTheThao.join(", ")}. Khach hoi mon trong danh sach nay thi tra_kho theo mon, CAM noi "ben em khong ban".`);
-  if (set("banHang.cauKhongCo")) lines.push(`- KHI KHONG CO MAU / HANG KHACH HOI: noi dung cau "${p.banHang.cauKhongCo}" (KHONG noi "het hang", KHONG noi "chua kinh doanh"), roi goi y 2-3 mau tuong tu con hang neu tra duoc.`);
+  // 02/10/2026: no "hãng có / không bán" here any more — what the shop sells is its stock, read by tra_kho each turn.
   say("banHang.coHangOrder", p.banHang.coHangOrder === "co"
     ? `HANG ORDER: shop CO ban hang order. Noi "dang dat duoc", KHONG noi "co san"; CAM noi "hang dang ve/sap ve".${set("banHang.thoiGianOrder") ? ` Thoi gian: ${p.banHang.thoiGianOrder}.` : ""}${p.banHang.tiLeCoc !== null ? ` Coc truoc toi thieu ${p.banHang.tiLeCoc}% de giu don, con lai tra khi nhan.` : ""}`
     : "HANG ORDER: shop KHONG ban hang order — chi tu van hang co san.", "hàng order");
@@ -140,6 +141,14 @@ export function renderProfile(hoSo: ShopProfile | null | undefined, chinhSach?: 
   if (set("cauCam")) lines.push(`- CAU CAM RIENG CUA SHOP: ${p.cauCam.map((c) => `"${c}"`).join(", ")}.`);
   say("camKetHang", `CAM KET VE HANG (khach hoi chinh hang / that gia): "${p.camKetHang}". Chi noi dung cau nay, khong them.`, "cam kết về hàng (chính hãng?)");
   say("cuaHang", `CUA HANG / GIO MO CUA: ${p.cuaHang}`, "cửa hàng, giờ mở cửa");
+  if (p.cauHoiRieng.length > 0) {
+    lines.push("- CAU HOI RIENG CUA SHOP (khach hoi dung y nao thi tra loi theo DUNG noi dung do, viet lai theo giong shop; KHONG them con so khac; gia / size / ton van tra kho):");
+    for (const q of p.cauHoiRieng.slice(0, MAX_QUESTIONS)) lines.push(`  * Hoi: ${q.cauHoi} → Tra loi: ${q.traLoi}`);
+  }
+  if (p.quyTrinhRieng.length > 0) {
+    lines.push("- QUY TRINH RIENG CUA SHOP (lam them theo cac buoc nay; trai luat chung o tren thi luat chung thang):");
+    for (const r of p.quyTrinhRieng.slice(0, MAX_PROCEDURES)) lines.push(`  * ${r.quyTac}`);
+  }
   const policy = chinhSach ?? { doiTra: "", ship: "", baoHanh: "" };
   const policyMissing = (["doiTra", "ship", "baoHanh"] as const).filter((k) => policy[k].trim() === "");
   if (policyMissing.length < 3) lines.push(`- CHINH SACH ${(["doiTra", "ship", "baoHanh"] as const).filter((k) => policy[k].trim() !== "").map((k) => ({ doiTra: "doi tra", ship: "ship", baoHanh: "bao hanh" })[k]).join(", ")}: da khai, goi chinh_sach de doc nguyen van truoc khi noi.`);

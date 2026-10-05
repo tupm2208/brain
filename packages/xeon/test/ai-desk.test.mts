@@ -121,7 +121,7 @@ test("price table: gateway prefixes and thinking levels share a price; dated row
   assert.deepEqual(readOpenAiUsage({ prompt_tokens: 100, completion_tokens: 111, reasoning_tokens: 2885 }), { inputTokens: 100, outputTokens: 2996, reasoningTokens: 2885, cacheReadTokens: 0 }, "the gateway counts reasoning OUTSIDE completion");
 });
 
-test("DRAFT: the reply and every step come back, NOTHING is sent, memory is not written; the shop's approved knowledge reaches the prompt; partner goods paused = own stock only", async () => {
+test("DRAFT: the reply and every step come back, NOTHING is sent, memory is not written; the conversation's context reaches the prompt (Training AI lists do not, 02/10/2026); partner goods paused = own stock only", async () => {
   const model = scriptedModel([
     "{\"tool\":\"tra_kho\",\"args\":{\"ten\":\"Boston 13\",\"size\":\"42\"}}",
     "{\"reply\":\"Dạ Boston 13 size 42 bên em còn, giá 3.290.000đ ạ.\"}"
@@ -144,8 +144,7 @@ test("DRAFT: the reply and every step come back, NOTHING is sent, memory is not 
   const findCall = landing.calls.find((c) => c.body?.["ten"] === "catalog.find")!;
   assert.equal(findCall.body!["input"]["chi_hang_san"], true, "partner goods paused: the finder is told in-stock only");
   const system = model.seen[0]![0]!.content;
-  assert.match(system, /HOI DAP SHOP DA DUYET[\s\S]*ship mấy ngày/);
-  assert.match(system, /VI DU VAN PHONG SHOP/);
+  assert.doesNotMatch(system, /HOI DAP SHOP DA DUYET|VI DU VAN PHONG SHOP|QUY TAC SHOP DA DUYET|HO SO KHACH MAU/, "an old landing's Training AI lists are ignored");
   assert.match(system, /SAN PHAM NGOAI HE THONG[\s\S]*NG-0917-01/);
   // The ledger knows whose call it was.
   const rows = usage.rows("toprun", 0, Date.now() + 1e10);

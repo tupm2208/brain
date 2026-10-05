@@ -260,7 +260,8 @@ test("BrainService: a human answered 2 minutes ago -> the bot stays quiet; the a
   ] });
   const quietModel = scriptedModel(["{\"reply\":\"x\"}"]);
   const quiet = await licensedBrain(human, quietModel);
-  assert.deepEqual(await quiet.brain.handleInbound(MESSAGE), { daTraLoi: false, viSao: "nguoi_dang_truc" });
+  // 05/10/2026: the verdict says when the yield ends (5 minutes after the person's line), so the turn is handed back then.
+  assert.deepEqual(await quiet.brain.handleInbound(MESSAGE), { daTraLoi: false, viSao: "nguoi_dang_truc", nhuongDen: "2026-09-16T11:03:00.000Z" });
   assert.ok(!human.calls.some((c) => c.path === "/api/hop-thu/gui"));
   assert.equal(quietModel.seen.length, 0, "not even LLM#1 runs while a person is answering");
 

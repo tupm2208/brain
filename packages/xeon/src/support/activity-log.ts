@@ -19,6 +19,7 @@ export type ActivityKind =
   | "tin-den"        // POST /tin-den from a landing
   | "meta-chuyen"    // forwarding a Meta packet to a landing
   | "meta-retry"     // retrying a pending Meta packet
+  | "meta-xoa"       // the app's data deletion / deauthorize callbacks (02/10/2026)
   | "goi-landing"    // any outbound call to a landing (tool, memory, reply, …)
   | "license"        // licence check / duty / leave / register
   | "viet-bai"       // POST /viet-bai

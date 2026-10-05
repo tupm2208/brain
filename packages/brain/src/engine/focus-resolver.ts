@@ -112,7 +112,12 @@ export class FocusResolver {
       const n = normalize(claim.product);
       const hit = pool.find((p) => (p.code ?? "") !== "" && n.includes(normalize(p.code)))
         ?? pool.find((p) => (p.name ?? "") !== "" && (n.includes(normalize(p.name)) || normalize(p.name).includes(n)));
-      if (hit !== undefined) return { product: hit, source: "ai", ...(dropped.length > 0 ? { dropped: dropped.join(",") } : {}) };
+      // 05/10/2026 (phiếu Desk "ảnh lượt này mượn dữ liệu ngoài phiên"): under a photo nobody recognised the model
+      // read its claim from the whole thread — an item only an EARLIER session names is not "cái này".
+      const session = unrecognisedImage ? normalize((input.sessionTexts ?? []).join(" ")) : "";
+      const namedHere = (p: ProductRef): boolean => ((p.code ?? "") !== "" && session.includes(normalize(p.code))) || ((p.name ?? "") !== "" && session.includes(normalize(p.name)));
+      if (hit !== undefined && unrecognisedImage && !namedHere(hit)) dropped.push("ai_focus_outside_session");
+      else if (hit !== undefined) return { product: hit, source: "ai", ...(dropped.length > 0 ? { dropped: dropped.join(",") } : {}) };
     }
 
     // 6) Desk `productFromLedger`: the episode's main item, then the newest ledger entry within the gap.

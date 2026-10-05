@@ -285,7 +285,7 @@ test("the pipeline alone: a comment goes to the engine only; a human on duty sil
   const busy = fakeLanding([...THREAD, { chieu: "di", boi: "Minh", chu: "dạ còn ạ", soAnh: 0, luc: "2026-09-25T08:59:55.000Z" }]);
   const quiet = scriptedModel([ANALYSIS]);
   const { brain: quietBrain } = await brainWith(busy, { analyzer: quiet, agent: scriptedModel([]), writer: null });
-  assert.deepEqual(await quietBrain.handleInbound(MESSAGE), { daTraLoi: false, viSao: "nguoi_dang_truc" });
+  assert.deepEqual(await quietBrain.handleInbound(MESSAGE), { daTraLoi: false, viSao: "nguoi_dang_truc", nhuongDen: "2026-09-25T09:04:55.000Z" });
   assert.equal(quiet.seen.length, 0);
 
   assert.deepEqual(AGENT_TOOLS, ["catalog.find", "conversation.recent"]);
@@ -308,6 +308,8 @@ interface LandingOptions {
   hoSo?: Record<string, unknown>;
   /** Codes whose card the landing says it sent within six hours. */
   theDaGui?: string[];
+  /** 05/10/2026: the orders linked to the conversation (`hoiThoai.donCuaHoiThoai`). */
+  linkedOrders?: unknown[];
 }
 
 function landingWith(o: LandingOptions) {
@@ -322,7 +324,7 @@ function landingWith(o: LandingOptions) {
     if (u.pathname === "/api/bo-nao/cong-cu" && init.method === "GET") return reply({ ok: true, congCu: tools });
     if (u.pathname === "/api/bo-nao/cong-cu") {
       const tool = String(body!["ten"]);
-      if (tool === "conversation.recent") return reply({ ok: true, data: { tin: o.thread ?? THREAD, hoiThoai: { daChaoAi: false, dienThoaiDaCho: (o.orders ?? []).length > 0, theDaGui: o.theDaGui ?? [] } } });
+      if (tool === "conversation.recent") return reply({ ok: true, data: { tin: o.thread ?? THREAD, hoiThoai: { daChaoAi: false, dienThoaiDaCho: (o.orders ?? []).length > 0, theDaGui: o.theDaGui ?? [], ...(o.linkedOrders ? { donCuaHoiThoai: o.linkedOrders } : {}) } } });
       if (tool === "order.formLink") { const items = (body!["input"] as { items: { ma: string; size: string }[] }).items; return reply({ ok: true, data: { url: `https://shop.vn/dat-hang?p=${items[0]!.ma}&size=${items[0]!.size}`, dienSan: "chat", loiMoi: "Bác điền giúp em thông tin nhận hàng nhé", the: { tieuDe: "Đặt đơn ngay", phuDe: "Boston 13", anh: "https://shop.vn/a.jpg" } } }); }
       if (tool === "catalog.find") return reply({ ok: true, data: { ketQua: found } });
       if (tool === "catalog.resolveStock") return reply({ ok: true, data: { resolvedLevel: "exact", anchor: { ma: "JP9252", ten: "ADIZERO BOSTON 13 M" }, exact: { hasRequestedSize: true, rows: found.map((it) => ({ ...(it as object), hasRequestedSize: true, doi: "13" })), otherKho: [] }, sameLineSameVersion: [], sameLineOtherVersion: [], equivalents: [], note: "" } });
@@ -391,25 +393,24 @@ test("(1) 'còn adizero boston 13 size 42 không' → the finder is asked BEFORE
   }
 });
 
-test("(2) a brand the shop does not carry → the shop's own 'không có' sentence, no agent turn, nothing looked up in vain", async () => {
+test("(2) a brand the stock search returns nothing for → never 'chưa kinh doanh' (02/10/2026), the bot asks which product", async () => {
   const said = "đôi salomon speedcross này size 42 còn không shop";
-  const hoSo = emptyShopProfile();
-  hoSo.banHang.cauKhongCo = "bên em chưa kinh doanh hãng này";
+  // An old profile still carrying the retired "không có" sentence: it is not read any more.
+  const hoSo = { ...emptyShopProfile(), banHang: { ...emptyShopProfile().banHang, cauKhongCo: "bên em chưa kinh doanh hãng này" } } as unknown as ReturnType<typeof emptyShopProfile>;
   hoSo.xungHo.khach = "bác";
-  hoSo.nguon = { "banHang.cauKhongCo": "shop", "xungHo.khach": "shop" };
+  hoSo.nguon = { "xungHo.khach": "shop" };
   const landing = landingWith({ thread: [{ chieu: "den", boi: "khach", chu: said, soAnh: 0, luc: AT }], found: [], hoSo: hoSo as unknown as Record<string, unknown> });
   const agent = scriptedModel(["{\"reply\":\"khong toi day\"}"]);
   const { brain, dossier } = await brainWith(landing, { analyzer: scriptedModel([analysisOf("ask_size").replace("\"entities\":{", "\"entities\":{\"brand\":\"salomon\",")]), agent, writer: agent });
   const result = await brain.handleInbound({ ...MESSAGE, chu: said });
   assert.equal(result.daTraLoi, true, JSON.stringify(result));
   assert.equal((result as { hanhDong?: string }).hanhDong, "ask_back");
-  assert.match(landing.sent()[0] ?? "", /chưa kinh doanh hãng này/);
+  assert.doesNotMatch(landing.sent()[0] ?? "", /chưa kinh doanh|không bán/);
   assert.equal(agent.seen.length, 0, "no agent, no LLM#3");
-  assert.equal(landing.notices().length, 0);
   const d = dossier.last()!;
   assert.equal(d.duongDi, "kich-ban");
-  assert.equal(d.suThat?.chuaChac, "uncertain_product_ask_back:brand_not_carried");
-  assert.ok(d.router?.duongOng.includes("uncertain_product_ask_back:brand_not_carried"));
+  // Without the stock's word that it has other goods, "hết" is not claimed either: the bot asks which product.
+  assert.equal(d.suThat?.chuaChac, "uncertain_product_ask_back:no_product");
 });
 
 test("(3) nothing identifies the item and the bot already asked back once → a person, not a second question", async () => {
@@ -663,7 +664,8 @@ test("GĐ5: the page asked for the shoe the customer wears → the photo is a RE
   await brain.handleInbound({ ...MESSAGE, chu: "", soAnh: 1, anh: [photo] });
   const d = dossier.last()!;
   assert.equal(d.anh?.thamChieu, true);
-  assert.match(d.ghiChu ?? "", /ĐÔI KHÁCH ĐANG ĐI .*THAM CHIẾU/);
+  // 05/10/2026: the note is tier 1's, worded for any industry ("món khách đang dùng").
+  assert.match(d.ghiChu ?? "", /MÓN KHÁCH ĐANG DÙNG .*THAM CHIẾU/);
   assert.ok(!landing.toolCalls().includes("catalog.find"), "the reference shoe is not looked up as the item to sell");
 });
 
@@ -842,10 +844,11 @@ test("GĐ7 (hồ sơ that-18): five codes of different lines → two cards, no ?
 
 test("the AI greeting (Desk introAlreadySent): only on a thread the page never wrote in, never in front of a handoff; an old landing's top-level chaoAi is read too", async () => {
   const reply = "{\"reply\":\"Dạ Boston 13 size 42 còn ạ\"}";
-  // A page line in the history (a person or the bot) → no greeting, whatever daChaoAi says.
+  // A PERSON's line in the history → no greeting, whatever daChaoAi says. (05/10/2026: the bot's own earlier
+  // lines no longer block it — a customer the bot only acknowledged is greeted on the first real question.)
   const spoken = landingWith({ thread: [
     { chieu: "den", boi: "khach", chu: "boston 13 còn không", soAnh: 0, luc: "2026-09-25T08:40:00.000Z" },
-    { chieu: "di", boi: "bo-nao", chu: "Dạ còn ạ, bác đi size bao nhiêu?", soAnh: 0, luc: "2026-09-25T08:41:00.000Z" },
+    { chieu: "di", boi: "Minh", chu: "Dạ còn ạ, bác đi size bao nhiêu?", soAnh: 0, luc: "2026-09-25T08:41:00.000Z" },
     { chieu: "den", boi: "khach", chu: "size 42", soAnh: 0, luc: AT }
   ], found: BOSTON_STOCK });
   const { brain } = await brainWith(spoken, { analyzer: scriptedModel([STOCK_ANALYSIS]), agent: scriptedModel([reply]), writer: null });
@@ -919,4 +922,114 @@ test("(30/09, sadida lượt 5–6) AI chết, khách đã nói nhu cầu ở l�
   const { brain: brain2 } = await brainWith(landing2, { analyzer: scriptedModel([]), agent: scriptedModel([]), writer: null });
   await brain2.handleInbound({ ...MESSAGE, chu: chase });
   assert.match(landing2.sent()[0] ?? "", /^Dạ mình xin lỗi anh chờ ạ, /, landing2.sent().join(" | "));
+});
+
+// ---------------------------------------------------------------- 05/10/2026: the customer already has an order
+
+const LINKED = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+  maDon: "ORD-1790923088155", giaiDoan: "dang_xu_ly", vanDonDong: false, taoLuc: "2026-09-24T09:00:00.000Z",
+  mon: [{ ma: "JP9252", ten: "ADIZERO BOSTON 13 M", size: "42", sl: 1 }], tien: { tong: 3290000, daTra: 240000, conLai: 3050000 }, ...over
+});
+const EARLIER = "2026-09-25T08:30:00.000Z";
+
+test("đơn đang chạy (ca Khương Lưu): 'Cho anh hỏi hàng có sẵn hay hàng đặt vậy?' → không chèn link/thẻ ảnh; mô hình được biết ĐƠN ĐANG CHẠY", async () => {
+  const said = "Cho anh hỏi hàng có sẵn hay hàng đặt vậy?";
+  const thread = [
+    { chieu: "di", boi: "Người trực", chu: "Dạ shop đã nhận được chuyển khoản cọc đơn ORD-1790923088155 ạ.", soAnh: 0, luc: EARLIER },
+    { chieu: "den", boi: "khach", chu: said, soAnh: 0, luc: AT }
+  ];
+  const landing = landingWith({ thread, found: BOSTON_STOCK, extraTools: ["order.formLink"], hoSo: HOSO_PHIEU("phieu"), linkedOrders: [LINKED()] });
+  const agent = scriptedModel(["{\"reply\":\"Dạ đơn ORD-1790923088155 của bác là hàng đặt riêng theo đơn ạ, hàng về em báo bác ngay.\"}"]);
+  const { brain, dossier } = await brainWith(landing, { analyzer: scriptedModel([analysisOf("unknown", { lookupCommands: [] })]), agent, writer: null });
+  const result = await brain.handleInbound({ ...MESSAGE, chu: said });
+  assert.equal(result.daTraLoi, true, JSON.stringify(result));
+  assert.doesNotMatch(landing.sent()[0] ?? "", /góc ảnh|https?:\/\//);
+  const body = sentBody(landing);
+  assert.equal(body["theSanPham"], undefined, "no product card for the ordered item");
+  assert.equal(body["phieuDatHang"], undefined);
+  assert.ok(!(dossier.last()!.cong?.dauVet ?? []).some((t) => t.startsWith("photo_request")), (dossier.last()!.cong?.dauVet ?? []).join(","));
+  const prompt = agent.seen[0]!.map((m) => m.content).join("\n");
+  assert.match(prompt, /DON DANG CHAY CUA KHACH/);
+  assert.match(prompt, /ORD-1790923088155 — dang xu ly — mon: ADIZERO BOSTON 13 M \(JP9252\) size 42/);
+});
+
+test("đơn đang chạy (ca Trần Trí): page vừa gửi mã vận đơn + link, khách 'Ok shop', LLM#1 đoán hỏi size → câu ngắn cố định, không tra kho, không mô hình", async () => {
+  const thread = [
+    { chieu: "di", boi: "bo-nao", chu: "Dạ đơn MAN-260922-574 đã gửi đi, mã vận đơn SPXVN0123456789, bác theo dõi tại https://spx.vn/track?SPXVN0123456789 ạ", soAnh: 0, luc: EARLIER },
+    { chieu: "den", boi: "khach", chu: "Ok shop", soAnh: 0, luc: AT }
+  ];
+  const order = LINKED({ maDon: "MAN-260922-574", giaiDoan: "dang_giao", vanDon: { ma: "SPXVN0123456789", hang: "spx", link: "https://spx.vn/track?SPXVN0123456789" } });
+  const landing = landingWith({ thread, found: BOSTON_STOCK, hoSo: HOSO_PHIEU("phieu"), linkedOrders: [order] });
+  const agent = scriptedModel(["{\"reply\":\"Dạ bác lấy size mấy để em kiểm tra kho ạ?\"}"]);
+  const { brain, dossier } = await brainWith(landing, { analyzer: scriptedModel([analysisOf("ask_size")]), agent, writer: agent });
+  await brain.handleInbound({ ...MESSAGE, chu: "Ok shop" });
+  assert.deepEqual(landing.sent(), ["Dạ vâng ạ, có gì bác cứ nhắn em nhé."]);
+  assert.equal(agent.seen.length, 0, "no agent, no LLM#3");
+  assert.ok(!landing.toolCalls().some((t) => t === "catalog.find" || t === "catalog.resolveStock"), landing.toolCalls().join(","));
+  assert.equal(dossier.last()!.router?.lyDo, "order_notice_ack");
+  // The same "ok" once more after that sentence: nothing is sent.
+  const again = landingWith({ thread: [...thread, { chieu: "di", boi: "bo-nao", chu: "Dạ vâng ạ, có gì bác cứ nhắn em nhé.", soAnh: 0, luc: AT }, { chieu: "den", boi: "khach", chu: "ok", soAnh: 0, luc: AT }], found: BOSTON_STOCK, hoSo: HOSO_PHIEU("phieu"), linkedOrders: [order] });
+  const { brain: brain2 } = await brainWith(again, { analyzer: scriptedModel([analysisOf("small_talk")]), agent: null, writer: null });
+  const quiet = await brain2.handleInbound({ ...MESSAGE, chu: "ok" });
+  assert.deepEqual(quiet, { daTraLoi: false, viSao: "khong_can_tra_loi" });
+  assert.deepEqual(again.sent(), []);
+});
+
+test("gửi kèm khi khách đang có đơn (thuần): không thẻ / phiếu cho mã đã có trong đơn; phiếu chỉ cho món MỚI nhắc trong chính tin này", () => {
+  const d = new ReplyDispatcher();
+  const item = (ma: string) => ({ ma, ten: `MẪU ${ma}`, cac_size: [{ size: "42", gia: 1000000, so_luong: 2 }], anh: "", link: `https://shop.vn/product/${ma.toLowerCase()}` });
+  const hoSo = emptyShopProfile(); hoSo.banHang.khiChot = "phieu";
+  const stockOf = (code: string) => ({ productCode: code, productName: code, requestedSize: "42", stock: { size: "42", qty: 2, approximate: false }, price: 1000000, otherKho: [], variantsAvailable: [] });
+  const base = { theDaGui: [], daChaoAi: true, firstReply: false, closingSignals: [], readyToBuy: false, requestedSize: "42", hoSo, asksFootMeasure: "", site: "https://shop.vn", orderedCodes: ["JP9252"] };
+  const cards = d.plan({ ...base, reply: "Dạ JP9252 và IG8054 ạ", found: [item("JP9252"), item("IG8054")], stock: null, intent: "ask_size", focusCode: "" });
+  assert.deepEqual(cards.theSanPham.map((c) => c.ma), ["IG8054"]);
+  const same = d.plan({ ...base, reply: "Dạ", found: [item("JP9252")], stock: stockOf("JP9252"), intent: "place_order", focusCode: "JP9252", namedThisTurn: ["JP9252"] });
+  assert.equal(same.phieu, undefined, "the ordered item gets no second form");
+  const carried = d.plan({ ...base, reply: "Dạ", found: [item("IG8054")], stock: stockOf("IG8054"), intent: "place_order", focusCode: "IG8054", namedThisTurn: [] });
+  assert.equal(carried.phieu, undefined, "an item carried over from the session is not 'closed' by a bare link request");
+  const fresh = d.plan({ ...base, reply: "Dạ", found: [item("IG8054")], stock: stockOf("IG8054"), intent: "place_order", focusCode: "IG8054", namedThisTurn: ["IG8054"] });
+  assert.deepEqual(fresh.phieu, { items: [{ ma: "IG8054", size: "42" }] }, "another model asked for by name: a new order");
+  // No running order: as before.
+  const before = d.plan({ ...base, orderedCodes: [], reply: "Dạ", found: [item("JP9252")], stock: stockOf("JP9252"), intent: "place_order", focusCode: "JP9252" });
+  assert.deepEqual(before.phieu, { items: [{ ma: "JP9252", size: "42" }] });
+});
+
+test("phiếu 'bot tự nói đã nhận tiền': sticker like sau câu 'đặt cọc' → không nhãn biên lai trong sổ, không câu đã nhận tiền dù mô hình viết vậy", async () => {
+  const sticker = "https://scontent.test/sticker-like.png";
+  const thread = [
+    { chieu: "di", boi: "bo-nao", chu: "Dạ hàng order bác đặt cọc trước giúp em nhé", soAnh: 0, luc: "2026-09-25T08:30:00.000Z" },
+    { maTin: "m_st", chieu: "den", boi: "khach", chu: "", soAnh: 1, luc: AT, anh: [sticker] }
+  ];
+  const landing = landingWith({ thread, found: [] });
+  const vision = scriptedModel(["{\"loai\":\"khac\",\"amount\":0,\"text\":\"\"}"]);
+  const agent = scriptedModel(["{\"reply\":\"Dạ bên em đã nhận được tiền chuyển khoản và báo kho xử lý đơn ạ.\"}"]);
+  const { brain, dossier } = await brainWith(landing, { analyzer: scriptedModel([analysisOf("send_image")]), agent, writer: null }, { vision });
+  await brain.handleInbound({ ...MESSAGE, chu: "", soAnh: 1, anh: [sticker] });
+  for (const said of landing.sent()) assert.doesNotMatch(said, /đã nhận (được )?(tiền|chuyển khoản|cọc)/, said);
+  assert.ok(!landing.notices().some((n) => /bien lai/.test(n)), landing.notices().join(" | "));
+  assert.notEqual(dossier.last()!.anh?.loai, "bien_lai");
+  const saved = landing.calls.filter((c) => c.path.startsWith("/api/bo-nao/tri-nho/") && c.body !== null).at(-1)?.body as { trangThai?: { imageLabels?: Record<string, string> } } | undefined;
+  for (const label of Object.values(saved?.trangThai?.imageLabels ?? {})) assert.doesNotMatch(label, /biên lai/i, label);
+});
+
+test("05/10/2026 phiếu Desk 'bot xác nhận màu thay khách': phản bác lần 2 → câu trung tính + báo cần người kèm dungBot; lần 1 không dừng bot", async () => {
+  const bot = (chu: string, luc: string) => ({ chieu: "di", boi: "bo-nao", chu, soAnh: 0, luc });
+  const khach = (chu: string, luc: string) => ({ chieu: "den", boi: "khach", chu, soAnh: 0, luc });
+  const first = fakeLanding([bot("Dạ mẫu HQ8708 bên em còn size 42 ạ.", "2026-09-25T08:50:00.000Z"), khach("không phải màu này shop", AT)]);
+  const a = await brainWith(first, { analyzer: scriptedModel([ANALYSIS]), agent: scriptedModel([]) });
+  await a.brain.handleInbound({ ...MESSAGE, chu: "không phải màu này shop" });
+  assert.deepEqual(first.notices(), ["product_rejected"]);
+  assert.equal(first.calls.find((c) => c.path === "/api/hop-thu/can-nguoi")?.body?.["dungBot"], undefined);
+  assert.match(first.sent()[0] ?? "", /người phụ trách kiểm tra lại/);
+  assert.doesNotMatch(first.sent()[0] ?? "", /đúng màu rồi|đúng chuẩn|chuẩn màu/);
+
+  const again = fakeLanding([
+    bot("Dạ mẫu HQ8708 bên em còn size 42 ạ.", "2026-09-25T08:50:00.000Z"), khach("không phải màu này shop", "2026-09-25T08:51:00.000Z"),
+    bot("Dạ em xin lỗi bác, em báo người phụ trách kiểm tra lại ạ.", "2026-09-25T08:52:00.000Z"), khach("vẫn sai màu mà shop", AT)
+  ]);
+  const b = await brainWith(again, { analyzer: scriptedModel([ANALYSIS]), agent: scriptedModel([]) });
+  await b.brain.handleInbound({ ...MESSAGE, chu: "vẫn sai màu mà shop" });
+  assert.deepEqual(again.notices(), ["product_rejected_again"]);
+  assert.equal(again.calls.find((c) => c.path === "/api/hop-thu/can-nguoi")?.body?.["dungBot"], true);
+  assert.equal(again.sent().length, 1);
 });

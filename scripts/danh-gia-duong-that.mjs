@@ -35,8 +35,9 @@ const kit = createRequire(path.join(root, "bo-nao", "package.json"))(path.join(r
 const khoaRiengPem = fs.readFileSync(path.join(root, "bo-nao", "du-lieu", "xeon.ky.key.pem"), "utf8");
 const khoaCongPem = fs.readFileSync(path.join(root, "bo-nao", "du-lieu", "xeon.ky.pub.pem"), "utf8");
 const ledger = JSON.parse(fs.readFileSync(path.join(root, "bo-nao", "du-lieu", "license.json"), "utf8"));
-const key = Object.values(ledger.cacKey)[0];
-const may = key.may.find((m) => m.maMay === key.mayTruc) ?? key.may[0];
+// Shop của landing đang đo (mặc định shop đầu sổ); shop chưa ghép máy nào thì ký vé cho máy "danh-gia".
+const key = Object.values(ledger.cacKey).find((k) => k.shop === (process.env.SHOP || "")) ?? Object.values(ledger.cacKey)[0];
+const may = key.may.find((m) => m.maMay === key.mayTruc) ?? key.may[0] ?? { maMay: "danh-gia" };
 const now = Date.now();
 const ticket = kit.kyVe({ vai: "quan-tri", shop: key.shop, tenShop: key.tenShop, maMay: may.maMay, tenMay: "danh-gia", manh: key.manh, truc: true, phatLuc: now, hetLuc: now + 6 * 3600 * 1000 }, { khoaRiengPem, keyId: kit.keyIdCuaKhoaCong(khoaCongPem) });
 

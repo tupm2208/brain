@@ -12,6 +12,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AiDeskService, DeskResult } from "../ai/ai-desk";
+import type { ShopDocReader } from "../ai/shop-doc-reader";
 import { cleanPricing, type PriceTable } from "../ai/price-table";
 import { readOpenAiUsage } from "../agent/chat-model";
 import type { UsageLedger } from "../ai/usage-ledger";
@@ -31,11 +32,15 @@ export interface AiControllerOptions {
   sharedToken?: string | undefined;
   /** Shops allowed to change the price table. */
   priceEditors: readonly string[];
+  /** 02/10/2026: reads a shop's document into profile points (`/ai/nap-tai-lieu`); absent = refused. */
+  docReader?: ShopDocReader | undefined;
   clock: Clock;
   logger: Logger;
 }
 
-const AI_PATHS = new Set<string>([PATHS.aiDraft, PATHS.aiSandbox, PATHS.aiWebAdvisor, PATHS.aiAnalyze, PATHS.aiKnowledge, PATHS.aiImage, PATHS.aiTokens, PATHS.aiUsageReport, PATHS.aiPricing, PATHS.aiProfileTemplate, PATHS.aiPromptPreview]);
+const AI_PATHS = new Set<string>([PATHS.aiDraft, PATHS.aiSandbox, PATHS.aiWebAdvisor, PATHS.aiAnalyze, PATHS.aiKnowledge, PATHS.aiImage, PATHS.aiTokens, PATHS.aiUsageReport, PATHS.aiPricing, PATHS.aiProfileTemplate, PATHS.aiPromptPreview, PATHS.aiShopDoc]);
+const asObj = (v: unknown): Record<string, unknown> => (v !== null && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const listOf = (v: unknown, n: number): Record<string, unknown>[] => (Array.isArray(v) ? v : []).slice(0, n).map(asObj);
 
 /**
  * The agents a LANDING may report a call for. Only the two the landing genuinely runs on its own
@@ -90,6 +95,20 @@ export class AiController implements RequestController {
         }
         case PATHS.aiProfileTemplate: return this.reply(res, await this.options.desk.profileTemplate({ tenant: shop }));
         case PATHS.aiPromptPreview: return this.reply(res, await this.options.desk.promptPreview({ tenant: shop }));
+        case PATHS.aiShopDoc: {
+          const reader = this.options.docReader;
+          if (!reader) { sendJson(res, 503, { ok: false, error: "chua_bat", message: "Xeon này chưa bật việc đọc tài liệu shop." }); return true; }
+          const r = await reader.read({
+            tenant: shop, chu: String(body["chu"] ?? "").slice(0, 40_000),
+            oHoSo: listOf(body["oHoSo"], 80).map((f) => ({ path: text(f["path"], 60), nhan: text(f["nhan"], 200), kieu: text(f["kieu"], 200) })).filter((f) => f.path !== ""),
+            chinhSach: listOf(body["chinhSach"], 10).map((p) => ({ key: text(p["key"], 30), nhan: text(p["nhan"], 100) })).filter((p) => p.key !== ""),
+            khoiNganh: listOf(body["khoiNganh"], 60).map((b) => ({ id: text(b["id"], 40), tieuDe: text(b["tieuDe"], 200), shopSua: b["shopSua"] === true })).filter((b) => b.id !== ""),
+            luatChung: listOf(body["luatChung"], 30).map((b) => ({ tieuDe: text(b["tieuDe"], 200), loiDan: text(b["loiDan"], 4000) })).filter((b) => b.tieuDe !== "")
+          });
+          if (!r.ok) { sendJson(res, r.status, { ok: false, error: r.error, message: r.message }); return true; }
+          sendJson(res, 200, { ok: true, tomTat: r.tomTat, muc: r.muc, model: r.model });
+          return true;
+        }
         case PATHS.aiAnalyze: {
           const hoiThoai = (Array.isArray(body["hoiThoai"]) ? body["hoiThoai"] : []).slice(0, 60).map((c) => {
             const o = c !== null && typeof c === "object" ? (c as Record<string, unknown>) : {};

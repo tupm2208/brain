@@ -5,6 +5,7 @@
  */
 
 import { PaymentClaimKit } from "../payment-claim";
+import { escapeRe } from "../text-analysis";
 import { gateNormalize, hasLetters, splitSentences, tidy, wordIn, type GateContext, type ReplyRule, type RuleResult } from "./support";
 
 /** "em là người thật" / "em đang trực chat" → the sentence says what the bot is. */
@@ -32,6 +33,30 @@ export class PaymentRule implements ReplyRule {
     const out = kit.stripPaymentReceivedClaims(reply, { pronoun: g.vars["khach"], customerMessage: g.src.customerMessage ?? g.custNow, vars: g.vars });
     if (!out.changed) return null;
     return { reply: out.reply, trace: ["payment_received_claim"], needsHuman: true, handoffReason: g.cfg.payment.handoffReason };
+  }
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "bot tự nói đã nhận tiền"): "tiền cọc mình đã chuyển sẽ được trừ vào tổng
+ * đơn" is the same claim from the customer's side. The only evidence that a customer paid is a PERSON
+ * on duty saying so, or an order certainly linked to the conversation carrying a paid amount — never
+ * the bot's own earlier words, never a photo label. Without it the sentence goes, the neutral one
+ * comes first, and a person checks.
+ */
+export class CustomerPaidRule implements ReplyRule {
+  readonly id = "customerPaid";
+  apply(reply: string, g: GateContext): RuleResult | null {
+    if ((g.cfg.payment.customerPaid ?? []).length === 0 || g.src.paidEvidence === true) return null;
+    const kit = new PaymentClaimKit(g.cfg.payment);
+    // A person on duty said the money came (their words, not the bot's): the sentence has a source.
+    const personSaid = splitSentences(g.src.shopSaid).some((s) => kit.sentenceClaimsReceived(s) || kit.sentenceClaimsCustomerPaid(s));
+    if (personSaid) return null;
+    const parts = splitSentences(reply);
+    const kept = parts.filter((s) => !kit.sentenceClaimsCustomerPaid(s));
+    if (kept.length === parts.length) return null;
+    const neutral = kit.paymentPendingText({ neutral: g.cfg.payment.pendingText, vars: g.vars }, g.vars["khach"] ?? "");
+    const rest = kept.filter((s) => kit.fold(s) !== kit.fold(neutral));
+    return { reply: [neutral, ...rest].join(" ").trim(), trace: ["customer_paid_unverified"], needsHuman: true, handoffReason: g.cfg.payment.handoffReason };
   }
 }
 
@@ -154,15 +179,28 @@ export class ExchangeRule implements ReplyRule {
   readonly id = "exchange";
   apply(reply: string, g: GateContext): RuleResult | null {
     const e = g.cfg.exchange;
-    const promise = g.re(e.promise);
-    if (promise === null || !promise.test(gateNormalize(reply))) return null;
+    const promiseRe = g.re(e.promise);
+    // 05/10/2026: the asserted form "đổi <thing> được" — tier 1's pattern over tier 1's + the industry's things.
+    // Read WITH its accents: without them "đổi" (exchange) and "đôi" (pair) are one word.
+    const things = e.affirmedObjects.map((w) => escapeRe(w.normalize("NFC").trim())).filter((w) => w !== "");
+    const affirmedRe = things.length > 0 ? g.re(e.affirmed.split("{doiTuong}").join(things.join("|")), "iu") : null;
+    if (promiseRe === null && affirmedRe === null) return null;
+    const promised = (raw: string): boolean => (promiseRe?.test(gateNormalize(raw)) ?? false) || (affirmedRe?.test(raw.normalize("NFC")) ?? false);
+    // 05/10/2026: "Dạ đúng rồi ạ" to "đổi trả được đúng không" promises exactly what was asked — the question
+    // may quote the bot's OWN earlier invention, which is no source (phiếu Desk "agent thấy transcript thô").
+    const affirm = g.re(e.affirm);
+    const affirms = affirm !== null && g.test(e.policyWords, g.custNow) && affirm.test(gateNormalize(splitSentences(reply)[0] ?? ""));
+    if (!affirms && !promised(reply)) return null;
     if (g.src.lookups.exchange?.allowed === true) return null;
+    // A person on duty made the same promise in this conversation: it is the shop's word (never the bot's own line).
+    if (promised(g.src.shopSaid ?? "")) return null;
     const kind = g.src.stockFacts?.stockType;
     const orderItem = kind === "order" && !g.test(e.policyWords, gateNormalize(g.src.hoSo?.banHang.doiTraHangOrder ?? ""));
-    const sanItem = kind === "san";
     const policyHasIt = g.test(e.policyWords, `${g.policy} ${g.profileText}`);
-    if (!orderItem && (sanItem || policyHasIt)) return null;
-    const kept = splitSentences(reply).filter((sen) => !promise.test(gateNormalize(sen)));
+    // 05/10/2026: an IN-STOCK item no longer exchanges by default (Desk's own shop policy, read as tier 1): what a
+    // shop allows is its policy / profile; nothing declared = the promise is cut and a person answers.
+    if (!orderItem && policyHasIt) return null;
+    const kept = splitSentences(reply).filter((sen, i) => !promised(sen) && !(affirms && i === 0));
     const note = g.fill(orderItem ? e.orderItemNote : e.noPolicyNote);
     return {
       reply: `${kept.join(" ").trim()} ${note}`.trim(),

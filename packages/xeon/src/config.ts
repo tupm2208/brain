@@ -34,6 +34,9 @@
  *   META_GRAPH_API_VERSION Graph API version for page checks (default v23.0)
  *   META_CHUYEN_TIEP_URL   webhook address of an older inbox that keeps some pages (TopRun Sales Desk)
  *   META_CHUYEN_TIEP_TRANG comma-separated page ids sent there, re-signed with FACEBOOK_APP_SECRET
+ *   NEN_TANG_TEN / META_APP_TEN / NEN_TANG_EMAIL  who the developer is, the app's name on Meta and the
+ *                          mailbox for data requests — printed on the platform's legal pages (GET /chinh-sach…).
+ *                          Not secrets; kept out of code so no shop's or person's name sits in the source.
  *   SPX_APP_ID / SPX_APP_SECRET  the developer's SPX Open Platform app (25/09/2026): Xeon signs every
  *                          landing's SPX request (`POST /spx/ky`); the secret never goes to a merchant's
  *                          hosting. The merchant only types its own User ID + Secret Key. Absent = 503.
@@ -41,6 +44,9 @@
  *   XEON_SHOP_SUA_BANG_GIA shops (comma list) allowed to edit the shared AI price table from their OMI (Đ7). Empty = nobody.
  *   XEON_SHOP_DUYET_ANH   shops (comma list) whose OMI may REVIEW photos other shops share into the common
  *                          library (02/10/2026). Empty = nobody reviews, so no shared photo reaches another shop.
+ *                          The same shops review photos REPORTED WRONG (04/10/2026).
+ *   XEON_TRAN_BAO_ANH_NGAY photo reports per shop per day that hide the photo for EVERY shop at once (04/10/2026,
+ *                          default 30). Past it, a report hides the photo only at the reporting shop until reviewed.
  *   XEON_HO_SO_THU_MUC    folder for TURN DOSSIERS (21/09/2026), e.g. bo-nao/logs/ho-so. EMPTY = OFF,
  *                         nothing is written. A dossier keeps some of the customer's own data so the
  *                         bug can be reproduced — switch it on deliberately, and see
@@ -117,10 +123,14 @@ export interface XeonConfig {
   /** The developer's SPX app (25/09/2026): Xeon signs SPX requests for every landing. */
   spxAppId: string;
   spxAppSecret: string;
+  /** The platform's legal pages (02/10/2026): who runs the platform and the Meta app, and where data requests go. */
+  platformPolicy: { operatorName: string; appName: string; contactEmail: string };
   /** Shops that may change the one AI price table every shop reads (Đ7). */
   priceEditors: string[];
   /** Shops whose OMI reviews photos shared into the common library (02/10/2026). */
   imageReviewers: string[];
+  /** Photo reports a shop may make each day that hide the photo for every shop (04/10/2026). */
+  dailyImageReports: number;
   imageWorkerKey: string;
   /**
    * The image tool behind its Cloudflare tunnel (21/09/2026). Xeon knocks here when a code needs
@@ -188,8 +198,14 @@ export function configFromEnv(env: NodeJS.ProcessEnv, defaultDataDirectory: stri
     videoStudioAddress: String(env["XEON_VIDEO_DIA_CHI"] || "").trim(),
     spxAppId: String(env["SPX_APP_ID"] || "").trim(),
     spxAppSecret: String(env["SPX_APP_SECRET"] || "").trim(),
+    platformPolicy: {
+      operatorName: String(env["NEN_TANG_TEN"] || "").trim(),
+      appName: String(env["META_APP_TEN"] || "").trim(),
+      contactEmail: String(env["NEN_TANG_EMAIL"] || "").trim()
+    },
     priceEditors: String(env["XEON_SHOP_SUA_BANG_GIA"] || "").split(",").map((s) => s.trim()).filter(Boolean),
     imageReviewers: String(env["XEON_SHOP_DUYET_ANH"] || "").split(",").map((s) => s.trim()).filter(Boolean),
+    dailyImageReports: (() => { const raw = String(env["XEON_TRAN_BAO_ANH_NGAY"] ?? "").trim(); const n = Math.trunc(Number(raw)); return raw !== "" && Number.isFinite(n) && n >= 0 ? n : 30; })(),
     imageWorkerKey: String(env["XEON_IMAGE_WORKER_KEY"] || "").trim(),
     imageToolUrl: String(env["XEON_IMAGE_TOOL_DIA_CHI"] || "").trim(),
     imageToolKey: String(env["XEON_IMAGE_TOOL_MA"] || "").trim(),

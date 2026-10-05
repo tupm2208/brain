@@ -20,7 +20,7 @@ import { appendShopTurn, appendTurn, dropFocus, emptyState, hasRecentImageEviden
 import { GateChain, type Fact, type GateOutcome, type GateVerdict } from "./gates";
 import { IntentDetector } from "./intent";
 import { BASE_DATA_VARS, TemplateRenderer, packTemplate, type Rendered } from "./template";
-import { coverage, hasWord, mentionsBrand, specificTokens, tight, tokens } from "./text-analysis";
+import { coverage, hasWord, specificTokens, tokens } from "./text-analysis";
 import { DEFAULT_TOOL_DISPATCHER, type ToolDispatcher } from "./tool-handlers";
 import { VariantNumberScanner, type VariantNumberHints } from "./variant-numbers";
 
@@ -185,7 +185,6 @@ interface TurnWork {
   echoed: string[];
   numberHints: VariantNumberHints;
   intent: PackIntent | null;
-  brandNotCarried: string | null;
   catalogSize: number;
   dataVars: Set<string>;
   renderer: TemplateRenderer;
@@ -254,7 +253,7 @@ export class TurnEngine {
       normText, item,
       slots: {}, inferredSlots: {}, slotsThisTurn: new Set(), echoed: [],
       numberHints: {},
-      intent: null, brandNotCarried: null, catalogSize: 0,
+      intent: null, catalogSize: 0,
       dataVars, renderer: new TemplateRenderer(dataVars), vars: {},
       facts: [], toolText: [], hasPolicySource: false, answered: false, toolFailed: false,
       needAxis: undefined, toolMissing: []
@@ -354,12 +353,6 @@ export class TurnEngine {
     // lacks a slot forever and a fetched policy never reaches the customer.
     if (intent?.requiredSlots.includes("topic") === true) slots["topic"] = intent.id;
     work.intent = intent;
-
-    work.brandNotCarried = itemIdentified
-      ? null
-      : pack.lexicon.knownBrandsNotCarried.find(
-          (b) => mentionsBrand(normText, b) && !pack.lexicon.brands.some((c) => tight(c) === tight(b))
-        ) ?? null;
   }
 
   // ------------------------------------------------------------------ phase 4: tools
@@ -372,7 +365,7 @@ export class TurnEngine {
       khach: pack.identity.customerPronoun,
       shop: pack.identity.selfPronoun,
       mon: work.item.itemCode ?? "",
-      hang: work.brandNotCarried ?? "",
+      hang: "",
       tinhtrang: "", ton: "", gia: "", giacao: "", kho: "", sokho: "", dsbienthe: "",
       chinhsach: "", madon: "", trangthai: "", conphaitra: "", songay: "", link: "",
       truc: axes[0]?.label ?? "",
@@ -421,16 +414,14 @@ export class TurnEngine {
   // ------------------------------------------------------------------ phase 5: compose, gate, decide
   private async decide(work: TurnWork): Promise<HandleResult> {
     const { pack } = this;
-    const { state: stateIn, now, item, slots, intent, brandNotCarried, renderer, vars, online, toolFailed } = work;
+    const { state: stateIn, now, item, slots, intent, renderer, vars, online, toolFailed } = work;
     let state = stateIn;
     const axes = pack.itemShape.axes;
     const itemIdentified = item.itemCode !== null;
     const tpl = (key: string): string => packTemplate(pack, key);
 
     // --- missing slots ---
-    // A brand the shop does not carry: the right answer is "we do not have that brand", not "please
-    // give me the model name", so the intent's slots are ignored.
-    const intentForGates = brandNotCarried === null ? intent : null;
+    const intentForGates = intent;
     const missing = intentForGates === null ? [] : intentForGates.requiredSlots.filter((s) => {
       if (s === "item") return !itemIdentified;
       return slots[s] === undefined && work.inferredSlots[s] === undefined;
@@ -443,8 +434,6 @@ export class TurnEngine {
       draft = renderer.render(tpl("offline"), vars);
     } else if (toolFailed) {
       draft = renderer.render(tpl("tool_failed") === "" ? tpl("handoff") : tpl("tool_failed"), vars);
-    } else if (brandNotCarried !== null) {
-      draft = renderer.render(tpl("brand_not_carried"), vars);
     } else if (intent === null) {
       draft = renderer.render(tpl("greeting"), vars);
     } else if (work.answered && missing.length === 0) {
@@ -459,11 +448,8 @@ export class TurnEngine {
     // Asking back: computed for EVERY path, including those bypassing intents (brand not carried,
     // catalog too small). Counting only intent paths creates a loop where the bot repeats one
     // question and the `ask_back_once` gate never fires.
-    const brandRule = pack.gates.find((g) => g.kind === "brand_not_carried_needs_catalog");
-    const brandBlocked = brandNotCarried !== null && brandRule !== undefined &&
-      work.catalogSize < brandRule.minItems;
     const wouldAskBack = online && !toolFailed &&
-      ((intentForGates !== null && (missing.length > 0 || !work.answered)) || brandBlocked);
+      intentForGates !== null && (missing.length > 0 || !work.answered);
 
     // --- gates ---
     // The product code comes from the catalog: a real source, not something the bot invented.
@@ -474,14 +460,13 @@ export class TurnEngine {
       hasPolicySource: work.hasPolicySource, echoedValues: allowedEchoes
     };
     const gate = this.gates.run({
-      ...gateBase, draft: draft.text, wouldAskBack,
-      claimsBrandNotCarried: brandNotCarried !== null, toolText: work.toolText
+      ...gateBase, draft: draft.text, wouldAskBack, toolText: work.toolText
     });
 
     // An "understood nothing" turn: the bot can only greet. Count them and call a human at the
     // threshold, otherwise "alo", "ok", "co ai khong" loops greetings forever. This is the only
     // ask-back-like path that bypasses intents.
-    const idleTurn = online && intentForGates === null && brandNotCarried === null && !toolFailed;
+    const idleTurn = online && intentForGates === null && !toolFailed;
     const idleCount = idleTurn ? (state.idleCount ?? 0) + 1 : 0;
 
     let action: HandleResult["action"] = "send";
@@ -551,8 +536,7 @@ export class TurnEngine {
     const secondPass: GateOutcome = reply === draft.text
       ? { verdict: { action: "send" as const, reason: "" }, all: [] }
       : this.gates.run({
-          ...gateBase, draft: reply, wouldAskBack: false,
-          claimsBrandNotCarried: brandNotCarried !== null
+          ...gateBase, draft: reply, wouldAskBack: false
         });
     const fallbackBroken = secondPass.verdict.action === "block" || secondPass.verdict.action === "handoff";
     if (fallbackBroken || replyMissing.length > 0) {
@@ -561,7 +545,7 @@ export class TurnEngine {
       // If even the handoff sentence is broken there is nothing left to send: silence and a human
       // beat a wrong sentence. `PackValidator` prevents this for a valid pack at build time.
       reply = last.missing.length > 0 || this.gates.run({
-        ...gateBase, draft: last.text, intent: null, wouldAskBack: false, claimsBrandNotCarried: false
+        ...gateBase, draft: last.text, intent: null, wouldAskBack: false
       }).verdict.action !== "send" ? "" : last.text;
     }
 

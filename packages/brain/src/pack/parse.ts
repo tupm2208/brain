@@ -144,8 +144,13 @@ export class ShapeReader {
 /** Gate kinds and the extra fields each one carries. Adding a gate = adding a line here. */
 const GATE_KINDS = [
   "require_source_for_claims", "require_item_before_stock", "ask_back_once", "no_unsourced_numbers",
-  "brand_not_carried_needs_catalog", "forbidden_phrases", "forbidden_patterns", "no_facts_when_offline"
+  "forbidden_phrases", "forbidden_patterns", "no_facts_when_offline"
 ] as const;
+/**
+ * Gate kinds retired on purpose (02/10/2026: "hãng không bán" left the brain — a brand the stock does
+ * not have is "đang hết hàng"). A pack that still lists one is read without it, not refused.
+ */
+const RETIRED_GATE_KINDS = ["brand_not_carried_needs_catalog"];
 
 function parseGate(r: ShapeReader, raw: Record<string, unknown>, at: string): GateRule {
   const kind = r.text(raw["kind"], `${at}.kind`);
@@ -162,8 +167,6 @@ function parseGate(r: ShapeReader, raw: Record<string, unknown>, at: string): Ga
       const maxTimes = raw["maxTimes"] === undefined ? undefined : r.number(raw["maxTimes"], `${at}.maxTimes`);
       return { kind, windowMinutes: r.number(raw["windowMinutes"], `${at}.windowMinutes`), ...(maxTimes === undefined ? {} : { maxTimes }) };
     }
-    case "brand_not_carried_needs_catalog":
-      return { kind, minItems: r.number(raw["minItems"], `${at}.minItems`) };
     case "forbidden_patterns":
       return { kind, patterns: r.texts(raw["patterns"], `${at}.patterns`), reason: r.text(raw["reason"], `${at}.reason`) };
     default:
@@ -310,6 +313,8 @@ export function parseCommonAgent(raw: unknown): CommonAgent {
     handoffReplyPattern: r.text(o["handoffReplyPattern"], "loi-chung.handoffReplyPattern", true),
     cauCam: r.texts(o["cauCam"], "loi-chung.cauCam", true)
   };
+  // 05/10/2026: tier 1's agent tools (the shop's policy and account), same shape as an industry's.
+  if (o["tools"] !== undefined) common.tools = r.list(o["tools"], "loi-chung.tools", (t, at) => parseAgentTool(r, t, at), true);
   // 02/10/2026: the words for an agent that sees the photos itself. All four or none.
   if (o["xemAnh"] !== undefined && o["xemAnh"] !== null) {
     const x = r.object(o["xemAnh"], "loi-chung.xemAnh");
@@ -368,7 +373,6 @@ export function parsePack(raw: unknown, agentRaw?: unknown, dialogueRaw?: unknow
     },
     lexicon: {
       brands: r.texts(lexiconRaw["brands"], "lexicon.brands", true),
-      knownBrandsNotCarried: r.texts(lexiconRaw["knownBrandsNotCarried"], "lexicon.knownBrandsNotCarried", true),
       categories: r.texts(lexiconRaw["categories"], "lexicon.categories", true),
       aliases: r.textMap(lexiconRaw["aliases"], "lexicon.aliases", true),
       genericTerms: r.texts(lexiconRaw["genericTerms"], "lexicon.genericTerms", true),
@@ -377,7 +381,7 @@ export function parsePack(raw: unknown, agentRaw?: unknown, dialogueRaw?: unknow
     itemShape: { axes: r.list(itemShapeRaw["axes"], "itemShape.axes", (a, at) => parseAxis(r, a, at)) },
     intents: r.list(root["intents"], "intents", (i, at) => parseIntent(r, i, at)),
     allowedTools: r.tools(root["allowedTools"], "allowedTools"),
-    gates: r.list(root["gates"], "gates", (g, at) => parseGate(r, g, at)),
+    gates: r.list(Array.isArray(root["gates"]) ? root["gates"].filter((g) => !RETIRED_GATE_KINDS.includes(String((g as Record<string, unknown> | null)?.["kind"] ?? ""))) : root["gates"], "gates", (g, at) => parseGate(r, g, at)),
     templates: r.textMap(root["templates"], "templates"),
     ...(intentWhenItemNamed ? { intentWhenItemNamed } : {}),
     ...(imageReferencePatterns ? { imageReferencePatterns } : {}),
@@ -447,7 +451,7 @@ export function emptyEpisodeConfig(): EpisodeConfig {
 
 export function emptyDialogueConfig(): DialogueConfig {
   return {
-    pageTurnOrder: [], pageTurn: {}, askedOther: [], ack: "", deny: "", refer: "", sizeOnly: [],
+    pageTurnOrder: [], pageTurn: {}, askedOther: [], askedReference: [], ack: "", deny: "", refer: "", sizeOnly: [],
     productCodePatterns: [], productLinkPatterns: [], imagePlaceholders: [], nameNoiseWords: [],
     shortAnswer: { maxWords: 6, maxChars: 60 }, kindTexts: {}, answerTexts: {}, aboutTexts: {}, frameFormat: "",
     episode: emptyEpisodeConfig()
@@ -479,6 +483,7 @@ export function parseDialogueConfig(r: ShapeReader, raw: unknown, where: string)
     pageTurnOrder: l("pageTurnOrder"),
     pageTurn: textListMap(r, o["pageTurn"], `${where}.pageTurn`),
     askedOther: l("askedOther"),
+    askedReference: l("askedReference"),
     ack: t("ack"), deny: t("deny"), refer: t("refer"),
     sizeOnly: l("sizeOnly"),
     productCodePatterns: l("productCodePatterns"),
@@ -517,6 +522,7 @@ export function mergeDialogueConfig(common: DialogueConfig, industry: DialogueCo
     pageTurnOrder: industry.pageTurnOrder.length > 0 ? industry.pageTurnOrder : common.pageTurnOrder,
     pageTurn,
     askedOther: lists(common.askedOther, industry.askedOther),
+    askedReference: lists(common.askedReference ?? [], industry.askedReference ?? []),
     ack: text(common.ack, industry.ack), deny: text(common.deny, industry.deny), refer: text(common.refer, industry.refer),
     sizeOnly: lists(common.sizeOnly, industry.sizeOnly),
     productCodePatterns: lists(common.productCodePatterns, industry.productCodePatterns),
@@ -623,7 +629,8 @@ export function emptyIntentRules(): IntentRules {
     reconcile: {
       scriptOverrideIntents: [], scriptOverrideUnlessRequest: [], carriesRequest: [], smallTalkMaxWords: 6, nudge: "", pageAsked: "",
       shortAnswerToPage: "", bareAck: "", thanks: "", pageSaidPaid: "", customerReceiptImage: "", buysMore: "", asksForPhotos: "",
-      adviceRequest: "", paymentContextCustomer: "", paymentContextPage: "", sadPhrase: "", policyQuestion: "", shippingFee: "", asksFootMeasure: "", policyQuestionForm: "", returnExchangeReal: "", impatience: ""
+      adviceRequest: "", paymentContextCustomer: "", paymentContextPage: "", sadPhrase: "", policyQuestion: "", shippingFee: "", asksFootMeasure: "", policyQuestionForm: "", returnExchangeReal: "", impatience: "",
+      productRejection: [], afterReceipt: ""
     }
   };
 }
@@ -664,7 +671,8 @@ export function parseIntentRules(r: ShapeReader, raw: unknown, where: string): I
       adviceRequest: t(rc, "adviceRequest", rcAt), paymentContextCustomer: t(rc, "paymentContextCustomer", rcAt),
       paymentContextPage: t(rc, "paymentContextPage", rcAt), sadPhrase: t(rc, "sadPhrase", rcAt), policyQuestion: t(rc, "policyQuestion", rcAt),
       shippingFee: t(rc, "shippingFee", rcAt), asksFootMeasure: t(rc, "asksFootMeasure", rcAt),
-      policyQuestionForm: t(rc, "policyQuestionForm", rcAt), returnExchangeReal: t(rc, "returnExchangeReal", rcAt), impatience: t(rc, "impatience", rcAt)
+      policyQuestionForm: t(rc, "policyQuestionForm", rcAt), returnExchangeReal: t(rc, "returnExchangeReal", rcAt), impatience: t(rc, "impatience", rcAt),
+      productRejection: l(rc, "productRejection", rcAt), afterReceipt: t(rc, "afterReceipt", rcAt)
     }
   };
 }
@@ -728,7 +736,8 @@ export function mergeIntentRules(common: IntentRules, industry: IntentRules | un
       policyQuestion: overrideText(x.policyQuestion, y.policyQuestion), shippingFee: overrideText(x.shippingFee, y.shippingFee),
       asksFootMeasure: overrideText(x.asksFootMeasure, y.asksFootMeasure),
       policyQuestionForm: overrideText(x.policyQuestionForm, y.policyQuestionForm), returnExchangeReal: overrideText(x.returnExchangeReal, y.returnExchangeReal),
-      impatience: overrideText(x.impatience, y.impatience)
+      impatience: overrideText(x.impatience, y.impatience),
+      productRejection: concatLists(x.productRejection, y.productRejection), afterReceipt: overrideText(x.afterReceipt, y.afterReceipt)
     }
   };
 }
@@ -739,7 +748,7 @@ export function emptyEntityConfig(): EntityConfig {
     address: { markers: "", placeWords: "", houseNumber: "", maxLength: 0, minWords: 0, notPlaceBigrams: [] },
     budget: { trigger: "", amount: "", millionUnits: [], thousandUnits: [], minValue: 0, range: "", from: "", upTo: "" },
     genders: {}, closingSignals: [], sizeLetterPattern: "", sizeRecoverPattern: "", sizeRecoverNegation: "", sizeRecoverDepth: 0,
-    sizeCore: "", sizePatterns: [], sizeTagPatterns: [], sizeBarePatterns: [], apparelSizePatterns: [], apparelSizePrefix: "",
+    sizeCore: "", sizePatterns: [], sizeTagPatterns: [], sizeBarePatterns: [], apparelSizePatterns: [], apparelSizePrefix: "", sizeSystemPatterns: [],
     bareTag: { range: "", maxTem: 0, unitAfter: "", notBefore: "", footMeasure: "", tagWord: "", kidsText: "", apparelWords: "", kidsLine: "", adultMin: 0, historyDepth: 0 },
     needs: [], footForms: {}, sizeChart: []
   };
@@ -792,6 +801,7 @@ export function parseEntityConfig(r: ShapeReader, raw: unknown, where: string, s
     sizeCore: t(o, "sizeCore", where), sizePatterns: l(o, "sizePatterns", where), sizeTagPatterns: l(o, "sizeTagPatterns", where),
     sizeBarePatterns: l(o, "sizeBarePatterns", where), apparelSizePatterns: l(o, "apparelSizePatterns", where),
     apparelSizePrefix: t(o, "apparelSizePrefix", where),
+    sizeSystemPatterns: l(o, "sizeSystemPatterns", where),
     bareTag: {
       range: t(bt, "range", btAt), maxTem: n(bt, "maxTem", btAt), unitAfter: t(bt, "unitAfter", btAt), notBefore: t(bt, "notBefore", btAt),
       footMeasure: t(bt, "footMeasure", btAt), tagWord: t(bt, "tagWord", btAt), kidsText: t(bt, "kidsText", btAt),
@@ -849,6 +859,7 @@ export function mergeEntityConfig(common: EntityConfig, industry: EntityConfig |
     sizeBarePatterns: concatLists(common.sizeBarePatterns, industry.sizeBarePatterns),
     apparelSizePatterns: concatLists(common.apparelSizePatterns, industry.apparelSizePatterns),
     apparelSizePrefix: overrideText(common.apparelSizePrefix, industry.apparelSizePrefix),
+    sizeSystemPatterns: concatLists(common.sizeSystemPatterns, industry.sizeSystemPatterns),
     bareTag: {
       range: overrideText(e.range, f.range), maxTem: overrideNumber(e.maxTem, f.maxTem), unitAfter: overrideText(e.unitAfter, f.unitAfter),
       notBefore: overrideText(e.notBefore, f.notBefore), footMeasure: overrideText(e.footMeasure, f.footMeasure),
@@ -918,6 +929,8 @@ export function emptyMatchingConfig(): MatchingConfig {
     noiseTokens: [], genericNameTokens: [], lineGenericTokens: [], lineNoiseTokens: [], skuLikePattern: "",
     ambiguousVersion: { min: 0, max: 0 }, brandLineHints: {}, genderTokens: {},
     types: emptyTypeRules(),
+    groups: { aliases: {}, notGroup: [] },
+    otherVariantsAsked: [],
     sizes: { apparelPrefix: "", letterSize: "", tolerance: 0, apparelMin: 0 },
     uncertain: {
       askProductIntents: [], productTalkIntents: [], coldHours: 0, imageLookbackMinutes: 0,
@@ -980,7 +993,7 @@ export function parseMatchingConfig(r: ShapeReader, raw: unknown, where: string)
   const l = (src: Record<string, unknown>, key: string, at: string): string[] => r.texts(src[key], `${at}.${key}`, true);
   const n = (src: Record<string, unknown>, key: string, at: string): number => optNumber(r, src[key], `${at}.${key}`, 0);
   const sub = (key: string): Record<string, unknown> => (o[key] === undefined ? {} : r.object(o[key], `${where}.${key}`));
-  const re = sub("retrieve"); const av = sub("ambiguousVersion"); const sz = sub("sizes"); const un = sub("uncertain");
+  const re = sub("retrieve"); const av = sub("ambiguousVersion"); const sz = sub("sizes"); const un = sub("uncertain"); const gr = sub("nhomHang");
   const reAt = `${where}.retrieve`; const avAt = `${where}.ambiguousVersion`; const szAt = `${where}.sizes`; const unAt = `${where}.uncertain`;
   return {
     weights: numberMap(r, o["weights"], `${where}.weights`),
@@ -994,6 +1007,8 @@ export function parseMatchingConfig(r: ShapeReader, raw: unknown, where: string)
     brandLineHints: listMapNoDoc(r, o["brandLineHints"], `${where}.brandLineHints`),
     genderTokens: textMapNoDoc(r, o["genderTokens"], `${where}.genderTokens`),
     types: parseTypeRules(r, o["typeRules"], `${where}.typeRules`),
+    groups: { aliases: textMapNoDoc(r, gr["biDanh"], `${where}.nhomHang.biDanh`), notGroup: l(gr, "khongPhai", `${where}.nhomHang`) },
+    otherVariantsAsked: l(o, "hoiBienTheKhac", where),
     sizes: { apparelPrefix: t(sz, "apparelPrefix", szAt), letterSize: t(sz, "letterSize", szAt), tolerance: n(sz, "tolerance", szAt), apparelMin: n(sz, "apparelMin", szAt) },
     uncertain: {
       askProductIntents: l(un, "askProductIntents", unAt), productTalkIntents: l(un, "productTalkIntents", unAt),
@@ -1047,6 +1062,8 @@ export function mergeMatchingConfig(common: MatchingConfig, industry: MatchingCo
       primaryTypes: concatLists(common.types.primaryTypes, industry.types.primaryTypes),
       labels: { ...common.types.labels, ...industry.types.labels }
     },
+    groups: { aliases: { ...common.groups.aliases, ...industry.groups.aliases }, notGroup: concatLists(common.groups.notGroup, industry.groups.notGroup) },
+    otherVariantsAsked: concatLists(common.otherVariantsAsked, industry.otherVariantsAsked),
     sizes: {
       apparelPrefix: overrideText(s.apparelPrefix, u.apparelPrefix), letterSize: overrideText(s.letterSize, u.letterSize),
       tolerance: overrideNumber(s.tolerance, u.tolerance), apparelMin: overrideNumber(s.apparelMin, u.apparelMin)
@@ -1083,13 +1100,14 @@ export const REPLY_GATE_SCHEMA: { [K in keyof ReplyGateConfig]: Record<keyof Rep
   identity: { falseHuman: "reList", replacement: "text" },
   payment: {
     money: "re", claims: "reList", notClaimWindow: "re", refund: "re", customerReceives: "re", shopPays: "re", customerAsks: "re",
-    fillerWords: "words", affirm: "re", notAffirm: "re", orderActions: "re", abbreviations: "map", pendingText: "text", handoffReason: "token"
+    fillerWords: "words", affirm: "re", notAffirm: "re", orderActions: "re", abbreviations: "map", pendingText: "text", handoffReason: "token",
+    customerPaid: "reList"
   },
-  contact: { asks: "re", contact: "re", formNote: "text", formNoteMarker: "re", personNote: "text" },
+  contact: { asks: "re", contact: "re", formNote: "text", formNoteMarker: "re", personNote: "text", formPromise: "re", askItem: "text" },
   warranty: { detect: "re", sourceWords: "words", cut: "reDiacriticList", fallback: "text", percentAuthenticity: "re", percentSource: "re" },
   deposit: { context: "re", money: "re", fallback: "text" },
   money: { minAmount: "number", fallback: "text", rangeSame: "reDiacritic" },
-  exchange: { promise: "re", policyWords: "re", orderItemNote: "text", noPolicyNote: "text", done: "re", doneNote: "text" },
+  exchange: { promise: "re", policyWords: "re", orderItemNote: "text", noPolicyNote: "text", done: "re", doneNote: "text", affirm: "re", affirmed: "reDiacritic", affirmedObjects: "words" },
   photos: { asks: "re", promise: "re", lead: "text", leadMany: "text", noProduct: "text", maxLinks: "number", linkClaim: "re", cardsNote: "text" },
   link: { allowedHosts: "words", carrierHosts: "words", codeInLink: "reDiacritic", productLink: "token" },
   eta: { pattern: "re", fallback: "text" },
@@ -1104,8 +1122,27 @@ export const REPLY_GATE_SCHEMA: { [K in keyof ReplyGateConfig]: Record<keyof Rep
     wantsDifferent: "re", recommendVerbs: "re", brandStop: "words", currentShoeReply: "text",
     alienReply: "text", moneyContext: "re", priceAgree: "re", priceAgreeReply: "text", variantDivergence: "re", variantReply: "text"
   },
-  sizeChart: { customerCm: "re", sizeInReply: "re", mentionsSize: "re", hedge: "re", askBack: "text" },
-  appendLinks: { lineText: "text", groupText: "text", filterText: "text" }
+  sizeChart: {
+    customerCm: "re", sizeInReply: "re", mentionsSize: "re", hedge: "re", askBack: "text",
+    conversion: "reDiacritic", botVariant: "reDiacritic", customerVariant: "reDiacritic", adviceVerb: "reDiacritic", stockWord: "reDiacritic",
+    askMeasures: "text", askMeasuresShort: "text", askedBefore: "re", alreadyAsks: "re", linkLine: "text"
+  },
+  stockLabel: { label: "re", note: "text" },
+  sizePair: {
+    size: "reDiacritic", unit: "reDiacritic", bodyLead: "reDiacritic", linkLead: "reDiacritic", noiseLead: "reDiacritic", gapStop: "re", prefix: "re",
+    alt: "map", altForward: "re", customerNotNumber: "re", women: "re", unisex: "re", rangeJoin: "re"
+  },
+  appendLinks: { lineText: "text", groupText: "text", filterText: "text" },
+  daiTu: { word: "token", replacement: "token", photoAfter: "re", askBefore: "re", askAfter: "re", sendBefore: "re", sendAfter: "re", photoNext: "reDiacritic" },
+  orderedItem: { outOfStock: "reList", deictic: "reList", alternative: "re", mentionsVariant: "re", buysMore: "re", replacement: "text", stageLabels: "map" },
+  photoClaim: { claims: "reList", hedgeBefore: "re", question: "re", rewrite: "map", confirmAsked: "re", confirmCards: "text", confirmNoCards: "text" },
+  pushClose: { push: "reList", condition: "re", buySignal: "re", handoffReason: "token" },
+  photoAgain: { asks: "reDiacriticList", other: "reDiacriticList", acknowledged: "reDiacritic", replacement: "text" },
+  priceStory: { story: "reList", contest: "re", bareLead: "re", reply: "text", storyReason: "token", contestReason: "token" },
+  bargain: {
+    ask: "reList", amountAsk: "re", notBargain: "reList", promise: "reList", askTarget: "reList", refusal: "re",
+    reply: "text", replySale: "text", replyUnset: "text", reason: "token", unsetReason: "token"
+  }
 };
 
 type LooseConfig = Record<string, Record<string, unknown>>;

@@ -14,6 +14,8 @@
 
 import type { SystemNoteTexts } from "../pack/types";
 import { fillText, formatPrice } from "./fill-text";
+import type { SizeHint } from "./size-advisor";
+import type { ConsultVerdict } from "./consult-profile";
 
 /** The whole note; Desk's `.slice(0, 4000)`. */
 export const NOTE_LIMIT = 4000;
@@ -64,7 +66,22 @@ export interface TurnFacts {
   /** LOAI_HANG: the customer asked for a product type; the web has it even if the lookup came back empty. */
   productType?: { type: string; link: string; variant?: string | undefined } | undefined;
   /** SIZE_TEM: tier 1 converted the customer's measurement with the reference table. */
-  variantHint?: { variant: string; label?: string | undefined; bareJp?: boolean | undefined; raw?: string | undefined; tem?: string | undefined } | undefined;
+  variantHint?: {
+    variant: string; label?: string | undefined; bareJp?: boolean | undefined; raw?: string | undefined; tem?: string | undefined;
+    /** 05/10/2026: the brand whose own chart gave `variant` (`general` = no chart: the industry table, a general conversion). */
+    brand?: string | undefined; general?: boolean | undefined;
+  } | undefined;
+  /**
+   * SO_DO (05/10/2026, phiếu Desk nhóm số đo): what tier 1 concluded from the customer's measurements —
+   * the variant from the table, or that measurements are missing and none may be named yet.
+   */
+  sizeAdvice?: (SizeHint & { brand?: string | undefined }) | undefined;
+  /**
+   * HO_SO_TU_VAN (05/10/2026, phiếu Desk nhóm nhu cầu / tư vấn): the consultation profile of the turn — the
+   * customer named an item (ask no profile), or what is known / missing / already asked of the need's profile.
+   * An everyday need is the PHO_THONG block's (`everyday`), not this one's.
+   */
+  consult?: (ConsultVerdict & { notAsked?: string[] | undefined }) | undefined;
   /** DON_DOI_SIZE: tier 1 checked whether the order can still be changed. */
   orderExchange?: { orderId?: string | undefined; allowed: boolean; note?: string | undefined } | undefined;
   /** VAN_DON: the customer's parcel and its tracking link. */
@@ -188,7 +205,40 @@ export class FactNoteComposer {
         bienThe: vh.variant,
         bareJp: vh.bareJp === true ? this.fill("SIZE_TEM.bareJp", { goc: vh.raw ?? vh.tem ?? "" }) : "",
         tem: vh.tem ? this.fill("SIZE_TEM.tem", { tem: vh.tem.replace(".", ",") }) : ""
+      }) + (vh.general === true ? this.fill("SIZE_TEM.chung", { hang: vh.brand ? ` ${vh.brand}` : "" })
+        : vh.brand ? this.fill("SIZE_TEM.hang", { hang: vh.brand }) : "");
+    }
+
+    const sa = f.sizeAdvice;
+    if (sa !== undefined) {
+      const cm = (v: number | null): string => (v === null ? "" : String(v).replace(".", ","));
+      const noi = sa.link !== null ? this.fill("SO_DO.noi", { noi: sa.linkLow !== null && sa.linkLow !== sa.link ? `${cm(sa.linkLow)}–${cm(sa.link)}` : cm(sa.link) }) : "";
+      const bienThe = sa.sizeLow !== "" ? this.fill("SO_DO.khoang", { thap: sa.sizeLow, cao: sa.size }) : sa.size;
+      const ketLuan = sa.status === "thieu" ? this.fill("SO_DO.thieu", { thieu: sa.missing.join(", "), khach })
+        : sa.status === "ngoai-bang" ? this.fill("SO_DO.ngoaiBang", { khach })
+        : sa.status === "chua-ro-he" ? this.fill("SO_DO.chuaRo", { khach })
+        : sa.noChart || sa.size === "" ? this.fill("SO_DO.khongBang", { hang: sa.brand ?? "", noi, khach })
+        : this.fill(sa.status === "khong-do" ? "SO_DO.khongDo" : "SO_DO.du", {
+          bienThe, noi, khach,
+          rong: sa.wide ? this.t("SO_DO.rong") : "",
+          doLai: sa.recheck.length > 0 ? this.fill("SO_DO.doLai", { doLai: sa.recheck.join(", ") }) : ""
+        });
+      out["SO_DO"] = this.fill("SO_DO", { daCo: sa.given.join(", "), he: sa.systemName !== "" ? this.fill("SO_DO.he", { he: sa.systemName }) : "", ketLuan, khach });
+    }
+
+    const cv = f.consult;
+    if (cv !== undefined && cv.status !== "chua-ro" && cv.status !== "pho-thong") {
+      const pieces = cv.known.map((k) => `${k.name} = ${k.said}`).join("; ");
+      const daBiet = pieces !== "" ? this.fill("HO_SO_TU_VAN.daBiet", { daBiet: pieces }) : "";
+      const names = (xs: readonly { name: string }[]): string => xs.map((x) => x.name).join(", ");
+      const key = cv.status === "dich-danh" ? "HO_SO_TU_VAN.dichDanh" : cv.status === "du" ? "HO_SO_TU_VAN.du"
+        : cv.status === "thieu" ? "HO_SO_TU_VAN.thieu" : cv.status === "da-hoi" ? "HO_SO_TU_VAN.daHoi" : "HO_SO_TU_VAN.daHoiNhuCau";
+      const ketLuan = this.fill(key, {
+        nhuCau: cv.need?.name ?? "", daBiet, khach,
+        thieu: names(cv.missing), daHoi: names(cv.asked),
+        khongHoi: (cv.notAsked ?? []).join(", ")
       });
+      if (ketLuan !== "") out["HO_SO_TU_VAN"] = this.fill("HO_SO_TU_VAN", { ketLuan, khach });
     }
 
     const oe = f.orderExchange;

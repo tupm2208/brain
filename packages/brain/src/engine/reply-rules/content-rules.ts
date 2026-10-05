@@ -6,7 +6,9 @@
 
 import type { SizeChartRow } from "../../pack/types";
 import { gateNormalize, hasLetters, hostOf, splitSentences, tidy, wordIn, type GateContext, type ReplyRule, type RuleResult } from "./support";
-import { escapeRe } from "../text-analysis";
+import { escapeRe, stripDiacritics } from "../text-analysis";
+import { sameVariantLabel } from "../size-advisor";
+import { splitPieces, variantLabel } from "./size-rules";
 
 /** The customer asks for more photos: nobody will take any, so the product links go instead (Desk v80). */
 /**
@@ -51,7 +53,8 @@ export class PhotosRule implements ReplyRule {
     const p = g.cfg.photos;
     // The landing sends the cards with this reply: the pictures ARE going, no link list needed.
     if (g.src.cardsSent === true) return null;
-    if (!g.test(p.asks, g.custNow)) return null;
+    // 05/10/2026: the pronoun "anh" is masked first — "cho anh hỏi…" is not "xin ảnh".
+    if (!g.test(p.asks, g.custNowPhoto)) return null;
     const promise = g.re(p.promise);
     const cands: { name: string; url: string }[] = [];
     const push = (name: string, url: string | undefined): void => {
@@ -101,38 +104,74 @@ export class LinkRule implements ReplyRule {
 }
 
 /**
- * The customer gave a foot length in cm and the bot named a size: the size must come from the
- * industry's chart (or be what the customer / a person / the catalog said). With a chart the wrong
- * number is corrected (`size_chart_fix`); without one the bot asks the brand instead (Desk (c) v32).
+ * The customer gave a measurement and the bot named a variant: in a CONVERSION sentence the variant
+ * must come from the industry's table (or be what the customer / a person said). With an answer the
+ * wrong number is corrected (`size_chart_fix`); without one that sentence asks instead (Desk (c) v32).
+ *
+ * 05/10/2026 (phiếu Desk 26/09 "cổng size thay mọi size trong tin"): ONLY the conversion sentence is
+ * touched — the one quoting the measurement or saying the industry's words for it. A stock sentence
+ * beside it ("mẫu … size 40 (UK 6.5) đang đặt được") is about stock, not the measurement. And the
+ * measurement is tier 1's reading (`sizeHint`, phiếu 06/09: typed without "cm" too), the acceptable
+ * variants those of the industry's system for it (a court shoe is not a running shoe). Without a hint
+ * the old reading stays: "NN cm" in the customer's text against `bang-size.json`.
  */
 export class SizeChartRule implements ReplyRule {
   readonly id = "sizeChart";
   apply(reply: string, g: GateContext): RuleResult | null {
     const s = g.cfg.sizeChart;
-    const cmRe = g.re(s.customerCm);
-    if (cmRe === null) return null;
-    const custCm = cmRe.exec(g.cust);
-    if (custCm === null || !g.test(s.mentionsSize, gateNormalize(reply))) return null;
-    const cm = Number(custCm[1]!.replace(",", "."));
-    const sizeRe = g.re(s.sizeInReply, "g");
+    const hint = g.src.sizeHint ?? null;
+    // Measurements still missing: nothing may be converted yet — SizePendingRule cuts it and asks.
+    if (hint !== null && hint.status === "thieu") return null;
+    let said = "";
+    let acceptable: string[] = [];
+    let want = "";
+    if (hint !== null) {
+      said = hint.primarySaid;
+      acceptable = hint.acceptable;
+      want = hint.size;
+    } else {
+      const cmRe = g.re(s.customerCm);
+      const custCm = cmRe === null ? null : cmRe.exec(g.cust);
+      if (custCm === null) return null;
+      said = custCm[1]!;
+      acceptable = acceptableSizes(g.src.sizeChart ?? [], Number(said.replace(",", ".")));
+      want = acceptable[0] ?? "";
+    }
+    if (said === "" || !g.test(s.mentionsSize, gateNormalize(reply))) return null;
+    const sizeRe = g.re(s.sizeInReply, "gd");
     if (sizeRe === null) return null;
     const flat = (t: string): string => t.replace(/\//g, " ");
-    const sizesInReply = Array.from(gateNormalize(reply).matchAll(sizeRe))
-      .map((x) => `${x[1]}${x[2] ? " " + x[2].trim() : ""}`.replace(/\s+/g, " ").trim());
-    if (sizesInReply.length === 0) return null;
-    const chart = acceptableSizes(g.src.sizeChart ?? [], cm);
-    const chartText = chart.join(" ");
-    const known = (size: string): boolean => wordIn(flat(g.cust), flat(size)) || wordIn(flat(g.shop), flat(size)) || wordIn(flat(g.catalog), flat(size)) || (chartText !== "" && wordIn(flat(chartText), flat(size)));
-    const unsourced = sizesInReply.filter((size) => !known(size));
+    const known = (size: string): boolean => wordIn(flat(g.cust), flat(size)) || wordIn(flat(g.shop), flat(size))
+      || acceptable.some((a) => sameVariantLabel(a, size)) || (hint === null && wordIn(flat(g.catalog), flat(size)));
+    const conversion = g.re(s.conversion, "iu");
+    const saidRe = new RegExp(`(?<![\\d.,])${said.replace(/[^\d.,]/g, "").replace(/[.,]/, "[.,]")}(?![\\d]|[.,]\\d)`);
+    const isConversion = (piece: string): boolean => (conversion !== null && conversion.test(piece)) || saidRe.test(piece);
+    const text = reply.normalize("NFC");
+    const unsourced: string[] = [];
+    let asked = false;
+    const out = splitPieces(text).map((piece) => {
+      if (!isConversion(piece)) return piece;
+      // Accent-stripping keeps every position of an NFC text, so the matches index the original piece.
+      const hits = [...stripDiacritics(piece).matchAll(sizeRe)].map((x) => ({
+        label: variantLabel(x[1]!, x[2]?.trim()), start: x.indices?.[1]?.[0] ?? -1, end: x.indices?.[2]?.[1] ?? x.indices?.[1]?.[1] ?? -1
+      })).filter((h) => h.start >= 0 && !known(h.label));
+      if (hits.length === 0) return piece;
+      unsourced.push(...hits.map((h) => h.label));
+      if (want !== "") {
+        let fixed = piece;
+        for (const h of [...hits].sort((a, b) => b.start - a.start)) fixed = fixed.slice(0, h.start) + want + fixed.slice(h.end);
+        return fixed;
+      }
+      if (asked) return "";
+      asked = true;
+      const tail = /\s*$/.exec(piece)![0];
+      return g.fill(s.askBack, { cm: said }) + (tail === "" ? " " : tail);
+    });
     if (unsourced.length === 0) return null;
-    if (chart.length > 0) {
-      const want = chart[0]!;
-      const before = reply;
-      const out = reply.replace(/size\s*\d{2}(?:\s*[12]\s*\/\s*3|[.,]5)?/gi, `size ${want}`);
-      return out === before ? null : { reply: out, trace: [`size_chart_fix:${unsourced.join(",")}->${want}`] };
-    }
-    if (g.test(s.hedge, gateNormalize(reply))) return null;
-    return { reply: g.fill(s.askBack, { cm: custCm[1] }), trace: [`foot_cm_size_no_source:${unsourced.join(",")}`] };
+    if (want === "" && g.test(s.hedge, gateNormalize(reply))) return null;
+    const result = out.join("").replace(/[ \t]{2,}/g, " ").trim();
+    if (result === reply.trim()) return null;
+    return { reply: result, trace: [want !== "" ? `size_chart_fix:${unsourced.join(",")}->${want}` : `foot_cm_size_no_source:${unsourced.join(",")}`] };
   }
 }
 

@@ -2,6 +2,7 @@
   "id": "giay-chay",
   "name": "Giày chạy & đồ thể thao",
   "tradeWords": "giày chạy bộ",
+  "countUnit": "đôi",
   "families": [
     {
       "id": "running",

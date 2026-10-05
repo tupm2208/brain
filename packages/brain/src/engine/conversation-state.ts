@@ -15,9 +15,58 @@ export const RECENT_TURN_LIMIT = 40;
 export const EPISODE_GAP_HOURS = 6;
 export const IMAGE_EVIDENCE_MINUTES = 15;
 
+/**
+ * ONE definition of "the current session" and of "a photo of this turn" for every rule (05/10/2026,
+ * phiếu Desk ảnh / phiên): the frame, the focus, LLM#1's code, the measurements, the photo reader, the
+ * "already sent a photo" evidence and the reply gate all measure with these — not each with its own clock.
+ *  - SESSION: the lines after the last silence of `SESSION_GAP_MS` (the episode gap). What was said
+ *    before it is history, never "cái này" or the customer's measurements of today.
+ *  - FRESH PHOTO: sent within `PHOTO_FRESH_MS` of the message being answered — "the photo the customer
+ *    just sent", and the evidence that they sent one. Older is history.
+ *  - LOOK-BACK: within `PHOTO_LOOK_BACK_MS` the agent may still open a photo again, and a "this IS our
+ *    item" sentence about it is still a guess.
+ */
+export const SESSION_GAP_MS = EPISODE_GAP_HOURS * 3600_000;
+export const PHOTO_FRESH_MS = IMAGE_EVIDENCE_MINUTES * 60_000;
+export const PHOTO_LOOK_BACK_MS = 30 * 60_000;
+
 function millis(at: string | undefined): number {
   const t = Date.parse(at ?? "");
   return Number.isFinite(t) ? t : NaN;
+}
+
+/**
+ * Index of the first line of the current session (oldest first): after the last silence of `gapMs`
+ * or more between two lines. A line without a readable time never cuts.
+ */
+export function sessionStartIndex(times: readonly (string | undefined)[], gapMs: number = SESSION_GAP_MS): number {
+  let start = 0;
+  let previous = NaN;
+  for (let i = 0; i < times.length; i += 1) {
+    const t = millis(times[i]);
+    if (!Number.isFinite(t)) continue;
+    if (Number.isFinite(previous) && t - previous >= gapMs) start = i;
+    previous = t;
+  }
+  return start;
+}
+
+/**
+ * The moment a turn is measured from: the time of the message being answered, else the newest line's,
+ * else the clock — never an older line's (a replay without times must not pull "now" back to a page line
+ * of thirteen days before). A draft made later still measures from the customer's message.
+ */
+export function turnAnchorMs(messageAt: string | undefined, newestLineAt: string | undefined, nowMs: number): number {
+  const own = millis(messageAt);
+  if (Number.isFinite(own)) return own;
+  const newest = millis(newestLineAt);
+  return Number.isFinite(newest) ? newest : nowMs;
+}
+
+/** A photo sent at `at` is still "the photo the customer just sent", measured from `anchorMs`. No time = it came with the message. */
+export function photoIsFresh(at: string | undefined, anchorMs: number, windowMs: number = PHOTO_FRESH_MS): boolean {
+  const t = millis(at);
+  return !Number.isFinite(t) || anchorMs - t <= windowMs;
 }
 
 /** Most recent customer turn. */
@@ -52,10 +101,12 @@ export function isNewEpisode(state: ConversationState, now: Date): boolean {
  *
  * The legacy "ask when unsure" gate only looked at the image of the CURRENT turn, so a turn
  * without an image produced a request for a photo the customer had sent 30 seconds earlier.
- * Here the whole history within a 15-minute window is checked.
+ * Here the whole history within a 15-minute window is checked. The memory is only half the evidence:
+ * the THREAD's own photo lines count too (`TurnContext.photoEvidence`, 05/10/2026) — a draft, or a photo
+ * folded into the next message, never reached the memory.
  */
 export function hasRecentImageEvidence(state: ConversationState, now: Date): boolean {
-  const cutoff = now.getTime() - IMAGE_EVIDENCE_MINUTES * 60_000;
+  const cutoff = now.getTime() - PHOTO_FRESH_MS;
   return state.turns.some(
     (t) => t.role === "customer" && (t.imageCount ?? 0) > 0 && millis(t.at) >= cutoff
   );

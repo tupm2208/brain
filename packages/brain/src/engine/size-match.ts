@@ -21,6 +21,13 @@ export interface SizeRow {
   loai?: string | undefined;
   dk?: string | undefined;
   kho?: string | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk 26/09): the landing matched this label to the size asked THROUGH the brand's
+   * size chart ("UK 7.5" for "41") and wrote the size asked here — the row IS that size, not a neighbour.
+   * An EU half size on a chart in thirds: the landing writes the neighbouring STEP ("42 2/3" for "42.5"), so the
+   * row is compared by that number and comes out `approximate`.
+   */
+  quy_doi?: string | undefined;
 }
 
 /** What the customer's size resolved to: the warehouse label, the quantity when known, and whether it is a neighbouring step. */
@@ -72,8 +79,21 @@ export class SizeMatcher {
     return Math.abs(na - nb) <= this.tolerance();
   }
 
+  /** The landing converted this row to exactly the size asked (`quy_doi`). */
+  saidAs(row: SizeRow, requested: string): boolean {
+    const said = String(row.quy_doi ?? "").trim();
+    return said !== "" && this.key(said) === this.key(requested);
+  }
+
+  /** The row is the requested size: same label, or converted to it by the landing. */
+  rowIs(row: SizeRow, requested: string): boolean {
+    return this.saidAs(row, requested) || this.same(row.size, requested);
+  }
+
   /** Rows whose label is the requested size (numbers within tolerance; apparel keys as text). */
   matches<T extends SizeRow>(rows: readonly T[], requested: string): T[] {
+    const converted = rows.filter((row) => this.saidAs(row, requested));
+    if (converted.length > 0) return converted;
     const target = this.toNumber(requested);
     const apparel = !Number.isFinite(target) || (this.cfg.apparelMin > 0 && target >= this.cfg.apparelMin);
     if (apparel) {
@@ -81,7 +101,7 @@ export class SizeMatcher {
       return key === "" ? [] : rows.filter((row) => this.key(row.size) === key);
     }
     const numeric = rows.filter((row) => {
-      const value = this.toNumber(row.size);
+      const value = this.toNumber(String(row.quy_doi ?? "").trim() || row.size);
       return Number.isFinite(value) && Math.abs(value - target) <= this.tolerance();
     });
     return numeric;
@@ -95,14 +115,14 @@ export class SizeMatcher {
     const list = rows.filter((row) => row.so_luong === undefined || row.so_luong > 0);
     if (list.length === 0 || String(requested ?? "").trim() === "") return null;
     const wanted = this.key(requested);
-    const exact = list.find((row) => this.key(row.size) === wanted);
+    const exact = list.find((row) => this.key(row.size) === wanted || this.saidAs(row, requested));
     if (exact !== undefined) return { size: exact.size, qty: exact.so_luong, approximate: false, row: exact };
     const target = this.toNumber(requested);
     if (!Number.isFinite(target)) return null;
     if (this.cfg.apparelMin > 0 && target >= this.cfg.apparelMin) return null;
     let best: { row: T; distance: number; value: number } | null = null;
     for (const row of list) {
-      const value = this.toNumber(row.size);
+      const value = this.toNumber(String(row.quy_doi ?? "").trim() || row.size);
       if (!Number.isFinite(value)) continue;
       const distance = Math.abs(value - target);
       if (distance > this.tolerance()) continue;

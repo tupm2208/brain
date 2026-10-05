@@ -63,6 +63,12 @@ export interface DialogueFrame {
   pageText: string;
   pageImages: number;
   short: boolean;
+  /**
+   * 05/10/2026 (phiếu Desk "vai trò ảnh khách gửi"): the page just asked to SEE what the customer uses now,
+   * or its label (`askedReference`, tier 1 ⊕ industry) — a photo sent next is a reference to measure by,
+   * never the item to sell. Absent = no.
+   */
+  asksReference?: boolean | undefined;
   /** One sentence for the prompt: `page vừa HỎI SIZE (về mẫu …): "…" → khách ĐANG TRẢ LỜI SIZE.` */
   text: string;
 }
@@ -158,6 +164,7 @@ export class DialogueFrameBuilder {
       answer, short,
       // "44 2/3", "41-1/3", "42 ruoi" → "44 2/3", "41 1/3", "42.5": one spelling for the stock lookup.
       size: sizeOnly ? norm.replace(/\s*\/\s*/g, "/").replace(/\s*-\s*/g, " ").replace(/\s+/g, " ").replace(/\s*\bruoi\b/g, ".5").trim() : "",
+      ...(anyMatch(this.cfg.askedReference ?? [], normalize(turn.text)) ? { asksReference: true } : {}),
       text: ""
     };
     frame.text = this.describe(frame);

@@ -72,6 +72,12 @@
     "carriesRequest": [
       "(size)"
     ],
-    "asksFootMeasure": "(do|đo) (giup|giúp)? ?(em|shop)? ?(chieu dai|chiều dài) (ban chan|bàn chân)|(dai|dài) (ban chan|bàn chân)|(bao nhieu|bao nhiêu) ?cm|(so do|số đo) (chan|chân)|(tem|nhan|nhãn) (size|trong luoi|trong lưỡi)"
+    "productRejection": [
+      "\\b(khong|ko|k|kp|dau|chang|hong) phai (la )?doi\\b",
+      "\\b(khong|ko|k|chang|hong) (dung|giong) doi\\b",
+      "\\b(sai|nham) doi\\b",
+      "\\bdoi nay chu\\b"
+    ],
+    "asksFootMeasure": "(3|ba) (thong so|thông số)|(do|đo) (giup|giúp)? ?(em|shop)? ?(chieu dai|chiều dài) (ban chan|bàn chân)|(dai|dài) (ban chan|bàn chân)|(bao nhieu|bao nhiêu) ?cm|(so do|số đo) (chan|chân)|(tem|nhan|nhãn) (size|trong luoi|trong lưỡi)"
   }
 }

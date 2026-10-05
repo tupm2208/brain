@@ -10,11 +10,12 @@
  */
 
 import type { ShopProfile } from "@sp/contract";
-import type { ReplyGateConfig, SizeChartRow } from "../../pack/types";
+import type { ReplyGateConfig, ReplyGatePronoun, SizeChartRow } from "../../pack/types";
 import { inStockRows, priceOf, type FoundItem } from "../catalog-score";
 import { fillText } from "../fill-text";
 import type { StockFacts } from "../stock-facts";
 import { escapeRe, stripDiacritics } from "../text-analysis";
+import type { SizeHint, VariantRow } from "../size-advisor";
 
 /** A product the pipeline named to the model (advice candidates, image matches). */
 export interface GateProduct {
@@ -79,6 +80,107 @@ export interface GateSources {
   tenNguoiPhuTrach?: string | undefined;
   /** The industry's tag → size chart, for a size the bot converted from centimetres. */
   sizeChart?: readonly SizeChartRow[] | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk nhóm số đo): what tier 1 concluded from the customer's measurements —
+   * the measurements read even without their unit, whether a variant may be named yet, which ones a
+   * conversion sentence may name. `null` / absent = the customer gave no measurement.
+   */
+  sizeHint?: SizeHint | null | undefined;
+  /** 05/10/2026: what the stock tools answered IN WORDS this turn (a "hết size … size đang còn: …" sentence lists labels too). */
+  toolText?: string | undefined;
+  /** The variant map of the brand in focus (its own chart, or the industry table): label ↔ tag ↔ body measurement ↔ other systems. */
+  variantRows?: readonly VariantRow[] | undefined;
+  /** The brand's chart has separate women's labels (then a pair on a women's item is not checked). */
+  variantWomenDiffer?: boolean | undefined;
+  /** The brand `variantRows` belong to ("" = the industry table); a reply naming another brand is not checked against it. */
+  variantBrand?: string | undefined;
+  /**
+   * Everything the PAGE said (bot and people), joined — never a SOURCE of a fact (see `shopSaid`), only
+   * to know whether something was already ASKED ("đo giúp em đủ 3 thông số" once is enough).
+   */
+  pageSaid?: string | undefined;
+  /**
+   * 05/10/2026: the RUNNING orders certainly linked to the conversation (the landing's stage), for the
+   * "already in your order" net. Empty / absent = the customer has no order the bot knows of.
+   */
+  runningOrders?: GateOrder[] | undefined;
+  /** The customer's lines with their time, oldest first (who said "buy more" AFTER the order was placed). */
+  customerLines?: { text: string; at: string }[] | undefined;
+  /** The product code the turn is about (the focus), for "mẫu này". */
+  focusCode?: string | undefined;
+  /**
+   * 05/10/2026: an order certainly linked to the conversation (slip tag / pinned, or found by the phone
+   * the customer typed) carries a paid amount — the one data source that the customer paid.
+   */
+  paidEvidence?: boolean | undefined;
+  /**
+   * 05/10/2026: a customer photo is in play — sent this turn or in the last half-hour (the agent can
+   * still look at it). Then a "this IS our item / the right colour" sentence is a guess said as a fact.
+   */
+  photoContext?: boolean | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk "khách gửi ảnh rồi hỏi, bot vẫn xin ảnh"): the customer sent a photo within the
+   * FRESH window (this turn's, or an earlier line of the thread / the memory) — asking for "a photo" again
+   * is asking for what they just sent.
+   */
+  photoSent?: boolean | undefined;
+  /** Codes PRINTED on the customer's photo (read as text): the code itself, not a look-alike. */
+  photoCodesRead?: string[] | undefined;
+  /** Codes the photo was matched to with confidence this turn (fingerprint / catalog comparison). */
+  photoCodes?: string[] | undefined;
+  /** Brand words of the industry's lexicon (tier 2 data): a clause naming another brand talks about another item. */
+  brandWords?: string[] | undefined;
+  /** A model / the router read a buying step (closing signals, ready to buy, place order). */
+  buyingSignals?: boolean | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): regexes (accent-stripped) of the questions the consultation
+   * profile says must not be asked this turn (item named, piece known, piece already asked this session).
+   */
+  consultNoAsk?: string[] | undefined;
+}
+
+/** A running order as the gate reads it. */
+export interface GateOrder {
+  maDon: string;
+  giaiDoan: string;
+  taoLuc: string;
+  mon: { ma: string; ten: string; size: string }[];
+}
+
+/**
+ * 05/10/2026 — a LANGUAGE rule, every shop: once accents are stripped the pronoun "anh" reads as
+ * "ảnh" (a photo), so "cho anh hỏi…" became "xin ảnh". An occurrence typed WITHOUT its accent is the
+ * pronoun, masked to `cfg.replacement`, unless the words around it are surely about a photo; one
+ * right before an accented photo word is dropped ("Gửi anh ảnh với" = "Gửi ảnh với"). The word typed
+ * WITH its accent ("ảnh") is never touched. Returns the raw text (accents kept), masked.
+ */
+export function maskPronoun(raw: string, cfg: ReplyGatePronoun): string {
+  const word = cfg.word.trim();
+  if (word === "") return raw;
+  const text = String(raw ?? "").normalize("NFC");
+  // Typed with accents anywhere: a combining mark after decomposition, or the letter d-stroke.
+  const typedWithMarks = /[̀-ͯ]/.test(text.normalize("NFD")) || /[đĐ]/.test(text);
+  const re = (pattern: string, flags = ""): RegExp | null => { if (pattern === "") return null; try { return new RegExp(pattern, flags); } catch { return null; } };
+  const photoAfter = re(cfg.photoAfter);
+  const askBefore = re(cfg.askBefore);
+  const askAfter = re(cfg.askAfter);
+  const sendBefore = re(cfg.sendBefore);
+  const sendAfter = re(cfg.sendAfter);
+  const photoNext = re(cfg.photoNext, "iu");
+  const occurrence = new RegExp(`(^|[^\\p{L}])(${escapeRe(word)})(?!\\p{L})`, "giu");
+  return text.replace(occurrence, (match: string, before: string, _w: string, offset: number) => {
+    const start = offset + before.length;
+    const end = start + word.length;
+    const after = gateNormalize(text.slice(end, end + 30));
+    const prev = gateNormalize(text.slice(Math.max(0, start - 20), start));
+    const photo = (photoAfter?.test(after) ?? false)
+      || (!typedWithMarks && (askBefore?.test(prev) ?? false) && (askAfter?.test(after) ?? false))
+      || (!typedWithMarks && (sendBefore?.test(prev) ?? false) && (sendAfter?.test(after) ?? false));
+    if (photo) return match;
+    // The pronoun right before the accented photo word: drop it, the request reads whole again.
+    if (photoNext?.test(text.slice(end)) ?? false) return before;
+    return `${before}${cfg.replacement}`;
+  });
 }
 
 /** What one rule did to the draft. `null` from `apply` means the rule did not fire. */
@@ -172,6 +274,8 @@ export class GateContext {
   readonly cust: string;
   /** The current message alone, normalised. */
   readonly custNow: string;
+  /** The current message with a pronoun that reads like "ảnh" masked (`daiTu`), normalised: what the photo rules read. */
+  readonly custNowPhoto: string;
   readonly policy: string;
   /** The shop profile's policy sentences as text (lead time, exchange, warranty, deposit rate). */
   readonly profileText: string;
@@ -190,6 +294,7 @@ export class GateContext {
     this.cust = gateNormalize(src.customerSaid);
     const lines = String(src.customerSaid ?? "").split(/\n+/).map((l) => l.trim()).filter(Boolean);
     this.custNow = gateNormalize(src.customerMessage ?? lines[lines.length - 1] ?? "");
+    this.custNowPhoto = gateNormalize(maskPronoun(src.customerMessage ?? lines[lines.length - 1] ?? "", cfg.daiTu));
     this.policy = gateNormalize(src.policy);
     this.profileText = gateNormalize(profileSentences(src.hoSo).join(" \n "));
     this.source = `${this.shop} \n ${this.policy} \n ${this.profileText}`;

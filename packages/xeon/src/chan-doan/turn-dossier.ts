@@ -150,6 +150,8 @@ export interface TruthDossier {
   bacThang: string;
   donHang?: { maDon: string; trangThai: string; vanDon: boolean; doiSize?: boolean | undefined } | undefined;
   khach?: { daMua: number; sizeHayMua: string[] } | undefined;
+  /** 05/10/2026 (phiếu Desk nhóm nhu cầu): the consultation profile — named item / everyday / known, missing, asked. */
+  hoSoTuVan?: { trangThai: string; nhuCau: string; daBiet: string[]; thieu: string[]; daHoi: string[] } | undefined;
 }
 
 /** The reply gate (stage 6): what the model wrote, what went out, and which rules fired. Numbers of 9+ digits are masked in `goc`. */
@@ -179,6 +181,8 @@ export interface PhotoDossier {
   soAnh: number;
   thamChieu: boolean;
   loi: string[];
+  /** 05/10/2026: photos of the customer's burst left out as older than the fresh window (not "just sent"). */
+  boCu?: number | undefined;
 }
 
 export interface TurnDossier {

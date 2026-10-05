@@ -52,6 +52,8 @@ export interface FoundItem {
   khuyenMai?: boolean | undefined;
   /** Need tags the shop attached (fit notes, "daily", "race"…) for the `need` bonus. */
   nhuCau?: string[] | undefined;
+  /** 05/10/2026: the item's REAL discount off its list price as the storefront shows it (%), absent = not on sale. */
+  phan_tram_giam?: number | undefined;
 }
 
 /** What the customer asked, as the scorer reads it. Empty string = not said. */

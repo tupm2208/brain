@@ -58,6 +58,24 @@ export interface OrderTracking {
   active: boolean;
 }
 
+/** Stage of an order as the LANDING computes it (status + waybill + the shop's stale-order days). */
+export type OrderStage = "cho_thanh_toan" | "dang_xu_ly" | "can_lien_he" | "dang_giao" | "da_ket_thuc";
+
+/** One order linked to a conversation, as much as the bot may know: no name, phone, address, warehouse or partner. */
+export interface LinkedOrderBrief {
+  maDon: string;
+  giaiDoan: OrderStage;
+  /** Why it ended (`da_giao` · `da_huy` · `hoan_hang` · `hoan_tien` · `het_han`), only when `giaiDoan === "da_ket_thuc"`. */
+  ketThuc?: string | undefined;
+  /** The waybill was cancelled / returned / failed while the order still runs: no link, never "on its way". */
+  vanDonDong: boolean;
+  taoLuc: string;
+  mon: { ma: string; ten: string; size: string; sl: number }[];
+  tien: { tong: number; daTra: number; conLai: number };
+  /** The tracking link only while the parcel is on its way. */
+  vanDon?: { ma: string; hang: string; link?: string | undefined } | undefined;
+}
+
 export interface OrderBrief {
   orderId: OrderId;
   status: string;
@@ -96,6 +114,8 @@ export interface FoundCatalogItem {
   link: string;
   nhom?: string;
   dieu_kien?: Record<string, string>;
+  /** 05/10/2026: the real discount off the list price the storefront shows (%); absent = not on sale. Newer landings only. */
+  phan_tram_giam?: number;
 }
 
 /** One rung entry of `catalog.resolveStock`: a found item plus whether it has the size asked. */
@@ -117,6 +137,17 @@ export interface ToolMap {
   "variant.chart": {
     input: { itemId: ItemId };
     output: { axis: string; rows: { label: string; note?: string | undefined }[] };
+  };
+  /**
+   * 05/10/2026 (phiếu Desk nhóm số đo): a BRAND's own variant chart as the shop keeps it on the landing
+   * ("bảng quy đổi theo từng hãng"): each label with its LINK value (the value that joins it to the
+   * industry's table — a shoe's tag centimetres) and its labels in other systems ({ uk: "8" }).
+   * `found: false` = no chart for that brand: the brain names no label converted for it.
+   * `womenDiffer` = the brand keeps separate women's labels (a pair on a women's item is not checked).
+   */
+  "variant.brandChart": {
+    input: { brand: string };
+    output: { found: boolean; brand: string; womenDiffer: boolean; rows: { label: string; link: number | null; alt: Record<string, string> }[] };
   };
   /**
    * Order lookup. Rule kept from the legacy system: ONLY orders matching the phone number the
@@ -194,8 +225,18 @@ export interface ToolMap {
    * the agent's prompt reads them.
    */
   "catalog.find": {
-    input: { ten?: string; ma?: string; size?: string; chi_hang_san?: boolean; muc_dich?: string; gioi_tinh?: string; phan_khuc?: string };
-    output: { ketQua: FoundCatalogItem[] | string };
+    input: {
+      ten?: string; ma?: string; size?: string; chi_hang_san?: boolean; muc_dich?: string; gioi_tinh?: string; phan_khuc?: string;
+      /**
+       * 05/10/2026 — NHÓM HÀNG of the merchant's own catalog (the storefront's Loại / Môn): `nhom` names one
+       * outright; `chi_nhom` = read only the groups in `ten` (a whole customer message), the other words are
+       * reported, never required; `biDanhNhom` / `khongPhaiNhom` = the industry's everyday words for the
+       * groups (the merchant server knows no industry). An older landing ignores all four.
+       */
+      nhom?: string; chi_nhom?: boolean; biDanhNhom?: Record<string, string>; khongPhaiNhom?: string[];
+    };
+    /** `nhomKhop`: the group(s) the words named — labels as the storefront shows them, its filter link, the words left over. */
+    output: { ketQua: FoundCatalogItem[] | string; nhomKhop?: { loai: string; mon: string; link: string; conLai: string[] } };
   };
   /**
    * THE STOCK LADDER (Desk `resolve_stock`, moved 25/09/2026): when a customer asks for one model
@@ -265,6 +306,11 @@ export interface ToolMap {
         anh?: string[];
         /** 24/09/2026: the message this one is a "Reply" to (Meta `reply_to.mid`). Absent on a plain message. */
         traLoiTin?: string;
+        /**
+         * 05/10/2026: on a CHANNEL line (`boi: "meta"`), what it says — `tra-loi-bai-viet`: the customer pressed
+         * Reply on a post / story of the page (Meta's "X đã trả lời về một bài viết"). Absent otherwise / older landings.
+         */
+        loaiMeta?: string;
       }[];
       /** 24/09/2026 (tier-1 Desk rebuild): conversation-level facts. Older landings omit the whole object. */
       hoiThoai?: {
@@ -277,6 +323,23 @@ export interface ToolMap {
          * within the last 6 hours — asking for them again is refused as `da-gui-6h`. Older landings omit it.
          */
         theDaGui?: string[];
+        /**
+         * 05/10/2026: orders CERTAINLY linked to this conversation (the order slip tag, or a person pinned
+         * it — never a phone-number guess), newest first, with the stage the landing computed from the
+         * order AND its waybill (`order-stage.ts`). Older landings omit it: the brain then knows of no order.
+         */
+        donCuaHoiThoai?: LinkedOrderBrief[];
+        /**
+         * 05/10/2026 (phiếu Desk "nhường khi người thật đang trực"): when a person last typed in this
+         * conversation's reply box (OMI pings while keys are pressed; opening the thread does not count).
+         * Absent = nobody typed recently, or an older landing.
+         */
+        nguoiGoLuc?: string;
+        /**
+         * 05/10/2026: when a person last pressed "bot trả lời tiếp" here. A person's lines and typing BEFORE it
+         * no longer keep the bot quiet — they handed the conversation back. Absent = never, or an older landing.
+         */
+        botTiepLuc?: string;
       };
     };
   };
@@ -316,12 +379,18 @@ export interface ToolMap {
   "training.knowledge": {
     input: { q?: string; conversationId?: string };
     output: {
-      hoiDap: { intent: string; cauHoi: string; traLoi: string }[];
-      quyTac: { tieuDe: string; noiDung: string; loai: string }[];
-      cauMau: { cauKhach: string; traLoi: string; lyDo: string }[];
-      kienThuc: { ma: string; ten: string; form: string; phuHop: string; tuVanSize: string; luuY: string }[];
-      thuVien: { ten: string; dungKhi: string[]; noiDung: string }[];
-      hoSoMau: { ten: string; tomTat: string }[];
+      /**
+       * 02/10/2026: the Training AI lists (Q&A, rules, style examples, fit notes, libraries, sample
+       * customers) left OMI — empty on every landing, and read as raw prompt text, never as rules. An old
+       * landing may still send them; the brain ignores them. What the shop wants the bot to know now
+       * lives in the profile (`cauHoiRieng`, `quyTrinhRieng`), read through `shop.profile`.
+       */
+      hoiDap?: unknown[];
+      quyTac?: unknown[];
+      cauMau?: unknown[];
+      kienThuc?: unknown[];
+      thuVien?: unknown[];
+      hoSoMau?: unknown[];
       spNgoai: { ma: string; ten: string; size: string; gia: number } | null;
       cauHinh: { tatHangDoiTac: boolean };
     };
@@ -378,6 +447,10 @@ export const TOOLS: { readonly [K in ToolName]: ToolMeta } = {
   "variant.chart": {
     name: "variant.chart", module: "hang-kho", effect: "read", audience: "bot",
     describe: "Variant chart of an item (for example a size chart) to help choose."
+  },
+  "variant.brandChart": {
+    name: "variant.brandChart", module: "hang-kho", effect: "read", audience: "bot",
+    describe: "A brand's own variant chart kept by the shop (label, link value, other systems' labels); found=false when the shop keeps none."
   },
   "order.lookup": {
     // `effect: "draft"` rather than `"read"`: this tool WRITES. It records that the customer proved
@@ -436,7 +509,7 @@ export const TOOLS: { readonly [K in ToolName]: ToolMeta } = {
   },
   "training.knowledge": {
     name: "training.knowledge", module: "hop-thu", effect: "read", audience: "bot",
-    describe: "What the shop approved for the AI: Q&A, rules, style examples, fit notes, knowledge, the external product settled on."
+    describe: "This conversation's context from the shop: the external product settled on, and whether partner goods are paused."
   },
   "shop.profile": {
     name: "shop.profile", module: "hop-thu", effect: "read", audience: "bot",
@@ -533,6 +606,7 @@ export function validateToolInput(tool: ToolName, input: unknown): string | null
       return field(o, "variantLabel", "string", false);
     }
     case "variant.chart": return field(o, "itemId", "string");
+    case "variant.brandChart": return field(o, "brand", "string");
     case "order.lookup":
       return field(o, "conversationId", "string") ?? field(o, "phoneGivenInConversation", "string");
     case "order.draft": {
@@ -619,6 +693,9 @@ export function validateToolOutput(tool: ToolName, data: unknown): string | null
         ?? field(x, "warehouseId", "string") ?? field(x, "warehouseName", "string", false));
     case "variant.chart":
       return field(o, "axis", "string", false) ?? eachElement(o, "rows", (x) => field(x, "label", "string", false));
+    case "variant.brandChart":
+      return field(o, "found", "boolean") ?? field(o, "womenDiffer", "boolean", false)
+        ?? eachElement(o, "rows", (x) => field(x, "label", "string") ?? field(x, "alt", "object", false));
     case "order.lookup":
       return eachElement(o, "orders", (x) =>
         field(x, "orderId", "string") ?? field(x, "status", "string", false) ?? moneyShape(x)

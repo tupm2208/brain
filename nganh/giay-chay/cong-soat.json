@@ -1,7 +1,15 @@
 {
   "_doc": "TANG 2 — phan DINH NGANH (giay chay) cua cong soat sau nhap (chep Sales Desk enforceReplyEvidence / enforcePolicyClaims, 25/09/2026): cach noi CON/HET hang va size (don vi 'doi'), size nac le (41 1/3), bao hanh / 'bao check' / '100% chinh hang', size quy tu cm phai theo bang-size.json, goi lai chinh doi dang di, hang khac, cau an toan theo chu de. Duoc GHEP vao loi-chung/cong-soat-chung.json (danh sach noi them, chu ghi de). Cho trong: {ten} {ma} {size} {ton} {gia} {link} {cm} {doiDangDi} + {khach}/{Khach}/{shop}/{tenNguoiPhuTrach}.",
+  "exchange": {
+    "_doc": "05/10/2026 (phieu Desk 31/08 'hua doi size', soat lai): tu NGANH cho cach noi khang dinh 'đổi <thu> được' cua tang 1 (exchange.affirmed): bien the cua nganh la size. Noi tiep vao danh sach tang 1.",
+    "affirmedObjects": ["size", "sz", "cỡ"]
+  },
+  "contact": {
+    "_doc": "05/10/2026 (phieu Desk 'the dat hang khong di'): cau hoi lai khi bot da hua phieu ma chua du mon — bien the cua nganh la size.",
+    "askItem": "Dạ {khach} cho em xin mẫu và size {khach} chọn để em gửi phiếu đặt hàng nhé ạ."
+  },
   "warranty": {
-    "_doc": "'bao check', 'bao hanh tron doi', 'doi tra thoai mai', '100% chinh hang' khong co trong loi nguoi truc / chinh sach / cam ket hang cua ho so → cat cum, giu phan con lai. `cut` chay tren cau GOC co dau.",
+    "_doc": "'bao check','bao hanh tron doi', 'doi tra thoai mai', '100% chinh hang' khong co trong loi nguoi truc / chinh sach / cam ket hang cua ho so → cat cum, giu phan con lai. `cut` chay tren cau GOC co dau.",
     "detect": "(,?\\s*(va )?bao (check|test|kiem tra)[^.,!?\\n]*|,?\\s*bao hanh (tron doi|vinh vien|1 doi 1)[^.,!?\\n]*|,?\\s*(doi tra|doi size) thoai mai[^.,!?\\n]*|,?\\s*cam ket[^.,!?\\n]{0,30}(vinh vien|tron doi)[^.,!?\\n]*)",
     "sourceWords": ["bao check", "tron doi"],
     "cut": [
@@ -20,7 +28,9 @@
     "saysOut": [
       "het[^,.!?]{0,30}(size )?{size}",
       "(size )?{size}[^,.!?]{0,30}het",
-      "(chua co san|chua ve hang|chua co hang|la hang order|hang order chu|phai order)"
+      "(chua co san|chua ve hang|chua co hang|la hang order|hang order chu|phai order)",
+      "(size )?{size}[^,.!?]{0,30}(chua|khong|ko) (dat|order) duoc",
+      "(chua|khong|ko) (dat|order) duoc[^,.!?]{0,20}(size )?{size}"
     ],
     "saysIn": [
       "con[^,.!?]{0,30}(size )?{size}",
@@ -47,6 +57,75 @@
     "sizeInReply": "(?:size|di|lay|chon|len|xuong)\\s*(?:(?:la|chuan|khoang|tam|eu)\\s*)*(3[5-9]|4[0-9])(\\s*[12]\\s*\\/?\\s*3|[.,]5)?",
     "mentionsSize": "size\\s*\\d{2}|\\d\\s*cm",
     "hedge": "(de em (doi chieu|kiem tra)|bang size)",
-    "askBack": "Dạ chân {cm}cm thì {khach} cho em biết {khach} đang xem mẫu của hãng nào để em ướm đúng bảng size của hãng đó ạ. Nếu tiện, {khach} cho em thêm đôi đang đi vừa chân là mẫu nào, size bao nhiêu nhé."
+    "askBack": "Dạ chân {cm}cm thì {khach} cho em biết {khach} đang xem mẫu của hãng nào để em ướm đúng bảng size của hãng đó ạ. Nếu tiện, {khach} cho em thêm đôi đang đi vừa chân là mẫu nào, size bao nhiêu nhé.",
+    "_doc2": "05/10/2026 (phieu Desk 26/09 + 06/09): `conversion` = chu lam mot cau thanh cau QUY DOI tu so do (tren cau GOC co dau — 'chắc chắn' khong khop 'chân'); chi cau quy doi (hoac cau nhac lai dung so do khach cho) moi bi sua, cau bao hang ben canh giu nguyen. Khi tang 1 thay CHUA DU so do (he giay chay can dai + rong + chu vi): cau/ve cau KHUYEN size (`botVariant` = size sau tu khuyen/size) ma khach chua tung noi (`customerVariant`, so nhan CHINH XAC: 39.5 khac 39) bi cat neu nhac chan/so do, hoac co tu khuyen (`adviceVerb`) ma khong co chu bao hang (`stockWord`); tham so size trong link shop bi bo; chen cau xin du so do (`askMeasures`, da hoi roi thi `askMeasuresShort`). Bay da chan: 'có 42 đôi', 'đi 40 phút' khong phai size.",
+    "conversion": "(?<!\\p{L})(chân)(?!\\p{L})",
+    "botVariant": "(?<![\\p{L}\\d])(?:size|sz|cỡ|đi|lấy|chọn|mang)\\s*(?:(?:là|chuẩn|khoảng|tầm|eu|số|size)\\s*)*(3[5-9]|4[0-9])(\\s*[12]\\s*\\/\\s*3|[.,]5)?(?![\\d]|\\s*[12]\\s*\\/|k\\b|\\s*(?:đôi|phút|nghìn|ngàn|mẫu|%|ngày|km|kg|tuổi|cm|mm))",
+    "customerVariant": "(?<![\\d.,\\/])(3[5-9]|4[0-9])(\\s*[12]\\s*\\/\\s*3|[.,]5)?(?![\\d]|\\s*[12]\\s*\\/|k\\b|\\s*(?:đôi|phút|nghìn|ngàn|mẫu|%|ngày|km|kg|tuổi|cm|mm|tr\\b|triệu))",
+    "adviceVerb": "(?<!\\p{L})(?:nên|đi|lấy|chọn|hợp|vừa|mang|gợi ý)(?!\\p{L})",
+    "stockWord": "(?<!\\p{L})(?:còn|hết|sẵn|tồn|đặt được|về hàng)(?!\\p{L})",
+    "askMeasures": "Dạ để chọn đúng size giày chạy, {khach} đo giúp {shop} đủ 3 thông số: dài, rộng và chu vi vòng bàn chân nhé ạ. {Khach} cho {shop} xin thêm tên (hoặc ảnh) đôi giày chạy {khach} đang đi, size bao nhiêu, đi có thoải mái hay bị rộng/chật chỗ nào để {shop} ướm size cho {khach} được chính xác ạ.",
+    "askMeasuresShort": "Dạ {khach} đo giúp {shop} đủ 3 thông số: dài, rộng và chu vi vòng bàn chân rồi nhắn {shop}, {shop} ướm size cho {khach} được chính xác nhé ạ.",
+    "askedBefore": "3 thong so|chu vi vong",
+    "alreadyAsks": "3 thong so|chu vi|do giup|so do chan",
+    "linkLine": "{Khach} xem các mẫu tại: {link}"
+  },
+  "stockLabel": {
+    "_doc": "05/10/2026 (phieu Desk 01/09 'quan chi co den A82-A85' khi kho tra A/88): nhan size quan ao he chau A ma cau bot neu (a88, a/88, A82-A85) phai co trong ket qua tra kho cua luot hoac do khach noi; nhan khac = dai size mo hinh tu suy → cat cau. Nhom 1 = so cua nhan.",
+    "label": "(?<![a-z0-9])a(?:\\s*\\/\\s*)?([6-9]\\d)(?!\\d)",
+    "note": "Dạ size đó em cần kiểm lại kho rồi báo {khach} ngay ạ."
+  },
+  "sizePair": {
+    "_doc": "05/10/2026 (phieu Desk 01/09 + 22/09 'cong khong kiem cap size ↔ cm ↔ tem ↔ UK'): moi CAP trong cau bot — nhan size canh so cm (tem, hoac dai chan), nhan size canh nhan UK — phai la MOT hang cua bang size cua dung hang (bang hang lay tu landing; chua ro hang = bang nganh he adidas, khong kiem UK). Ghep LAN CAN: giua hai token chi duoc chu/khoang trang/'(' '-' ',' ':' '/', khong qua ')' '.' '!' '?' xuong dong, khong qua `gapStop`. So cm co chu dung truoc: `bodyLead` (so do chan — cong sizeChart lo), `linkLead` (tem), `noiseLead` (hop, de... — khong ghep). Lech thi sua theo GOC: cau quy doi tu so do / nhan khach noi = goc → sua so cm cho khop; so khach tu noi ('size 28') hoac chu 'tem' = goc → sua nhan size. UK: chi khi hang ro, khong nhac hang khac, khong phai giay nu cua hang co bang nu rieng; so phai co chu size/co/EU dung truoc ('Pegasus 41 (UK 8)' khong phai cap).",
+    "size": "(?<![\\d.,])(?<!\\d\\s{0,2}\\/\\s{0,2})(3[5-9]|4[0-9])(\\s+[12]\\s*\\/\\s*3|[.,]5)?(?![\\d\\/]|\\s*[12]\\s*\\/\\s*3|\\s*(?:mm|cm|%|đôi|k\\b|km|kg|g\\b|gr\\b|ngày|phút|tuổi|đ\\b))",
+    "unit": "(?<![\\d.,])(\\d{2}(?:[.,]\\d)?)\\s*(?:cm|centimet)(?![\\p{L}])",
+    "bodyLead": "(chân|dài chân|rộng|chu vi)[^0-9]{0,10}$",
+    "linkLead": "(tem|lưỡi|nhãn|\\bjp)[^0-9]{0,10}$",
+    "noiseLead": "(hộp|đế|ống|balo|túi|cao|dày|nặng|quai|bề ngang|cổ giày)[^0-9]{0,10}$",
+    "gapStop": "\\b(hoac|hay|va|con)\\b",
+    "prefix": "(?:^|[^a-z])(?:size|sz|co|eu)\\s*[:=]?\\s*$",
+    "alt": { "uk": "\\bUK\\s*(\\d{1,2}(?:[.,]5)?)(?![\\d.,]*\\d|\\s*k\\b)" },
+    "altForward": "^\\s*(?:\\(|=|:)?\\s*(?:tuong duong|tuc la|tuc|la|ung voi|=)?\\s*(?:size|sz|co|eu)?\\s*$",
+    "customerNotNumber": "\\s*(?:k\\b|kg|km|mm|tr\\b|trieu|nghin|%|tuoi|ngay|thang|gio\\b|h\\b)",
+    "women": "\\b(nu|women|womens|wmns)\\b",
+    "unisex": "\\bnam\\s*(?:\\/|-|&)?\\s*nu\\b",
+    "rangeJoin": "\\s*(?:-|–|—|~|den|toi)\\s*"
+  },
+  "daiTu": {
+    "_doc": "05/10/2026: tu cua nganh giay cho luat dai tu 'anh' (loi-chung/cong-soat-chung.json daiTu): 'doi' (đôi), 'giay' la chu chi hang — 'xin anh doi nay', 'gui anh doi do' van la xin anh. Ghi de nguyen mau chung (chu ghi de, khong noi them).",
+    "askAfter": "^\\s*($|[?.!]|(mau|doi|giay|nay|do|kia|khac|nao|nua|voi|nhe|nha|di|a|ah|shop|sop|ban|sp|san pham|duoc|dc|ko|khong|k)\\b)",
+    "sendAfter": "^\\s*(mau|doi|giay|sp|san pham|nay|do|kia)\\b"
+  },
+  "orderedItem": {
+    "_doc": "05/10/2026: cau tro mon dang noi toi rieng nganh giay ('doi nay') — noi them vao danh sach chung.",
+    "deictic": ["\\b(doi|doi giay) (nay|do|kia)\\b"]
+  },
+  "photoClaim": {
+    "_doc": "05/10/2026: tu cua nganh giay ('doi' = mot doi giay) cho luat khang dinh tu anh khach — noi them vao danh sach chung; confirmAsked/confirmCards/confirmNoCards GHI DE (cau xin xac nhan noi 'dung doi', 'kiem tra size').",
+    "claims": [
+      "\\b(dung la|chinh la|chinh xac la) doi (nay|do|trong anh|trong hinh)\\b",
+      "\\b(dung|chuan) doi\\b"
+    ],
+    "rewrite": {
+      "([Đđ]úng|[Cc]hính xác|[Cc]hính) là đôi": "nhìn giống đôi"
+    },
+    "confirmAsked": "\\b(xac nhan|co phai|co dung|so (lai|giup|voi|thu)|dung (doi|mon|mau|loai|cai) (minh|ban|anh|chi|bac|em|khach) (can|thich|muon|hoi|tim))\\b",
+    "confirmCards": "{Khach} xem giúp {shop} ảnh mẫu bên {shop} gửi kèm, đúng đôi {khach} thích thì {shop} kiểm tra size và báo lại ngay ạ.",
+    "confirmNoCards": "{Khach} xác nhận giúp {shop} đây có đúng đôi {khach} thích không, để {shop} kiểm tra size và báo lại chính xác ạ."
+  },
+  "pushClose": {
+    "_doc": "05/10/2026: tu cua nganh giay — 'doi' trong loi moi chot; dau hieu mua them 'order/od' (hoi thoi gian hang order), 'size'. buySignal GHI DE nguyen mau chung.",
+    "push": [
+      "\\b(lay|mua) doi (nay|do) (khong|ko|nhe|nha|luon|a)\\b",
+      "\\bchot doi\\b"
+    ],
+    "buySignal": "\\b(lay|mua|dat hang|dat luon|dat cho|dat truoc|chot|ship|giao|gui cho|coc|chuyen khoan|ck|dia chi|so dien thoai|sdt|thanh toan|van chuyen|bao lau|may ngay|may hom|khi nao (co|ve)|con hang|con \\d+|order|od|con (size|sz) ?\\d+|size \\d+)\\b"
+  },
+  "photoAgain": {
+    "_doc": "05/10/2026: tu cua nganh giay — anh TEM trong luoi giay / de giay la anh MON KHAC (tha); cau thay the noi ro tem size trong luoi giay / hop.",
+    "other": [
+      "(ảnh|hình)[^.!?\\n]{0,25}(lưỡi giày|đế giày|mặt đế)"
+    ],
+    "replacement": "Dạ em nhận được ảnh rồi mà chưa nhận ra chắc mẫu ạ, {khach} cho em xin tên mẫu hoặc mã sản phẩm (hoặc ảnh chụp rõ tem size trong lưỡi giày / hộp) để em kiểm tra giúp nhé."
   }
 }

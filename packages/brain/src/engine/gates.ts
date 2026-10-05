@@ -50,7 +50,6 @@ export interface GateInput {
   wouldAskBack: boolean;
   online: boolean;
   catalogSize: number;
-  claimsBrandNotCarried: boolean;
   hasPolicySource: boolean;
   /** Slot values the customer supplied. The bot may repeat them. */
   echoedValues: string[];
@@ -70,7 +69,6 @@ const RULE_PRIORITY: Record<GateRule["kind"], number> = {
   no_facts_when_offline: 50,
   no_unsourced_numbers: 40,
   require_source_for_claims: 30,
-  brand_not_carried_needs_catalog: 20,
   require_item_before_stock: 10,
   ask_back_once: 5
 };
@@ -201,20 +199,6 @@ class NoUnsourcedNumbersRule implements RuleEvaluator<Extract<GateRule, { kind: 
   }
 }
 
-class BrandNotCarriedNeedsCatalogRule implements RuleEvaluator<Extract<GateRule, { kind: "brand_not_carried_needs_catalog" }>> {
-  evaluate(rule: Extract<GateRule, { kind: "brand_not_carried_needs_catalog" }>, input: GateInput): GateVerdict | null {
-    if (!input.claimsBrandNotCarried) return null;
-    if (input.catalogSize >= rule.minItems) return null;
-    return {
-      action: "ask_back",
-      rule: rule.kind,
-      reason:
-        `Muc luc moi co ${input.catalogSize} mon (can it nhat ${rule.minItems}) — ` +
-        `chua du de dam noi shop khong kinh doanh hang do.`
-    };
-  }
-}
-
 class ForbiddenPhrasesRule implements RuleEvaluator<Extract<GateRule, { kind: "forbidden_phrases" }>> {
   evaluate(rule: Extract<GateRule, { kind: "forbidden_phrases" }>, input: GateInput): GateVerdict | null {
     const hit = input.pack.identity.neverSay.find((p) => phraseHit(input.draft, p));
@@ -254,7 +238,6 @@ const EVALUATORS: { [K in GateRule["kind"]]: RuleEvaluator<Extract<GateRule, { k
   ask_back_once: new AskBackOnceRule(),
   require_source_for_claims: new RequireSourceForClaimsRule(),
   no_unsourced_numbers: new NoUnsourcedNumbersRule(),
-  brand_not_carried_needs_catalog: new BrandNotCarriedNeedsCatalogRule(),
   forbidden_phrases: new ForbiddenPhrasesRule(),
   forbidden_patterns: new ForbiddenPatternsRule()
 };

@@ -1,0 +1,12 @@
+{
+  "_doc": [
+    "TANG 2 — CAU CHU MAC DINH CUA NGANH giay-chay TREN WEB SHOP (02/10/2026).",
+    "Landing dung cac cau nay khi shop CHUA tu viet o cung truong trong Noi dung web; shop viet thi cau cua shop thang. Nganh khong co tep nay thi web dung cau trung tinh cua nen tang.",
+    "Chi chua chu cua NGANH (giay chay bo), khong ten shop, khong so dien thoai, khong con so chinh sach. Ten truong do landing quyet (page-content.ts INDUSTRY_TEXT_FIELDS); truong la bi landing bo qua."
+  ],
+  "noiDungWeb": {
+    "consultTitle": "Cần lọc theo chân, cự ly hoặc pace?",
+    "consultText": "Gửi size đang đi, chiều dài chân và mục đích tập. Shop sẽ lọc mẫu phù hợp trước khi chốt đơn.",
+    "unitName": "đôi"
+  }
+}

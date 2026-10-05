@@ -42,6 +42,11 @@ export interface KnowledgePack {
    * script prompt, which used to carry a two-line hard-coded table instead.
    */
   tradeWords: string;
+  /**
+   * How one item is counted in a sentence ("12 {countUnit} có sẵn"): "đôi" for shoes, "sản phẩm" when
+   * the industry does not say (02/10/2026 — the video used to print "đôi" for every trade).
+   */
+  countUnit: string;
   lines: LineKnowledge;
   kit: SampleProfileKit;
   /** Research families the operator can pick (`running`, `pickleball`, `other`). */
@@ -176,6 +181,7 @@ function readPack(directory: string, id: string): KnowledgePack {
     id,
     name,
     tradeWords: String(file["tradeWords"] ?? "") || name,
+    countUnit: String(file["countUnit"] ?? "").trim() || "sản phẩm",
     lines: new LineKnowledge(asArray(dna["lines"]) as LineDna[], labels, purposeRank),
     kit: new SampleProfileKit({
       versionedModels: asStrings(kitRaw["versionedModels"]),
@@ -204,6 +210,7 @@ function emptyPack(id: string, name: string): KnowledgePack {
     id, name,
     // A trade nobody declared reads as "hàng": "một shop bán hàng ở Việt Nam" is still a sentence.
     tradeWords: "hàng",
+    countUnit: "sản phẩm",
     lines: new LineKnowledge([]),
     kit: new SampleProfileKit({ versionedModels: [], evaluationRows: {}, researchPrompts: {}, familyPatterns: [], brandPrefixes: [], defaultCategory: "khac" }),
     families: [{ id: "other", label: "Loại khác" }],

@@ -10,6 +10,7 @@
  *   kien-thuc.json    what Xeon knows about the industry's product lines (Đ9 knowledge pack)
  *   line-dna.json     the lines themselves
  *   mau-mac-dinh.json the default sample profiles ("Nạp lại mẫu mặc định")
+ *   mau-bang-gia.json the industry's ready-made price tables, shown after the platform's (02/10/2026)
  *   nghien-cuu.md     the research prompt, named from `kien-thuc.json`
  *
  * `@sp/brain` may not open files (DESIGN.md §1), so the disk lives here and is handed to the core
@@ -61,6 +62,24 @@ export function commonFilePath(industryDirectory: string, name: CommonFileName):
   return path.join(industryDirectory, "..", "loi-chung", COMMON_FILES[name]);
 }
 
+/**
+ * Tier 1 files that are NOT part of the bot's pack (02/10/2026): Xeon's own desks read them, the
+ * brain never does. Same folder as the pack's tier 1 files; a missing file reads as `null`.
+ */
+export const COMMON_DATA_FILES = {
+  /** The platform's ready-made price tables, offered to every shop of every industry. */
+  priceTemplates: "mau-bang-gia.json",
+  /** The instructions that turn a shop's own words into a price table (`/kho/bang-gia/hieu-y`). */
+  priceRulesPrompt: "bang-gia-hieu-y.json",
+  /** The instructions that split a shop's document into profile points (`/ai/nap-tai-lieu`, 02/10/2026). */
+  shopDocPrompt: "nap-tai-lieu.json"
+} as const;
+
+/** One of `COMMON_DATA_FILES`, parsed; `null` when absent; a broken file throws with its path. */
+export function readCommonDataJson(industryDirectory: string, file: (typeof COMMON_DATA_FILES)[keyof typeof COMMON_DATA_FILES]): unknown {
+  return readCommonJson(path.join(industryDirectory, "..", "loi-chung", file));
+}
+
 /** File names inside an industry folder. They are the operator's contract, so they stay Vietnamese. */
 export const INDUSTRY_FILES = {
   rules: "bo-luat.json",
@@ -91,7 +110,13 @@ export const INDUSTRY_FILES = {
   /** Stage 3 (25/09/2026): the industry's catalog-matching words (noise, brand hints, type rules). */
   matching: "cham-diem.json",
   /** Stage 6 (25/09/2026): the industry's part of the reply gate (stock wording, size steps, warranty). */
-  replyGate: "cong-soat.json"
+  replyGate: "cong-soat.json",
+  /** 02/10/2026: the industry's ready-made price tables (a SAMPLE the shop copies and edits, never applied). */
+  priceTemplates: "mau-bang-gia.json",
+  /** 02/10/2026: the industry's default wording on a shop's website (the shop's own sentence wins). */
+  webDefaults: "mac-dinh-web.json",
+  /** 04/10/2026: the industry's photo sources — brands' own domains and dealers (tier labels of a photo). */
+  imageSources: "nguon-anh.json"
 } as const;
 
 /** A folder name that is safe to join onto a path: an industry id, never `..` or a drive letter. */

@@ -112,7 +112,10 @@ export class VideoScriptController implements RequestController {
     }
     this.options.logger.info(`[video] "${shop}" co kich ban sau ${written.vong} vong (${written.model})`);
     // `daLam` tells the landing which pipeline steps are now done, so the job packet stays honest.
-    sendJson(res, 200, { ok: true, kichBan: written.kichBan, daLam: ["kich-ban"], vong: written.vong, canhBao: written.canhBao });
+    // The industry's counting word rides inside the script, which the landing stores as it is (02/10/2026).
+    const donVi = countUnitOf(known !== null && known.ok ? known.nganh : "", this.options.packs);
+    const kichBan = written.kichBan !== null && typeof written.kichBan === "object" && !Array.isArray(written.kichBan) ? { ...written.kichBan, donVi } : written.kichBan;
+    sendJson(res, 200, { ok: true, kichBan, daLam: ["kich-ban"], vong: written.vong, canhBao: written.canhBao });
     return true;
   }
 }
@@ -124,6 +127,12 @@ export class VideoScriptController implements RequestController {
  * edited this file — and one of the two ids ("duoc-pham") was not even an industry that exists.
  * Unknown trade = "hàng", which still reads fine in the sentence.
  */
+/** How the industry counts one item ("đôi"); "sản phẩm" when unknown. */
+export function countUnitOf(packId: string, packs?: KnowledgePackRegistry | undefined): string {
+  if (packId === "" || packs === undefined) return "sản phẩm";
+  return packs.get(packId).countUnit || "sản phẩm";
+}
+
 export function nganhWords(packId: string, packs?: KnowledgePackRegistry | undefined): string {
   if (packId === "" || packs === undefined) return "hàng";
   return packs.get(packId).tradeWords || "hàng";

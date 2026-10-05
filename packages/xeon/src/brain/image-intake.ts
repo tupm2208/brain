@@ -19,7 +19,7 @@
  */
 
 import type { ToolName } from "@sp/contract";
-import { stripDiacritics, type OneShotPromptText } from "@sp/brain";
+import { PHOTO_FRESH_MS, photoIsFresh, stripDiacritics, type OneShotPromptText } from "@sp/brain";
 import type { ChatModelPort } from "../agent/chat-model";
 import { parseAgentJson } from "../agent/sales-agent";
 import { withUsage } from "../ai/usage-context";
@@ -28,8 +28,8 @@ import type { Clock } from "../support/clock";
 import type { Logger } from "../support/logger";
 import type { ImageShrink } from "./image-shrink";
 
-/** A photo older than this is not "the picture the customer just sent" (Desk: 15 minutes). */
-export const IMAGE_FRESH_MS = 15 * 60_000;
+/** A photo older than this is not "the picture the customer just sent" (Desk: 15 minutes) — the ONE freshness (`PHOTO_FRESH_MS`). */
+export const IMAGE_FRESH_MS = PHOTO_FRESH_MS;
 export const IMAGE_FETCH_TIMEOUT_MS = 20_000;
 export const IMAGE_FETCH_RETRY_MS = 1500;
 /** At most this many photos are read per turn. */
@@ -134,6 +134,11 @@ export class ImageFetcher {
 /** What the model read off one photo, and what the landing matched it to. */
 export interface ImageLook {
   url: string;
+  /**
+   * 05/10/2026 (phiếu Desk "kết quả phân tích mù ảnh được dùng lại"): a model really read this picture (at least
+   * one of the two readings came back). A look that failed is no evidence, and its message is not marked read.
+   */
+  docDuoc?: boolean | undefined;
   loai: ImageKind;
   brand: string;
   model: string;
@@ -254,6 +259,12 @@ export interface ImageIntakeInput {
   text: OneShotPromptText;
   /** The page just asked for the shoe the customer wears / the tag (frame `asked_size`): the photo is a reference. */
   reference?: boolean | undefined;
+  /**
+   * 05/10/2026: the moment freshness is measured from — the time of the message being answered
+   * (`TurnContext.anchorAt`). Absent = the clock. A draft made twenty minutes later still sees the photo
+   * the customer sent with that message.
+   */
+  asOf?: string | undefined;
   /** The comparison prompt (`loi-chung/so-anh-catalog.json` ⊕ industry); absent or empty = no comparison. */
   compareText?: OneShotPromptText | undefined;
   /** Regexes (accent-stripped) that make a photo a RECEIPT by its visible text ("chuyen khoan thanh cong"), from the ledger texts. */
@@ -298,10 +309,11 @@ export class ImageIntake {
 
   /** `null` when there is nothing to read (no fresh https photo, or no vision model). */
   async read(input: ImageIntakeInput): Promise<PhotoReading | null> {
-    const nowMs = this.options.clock.now().getTime();
+    const asOf = Date.parse(input.asOf ?? "");
+    const nowMs = Number.isFinite(asOf) ? asOf : this.options.clock.now().getTime();
     const urls = input.photos
       .filter((p) => /^https:\/\//i.test(p.url))
-      .filter((p) => { const at = Date.parse(p.at ?? ""); return !Number.isFinite(at) || nowMs - at <= IMAGE_FRESH_MS; })
+      .filter((p) => photoIsFresh(p.at, nowMs, IMAGE_FRESH_MS))
       .map((p) => p.url)
       .slice(0, IMAGES_PER_TURN);
     if (urls.length === 0) return null;
@@ -366,6 +378,7 @@ export class ImageIntake {
     // AGREEMENT: the photo is read twice side by side (no extra wait), like the comparison below.
     const reads = (await Promise.all(Array.from({ length: READ_RUNS }, readOnce))).filter((r): r is PhotoRead => r !== null);
     if (reads.length === 0) return look;
+    look.docDuoc = true;
     // The strongest kind any reading saw: a receipt beats an order screen beats a product.
     const kind = reads.map((r) => r.loai).sort((a, b) => KIND_STRENGTH[b] - KIND_STRENGTH[a])[0]!;
     const lead = reads.find((r) => r.loai === kind)!;
@@ -554,7 +567,9 @@ export class ImageIntake {
       ? `KHÔNG gọi tên dòng trên với khách như sự thật, KHÔNG chào mẫu nào như "cùng dòng / bản khác" của dòng đó. Ảnh thật ĐÍNH KÈM trong tin: tự nhìn kiểm lại — thấy rõ hãng / chữ in thì nói "em thấy giống …" và hỏi khách xác nhận; vẫn không nhận ra thì nói em thấy gì (hãng, màu) và xin tên mẫu hoặc mã trên tem / hộp. KHÔNG đổ cho ảnh mờ / không rõ.`
       : `KHÔNG gọi tên dòng trên với khách như sự thật, KHÔNG chào mẫu nào như "cùng dòng / bản khác"; nói em chưa nhận ra chắc mẫu trong ảnh, xin khách tên mẫu hoặc mã trên tem / hộp (hoặc ảnh tem).`;
     if (r.thamChieu) {
-      return `${head} Đây là ĐÔI KHÁCH ĐANG ĐI (page vừa hỏi để ướm size) — chỉ dùng làm THAM CHIẾU size/form, KHÔNG chào bán, KHÔNG tra kho mẫu này thay mẫu khách đang hỏi.`;
+      // 05/10/2026 (phiếu Desk "vai trò ảnh khách gửi"): the words printed on it (a tag, a label, a measure) ARE the answer.
+      const printed = (r.looks.find((l) => l.loai === "san_pham")?.text ?? "").replace(/\s+/g, " ").trim();
+      return `${head}${printed !== "" ? ` Chữ đọc được trên ảnh: "${printed}".` : ""} Đây là MÓN KHÁCH ĐANG DÙNG (page vừa hỏi để canh size/biến thể) — chỉ dùng làm THAM CHIẾU: dùng chữ in trên ảnh (tem, nhãn, số đo) để canh size/biến thể; KHÔNG chào bán, KHÔNG tra kho món này thay món khách đang hỏi.`;
     }
     if (r.chot?.ket === "tu_tin") {
       return `${head} Ảnh trùng ảnh catalog của mã ${named(r.chot.ma, r.chot.ten)} — tra kho theo mã này.${agentSees ? " Mã này ĐÃ CHỐT: KHÔNG đổi sang mã khác dù nhìn ảnh thấy giống mẫu khác." : ""}`;

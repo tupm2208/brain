@@ -70,7 +70,7 @@ test("DON_DOI_SIZE, SIZE_TEM, MAU_KHAC, MON, LOAI_HANG and PHO_THONG carry the i
     orderExchange: { orderId: "ORD-7", allowed: true, note: "Kho order chua di mua." },
     variantHint: { variant: "44", bareJp: true, raw: "28", tem: "28.0" },
     otherVariants: { productName: "Adizero Boston 13", productCode: "JS4955", requestedVariant: "42", items: [{ code: "JP9252", name: "Boston 13 den", price: 3190000, variants: ["42"], partner: true }], filterLink: "https://toprun.site/?line=boston" },
-    sport: { label: "Bóng rổ", purpose: "bong_ro", count: 12, variant: "42" },
+    sport: { label: "Bóng rổ", purpose: "Giày Bóng rổ", count: 12, variant: "42" },
     productType: { type: "quần dài", link: "https://toprun.site/?type=quan" },
     everyday: { purpose: "di_hoc_di_choi_da_nang", variant: "39", gender: "nu", groupLinks: "• Nhóm A | https://toprun.site/?g=a" }
   }, texts);
@@ -79,7 +79,7 @@ test("DON_DOI_SIZE, SIZE_TEM, MAU_KHAC, MON, LOAI_HANG and PHO_THONG carry the i
   assert.match(note, /KHACH HOI MAU\/SIZE KHAC cua Adizero Boston 13 \(JS4955\) size 42\./);
   assert.match(note, /• Boston 13 den \(JP9252\) — 3\.190\.000đ — hàng đối tác, order thêm ngày — size con: 42/);
   assert.match(note, /"Bác xem đủ các màu\/size còn hàng tại: https:\/\/toprun\.site\/\?line=boston"/);
-  assert.match(note, /KHACH HOI THANG MON "Bóng rổ" — shop CO ban mon nay \(12 mau con hang\)\. Goi tra_kho voi muc_dich="bong_ro" \(ten de rong\), size="42"/);
+  assert.match(note, /KHACH HOI THANG MON "Bóng rổ" — shop CO ban mon nay \(12 mau con hang\)\. Goi tra_kho voi nhom="Giày Bóng rổ" \(ten de rong\), size="42"/);
   assert.match(note, /KHACH HOI LOAI HANG \(quần dài\) — shop CO ban tren web toprun\.site/);
   assert.match(note, /NHU CAU PHO THONG .*muc_dich="di_hoc_di_choi_da_nang", size="39", gioi_tinh="nu"/);
   assert.match(note, /Goi khach la "bác", KHONG goi "minh"\. Tra loi THEO NHOM/);

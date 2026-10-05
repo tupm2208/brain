@@ -101,7 +101,6 @@ export interface DraftWriterOptions {
 
 const PAYMENT_RE = /(chuyen khoan|\bck\b|stk|coc|gui nhe|da gui)/;
 const CANCEL_RE = /(khong lay|ko lay|huy|thoi khong)/;
-const BARGAIN_RE = /(giam gia|bot (gia|chut|ti)|mac ca|re hon|fix (gia|them)|giam them)/;
 
 export class DraftWriter {
   constructor(private readonly options: DraftWriterOptions) {}
@@ -147,7 +146,6 @@ export class DraftWriter {
     if (input.humanReview) tags.add("nguoi_duyet");
     if (input.askedSize !== undefined && input.askedSize !== "" && /^[^0-9]*$/.test(input.askedSize)) tags.add("size_chu");
     if (f.externalProduct !== undefined && f.externalProduct !== null) tags.add("sp_ngoai");
-    if (BARGAIN_RE.test(msg)) tags.add("mac_ca");
     return tags;
   }
 

@@ -137,12 +137,20 @@
     "Nam": "\\b(nam|men|man|male|be trai)\\b",
     "Unisex": "\\b(unisex|ca nam nu)\\b"
   },
+  "_closingSignalsDoc": "05/10/2026 (phieu Desk 'the dat hang khong di khi khach chot hoac giuc'): khach XIN / GIUC phieu dat hang ('gui phieu di', 'cho em cai form dat hang', 'link dat hang') cung la tin hieu chot — truoc day chi y dinh place_order moi tinh nen phieu khong di ma bot van hua. Khop chuoi con tren chu da bo dau.",
   "closingSignals": [
     "chot",
     "lay",
     "dat hang",
     "len don",
-    "ship cho"
+    "ship cho",
+    "gui phieu",
+    "phieu dat",
+    "gui form",
+    "cai form",
+    "form dat",
+    "link dat hang",
+    "link dat don"
   ],
   "sizeLetterPattern": "(?:size|sz|co|mac|lay|dat|mua|con)\\s*(?:1\\s*)?(?:(?:cai|chiec|doi|bo)\\s+)?(?:(?:ao|quan|tat|vo|mu|non|balo|tui|gang)\\s+)?(4xl|3xl|2xl|2xs|xxxl|xxl|xxs|xl|xs|l|m|s)(?![a-z0-9])",
   "sizeRecoverPattern": "(?:lay|chot|size|sz)\\s*((?:\\d{2}(?:\\s*-?\\s*[12]\\s*\\/?\\s*3|[.,]5)?)(?:\\s*(?:va|,|&|\\+)\\s*\\d{2}(?:\\s*-?\\s*[12]\\s*\\/?\\s*3|[.,]5)?)*)(?!\\d)",

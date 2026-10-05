@@ -64,7 +64,7 @@ export const MODULES: { readonly [K in ModuleId]: ModuleDef } = {
   // ---------------------------------------------------------------- Operations
   "hang-kho": {
     id: "hang-kho", group: "vanhanh", name: "Hàng hoá & kho", runsOn: "omi", core: true,
-    tools: ["catalog.search", "stock.lookup", "variant.chart", "catalog.find", "catalog.matchImage", "catalog.resolveStock"],
+    tools: ["catalog.search", "stock.lookup", "variant.chart", "catalog.find", "catalog.matchImage", "catalog.resolveStock", "variant.brandChart"],
     emits: ["stock.changed"], listens: [], dependsOn: []
   },
   "don-khach": {

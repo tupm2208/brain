@@ -22,7 +22,8 @@ export const AGENTS = {
   image_compare: { label: "So ảnh khách với ảnh catalog", group: "tra_loi_khach" },
   web_advisor: { label: "Trợ lý AI trên web", group: "tra_loi_khach" },
   external_product_vision: { label: "Đọc ảnh hàng ngoài catalog", group: "tra_loi_khach" },
-  sandbox: { label: "Demo AI (hộp cát)", group: "training" },
+  sandbox: { label: "Thử bot (hộp cát)", group: "training" },
+  shop_doc: { label: "Đọc tài liệu shop nạp vào hồ sơ bot", group: "training" },
   training: { label: "Phân tích hội thoại lưu trữ", group: "training" },
   knowledge: { label: "Đề xuất kho kiến thức", group: "training" },
   content_writer: { label: "Viết bài Facebook", group: "content" },
@@ -33,6 +34,7 @@ export const AGENTS = {
   knowledge_research: { label: "Nghiên cứu sản phẩm mẫu", group: "training" },
   tag_scan: { label: "Đọc tem quét kho", group: "kho" },
   stock_image: { label: "Đọc ảnh tồn đối tác", group: "kho" },
+  price_rules: { label: "Hiểu lời shop kể về cách tính giá bán", group: "kho" },
   khac: { label: "Chưa gắn nhãn", group: "khac" }
 } as const;
 

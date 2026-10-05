@@ -8,9 +8,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SHOP_PROFILE_FIELDS, emptyShopProfile, profileFieldSet, type ShopProfile } from "@sp/contract";
+import { SHOP_PROFILE_FIELDS, emptyShopProfile, profileFieldSet, readShopProfile, type ShopProfile } from "@sp/contract";
 import {
-  applyShopProfile, blocksForShop, checkBlocksFree, fillAgentText, notCarriedSentences, parseCommonAgent, parsePack, personInCharge, renderProfile,
+  applyShopProfile, blocksForShop, checkBlocksFree, fillAgentText, parseCommonAgent, parsePack, personInCharge, renderProfile,
   type AgentBlock
 } from "@sp/brain";
 import { runningShoesPack } from "./fixtures.mts";
@@ -76,30 +76,30 @@ test("hồ sơ trống: lời dặn liệt kê từng ô chưa khai và bảo g�
   const empty = emptyShopProfile();
   const full = renderProfile(profileWith({
     xungHo: { khach: "bác", shop: "em" },
-    banHang: { ...empty.banHang, coHangOrder: "co", thoiGianOrder: "3–7 ngày", tiLeCoc: 20, codHangSan: "co", macCa: { kieu: "khong-giam", chiTiet: "" }, khiChot: "phieu", cauKhongCo: "Hiện nhà em không còn mẫu đó / hãng đó ạ" },
-    chuyenNguoi: { chuDe: ["xin biên lai"], mucChot: "dau-hieu", gioTruc: "7:00–23:00" }
+    banHang: { ...empty.banHang, coHangOrder: "co", thoiGianOrder: "3–7 ngày", tiLeCoc: 20, codHangSan: "co", macCa: { kieu: "khong-giam", chiTiet: "" }, khiChot: "phieu" },
+    chuyenNguoi: { chuDe: ["xin biên lai"], mucChot: "dau-hieu", gioTruc: "7:00–23:00" },
+    cauHoiRieng: [{ cauHoi: "Có xuất hoá đơn VAT không?", traLoi: "Có, báo trước khi đặt." }],
+    quyTrinhRieng: [{ quyTac: "Khách hỏi size thì hỏi chiều dài bàn chân trước.", khoi: "" }]
   }), { doiTra: "Hàng sẵn đổi size.", ship: "", baoHanh: "" });
   assert.match(full, /goi khach la "bác"/);
   assert.match(full, /Coc truoc toi thieu 20%/);
-  assert.match(full, /Hiện nhà em không còn mẫu đó \/ hãng đó ạ/);
+  // 02/10/2026: no "hãng có / không bán" lines; the shop's own questions and procedures are spoken.
+  assert.doesNotMatch(full, /HANG CO BAN|HANG KHONG BAN|KHI KHONG CO MAU/);
+  assert.match(full, /CAU HOI RIENG CUA SHOP[\s\S]*Hoi: Có xuất hoá đơn VAT không\? → Tra loi: Có, báo trước khi đặt\./);
+  assert.match(full, /QUY TRINH RIENG CUA SHOP[\s\S]*Khách hỏi size thì hỏi chiều dài bàn chân trước\./);
   assert.match(full, /CHUA KHAI \(shop chua dien\): tên người phụ trách; cam kết về hàng \(chính hãng\?\); cửa hàng, giờ mở cửa; chính sách ship; chính sách bảo hành/);
 });
 
-test("máy luật: hồ sơ shop đè xưng hô, hãng, câu 'không có'; câu cấm ba tầng cộng dồn", () => {
-  const empty = emptyShopProfile();
-  const hoSo = profileWith({
-    xungHo: { khach: "anh chị", shop: "shop" }, cauCam: ["free ship"], hangCoBan: ["Nike"], hangKhongBan: ["Salomon"],
-    banHang: { ...empty.banHang, cauKhongCo: "Hiện nhà em không còn mẫu đó / hãng đó ạ" }
-  });
+test("máy luật: hồ sơ shop đè xưng hô; câu cấm ba tầng cộng dồn; hồ sơ KHÔNG đổi danh sách hãng hay câu 'không có'", () => {
+  // An old profile still carrying the retired fields (hangCoBan, hangKhongBan, cauKhongCo) is read without them.
+  const hoSo = readShopProfile({ xungHo: { khach: "anh chị", shop: "shop" }, cauCam: ["free ship"], hangCoBan: ["Nike"], hangKhongBan: ["Salomon"], banHang: { cauKhongCo: "Hiện nhà em không còn mẫu đó / hãng đó ạ" } });
   const pack = applyShopProfile(runningShoesPack, hoSo, ["cam ket 100%"]);
   assert.equal(pack.identity.customerPronoun, "anh chị");
-  assert.deepEqual(pack.lexicon.brands, ["nike"]);
-  assert.deepEqual(pack.lexicon.knownBrandsNotCarried, ["salomon"]);
+  assert.deepEqual(pack.lexicon.brands, runningShoesPack.lexicon.brands, "the industry's brand words stay: they recognise a brand, they never say what a shop sells");
+  assert.equal(pack.templates, runningShoesPack.templates);
   assert.ok(pack.identity.neverSay.includes("free ship") && pack.identity.neverSay.includes("cam ket 100%") && pack.identity.neverSay.includes("bảo hành trọn đời"));
-  assert.match(pack.templates["brand_not_carried"]!, /hàng \{hang\}/);
   // The pack itself is untouched: the next shop starts from the industry's values.
   assert.equal(runningShoesPack.identity.customerPronoun, "bác");
-  assert.deepEqual(notCarriedSentences(""), null);
 });
 
 test("agent.json cũ (một systemPrompt) vẫn đọc được thành một khối; loi-chung thiếu tệp = tầng 1 rỗng", () => {
@@ -111,4 +111,36 @@ test("agent.json cũ (một systemPrompt) vẫn đọc được thành một kh�
   assert.equal(pack.agent!.khoi[0]!.loiDan, "A\nB");
   assert.deepEqual(parseCommonAgent(null), { khoi: [], mustHumanPattern: "", handoffReplyPattern: "", cauCam: [] });
   assert.throws(() => parseCommonAgent({ khoi: [{ id: "Sai Id", tieuDe: "x", loiDan: "y" }] }), /chi gom chu thuong/);
+});
+
+// 05/10/2026 (phiếu Desk 01/09 "agent và cổng soát thiếu nguồn thật"): công cụ đọc NGUỒN THẬT của shop (chính
+// sách, tài khoản) là cơ chế tầng 1 — khai ở `loi-chung/agent-chung.json`, ngành mới không phải khai lại.
+test("công cụ chinh_sach / tai_khoan_shop là tầng 1: ngành giả không khai công cụ nào vẫn có; gói giày giữ y thứ tự + mô tả cũ", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  let root = process.cwd();
+  while (!fs.existsSync(path.join(root, "loi-chung", "agent-chung.json"))) root = path.dirname(root);
+  const json = (rel: string): unknown => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
+  const { PackRegistry } = await import("@sp/brain");
+  const fake = new PackRegistry({
+    ids: () => ["nha-thuoc"],
+    read: () => ({ rules: json("nganh/nha-thuoc/bo-luat.json"), agent: { khoi: [{ id: "tu-van", tieuDe: "Tu van", loiDan: "Hoi trieu chung truoc khi goi y." }] } }),
+    common: () => json("loi-chung/agent-chung.json")
+  });
+  const tools = fake.load("nha-thuoc").agent!.tools;
+  assert.deepEqual(tools.map((t) => [t.name, t.landingMethod]), [["chinh_sach", "policy"], ["tai_khoan_shop", "bankAccount"]]);
+  // The shoe pack: same tools, same order, same words as when it declared them itself.
+  assert.deepEqual(runningShoesPack.agent!.tools.map((t) => t.name), ["tra_kho", "bang_size", "chinh_sach", "tai_khoan_shop"]);
+  assert.match(runningShoesPack.agent!.tools[3]!.moTa, /tai khoan ngan hang \/ vi CUA SHOP/);
+  // An industry that re-declares a tier-1 tool by name rewrites its description — one entry, not two.
+  const own = new PackRegistry({
+    ids: () => ["nha-thuoc"],
+    read: () => ({ rules: json("nganh/nha-thuoc/bo-luat.json"), agent: { khoi: [{ id: "tu-van", tieuDe: "Tu van", loiDan: "x" }], tools: [{ name: "chinh_sach", handler: "landing", landingMethod: "policy", moTa: "chinh sach nha thuoc" }] } }),
+    common: () => json("loi-chung/agent-chung.json")
+  });
+  assert.deepEqual(own.load("nha-thuoc").agent!.tools.map((t) => `${t.name}:${t.moTa}`).slice(0, 1), ["chinh_sach:chinh sach nha thuoc"]);
+  assert.equal(own.load("nha-thuoc").agent!.tools.filter((t) => t.name === "chinh_sach").length, 1);
+  // No agent.json = no agent: tier 1's tools do not create one.
+  const none = new PackRegistry({ ids: () => ["nha-thuoc"], read: () => ({ rules: json("nganh/nha-thuoc/bo-luat.json") }), common: () => json("loi-chung/agent-chung.json") });
+  assert.equal(none.load("nha-thuoc").agent, undefined);
 });

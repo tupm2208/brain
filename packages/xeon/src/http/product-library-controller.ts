@@ -2,7 +2,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { LicenseService } from "../license/license-service";
 import { constantTimeEqual } from "../license/key-format";
-import type { ProductLibrary } from "../product-library/product-library";
+import type { LibraryMedia, LibraryProduct, ProductLibrary } from "../product-library/product-library";
+import { DOWNGRADE_AFTER_CODES, imageKey, type ImageCase, type ImageReportBook, type ImageToReport } from "../product-library/image-report-book";
+import { hostOf, type ImageSourceDirectory } from "../knowledge/image-sources";
 import type { ImageJob, ImageJobQueue } from "../product-library/image-job-queue";
 import type { ImageBatchBook } from "../product-library/image-batch-book";
 import type { ImageToolDispatcher } from "../product-library/image-tool-dispatcher";
@@ -67,7 +69,17 @@ export class ProductLibraryController implements RequestController {
     library: ProductLibrary; queue?: ImageJobQueue; dispatcher?: ImageToolDispatcher; batches?: ImageBatchBook; license: LicenseService | null; sharedToken?: string; logger: Logger;
     /** 02/10/2026: ảnh shop chia sẻ + những shop được duyệt (`XEON_SHOP_DUYET_ANH`). */
     shared?: SharedImageBook; reviewers?: readonly string[]; onShared?: () => void;
+    /** 04/10/2026: ảnh bị báo sai + bậc trang nguồn. `dailyReportLimit` = lời báo có tác dụng mọi shop / shop / ngày. */
+    reports?: ImageReportBook; sources?: ImageSourceDirectory; dailyReportLimit?: number; onReportsChanged?: () => void;
   }) {}
+
+  /** Ảnh của một sản phẩm mà shop `tenant` còn được nhận (bỏ ảnh tạm ẩn / chặn / trang bị chặn). */
+  private visible(product: LibraryProduct, tenant: string | null): LibraryProduct {
+    const reports = this.options.reports;
+    if (!reports || product.media.length === 0) return product;
+    const media = product.media.filter((m) => reports.verdict({ code: product.code, brand: product.brand, url: m.sourceUrl || m.assetUrl, pageUrl: m.source.url, tenant, fresh: false }) === "giu");
+    return media.length === product.media.length ? product : { ...product, media };
+  }
 
   /** Knock on the image tool AFTER answering: a slow tunnel must not slow the landing down. */
   private nudge(enqueued: boolean): void {
@@ -100,7 +112,8 @@ export class ProductLibraryController implements RequestController {
     const base = host ? `${proto}://${host}` : "";
     try {
       if (ctx.method === "POST" && (route === "chia-se-anh" || route === "rut-chia-se" || route.startsWith("duyet-anh/"))) return this.handleShared(res, route, body, tenant, base);
-      if (ctx.method === "POST" && route === "tra-ma") { const code = String(body["ma"] ?? ""); const result = this.options.library.lookup(code); const job = result.product ? null : this.options.queue?.enqueue(code) ?? null; this.openBatch(tenant, job ? [job] : []); sendJson(res, 200, { ok: true, ...result, job }); this.nudge(job !== null); return true; }
+      if (ctx.method === "POST" && (route === "bao-sai" || route === "rut-bao" || route === "y-kien" || route.startsWith("anh-bao-sai/") || route.startsWith("nguon-anh/"))) return this.handleReports(res, route, body, tenant);
+      if (ctx.method === "POST" && route === "tra-ma") { const code = String(body["ma"] ?? ""); const found = this.options.library.lookup(code); const result = { ...found, product: found.product ? this.visible(found.product, tenant) : null }; const job = result.product ? null : this.options.queue?.enqueue(code) ?? null; this.openBatch(tenant, job ? [job] : []); sendJson(res, 200, { ok: true, ...result, job }); this.nudge(job !== null); return true; }
       if (ctx.method === "POST" && route === "tra-nhieu") {
         const codes = (Array.isArray(body["ma"]) ? body["ma"] : []).map(String);
         const requested = body["truongThieu"] !== null && typeof body["truongThieu"] === "object" ? body["truongThieu"] as Record<string, unknown> : {};
@@ -110,7 +123,8 @@ export class ProductLibraryController implements RequestController {
         const brands = body["hang"] !== null && typeof body["hang"] === "object" ? body["hang"] as Record<string, unknown> : {};
         // `ten` (30/09/2026): hãng trống hay "Chưa rõ" thì bộ cào đoán từ tên, như bản portable.
         const names = body["ten"] !== null && typeof body["ten"] === "object" ? body["ten"] as Record<string, unknown> : {};
-        const results = this.options.library.lookupMany(codes);
+        // 04/10/2026: ảnh bị báo sai không tới shop nào, và mã còn ít ảnh vì thế thì được tìm thêm.
+        const results = this.options.library.lookupMany(codes).map((result) => ({ ...result, product: result.product ? this.visible(result.product, tenant) : null }));
         const pending: string[] = [];
         const jobs: ImageJob[] = [];
         for (const result of results) {
@@ -158,6 +172,162 @@ export class ProductLibraryController implements RequestController {
       if (ctx.method === "POST" && route === "de-xuat") { const product = this.options.library.propose(body["sanPham"]); this.options.logger.info(`[product-library] nhan de xuat ${product.code}`); sendJson(res, 202, { ok: true, product }); return true; }
       sendJson(res, 404, { ok: false, error: "khong_thay" }); return true;
     } catch (error) { sendJson(res, 400, { ok: false, error: "du_lieu_khong_hop_le", message: error instanceof Error ? error.message : String(error) }); return true; }
+  }
+
+  /**
+   * 04/10/2026 — ẢNH BÁO SAI. Báo / rút / ý kiến / luồng cho landing / nguồn từng ảnh: shop thật (key
+   * Xeon cấp). Danh sách duyệt, quyết, bảng uy tín: chỉ shop trong `XEON_SHOP_DUYET_ANH`.
+   */
+  private handleReports(res: ServerResponse, route: string, body: Record<string, unknown>, tenant: string | null): boolean {
+    const reports = this.options.reports;
+    if (!reports) { sendJson(res, 503, { ok: false, error: "chua_bat_bao_anh_sai" }); return true; }
+    if (tenant === null) { sendJson(res, 403, { ok: false, error: "can_key_shop", message: "Báo ảnh sai cần landing đã đăng ký bằng key shop." }); return true; }
+    const limit = this.options.dailyReportLimit ?? 30;
+    const urls = (value: unknown): string[] => (Array.isArray(value) ? value : [value]).map((x) => String(x ?? "").trim()).filter((x) => /^https?:\/\//i.test(x) || x.startsWith("//")).slice(0, 20);
+    if (route === "bao-sai") {
+      const code = String(body["ma"] ?? "").trim();
+      const images = this.resolveImages(code, urls(body["anh"]), String(body["hang"] ?? ""));
+      if (images.length === 0) { sendJson(res, 400, { ok: false, error: "thieu_anh", message: "Chưa có ảnh nào để báo." }); return true; }
+      const outcome = reports.report({ shop: tenant, code, images, lyDo: String(body["lyDo"] ?? ""), ghiChu: String(body["ghiChu"] ?? "") }, limit);
+      this.options.logger.info(`[bao-anh-sai] shop "${tenant}" bao ${outcome.length} anh cua ${code} (${String(body["lyDo"] ?? "")})`);
+      sendJson(res, 200, { ok: true, baoCao: outcome, conLaiHomNay: reports.remainingToday(tenant, limit), tranNgay: limit });
+      this.options.onReportsChanged?.();
+      return true;
+    }
+    if (route === "rut-bao") {
+      const keys = urls(body["anh"]).map((url) => this.keyOf(String(body["ma"] ?? ""), url));
+      const count = reports.withdraw(tenant, keys);
+      sendJson(res, 200, { ok: true, daRut: count });
+      if (count) this.options.onReportsChanged?.();
+      return true;
+    }
+    if (route === "y-kien") { sendJson(res, 200, { ok: true, daGhi: reports.object(tenant, String(body["id"] ?? "")) }); return true; }
+    if (route === "anh-bao-sai/trang-thai") {
+      const counts = body["apDung"] !== null && typeof body["apDung"] === "object" ? body["apDung"] as Record<string, unknown> : {};
+      reports.ack(tenant, counts);
+      sendJson(res, 200, { ok: true, ds: reports.feedFor(tenant), conLaiHomNay: reports.remainingToday(tenant, limit), tranNgay: limit });
+      return true;
+    }
+    if (route === "nguon-anh/cua-ma") {
+      const rows = (Array.isArray(body["ds"]) ? body["ds"] : []).slice(0, 300).map((raw) => {
+        const o = raw !== null && typeof raw === "object" ? raw as Record<string, unknown> : {};
+        return this.sourcesOf(String(o["ma"] ?? ""), urls(o["anh"]), String(o["hang"] ?? ""), tenant);
+      });
+      sendJson(res, 200, { ok: true, ds: rows }); return true;
+    }
+    const reviewer = (this.options.reviewers ?? []).includes(tenant);
+    if (route === "anh-bao-sai/danh-sach") {
+      if (!reviewer) { sendJson(res, 200, { ok: true, duocDuyet: false, ds: [], tong: 0, dem: {} }); return true; }
+      const page = reports.list({ state: String(body["trangThai"] ?? "cho-duyet"), limit: Number(body["soLuong"] ?? 30), offset: Number(body["tu"] ?? 0) });
+      sendJson(res, 200, { ok: true, duocDuyet: true, ds: page.cases.map((entry) => this.caseView(entry)), tong: page.total, dem: page.counts }); return true;
+    }
+    if (route === "anh-bao-sai/quyet") {
+      if (!reviewer) { sendJson(res, 403, { ok: false, error: "khong_duoc_duyet_anh", message: "Duyệt ảnh báo sai do nơi cấp phần mềm làm." }); return true; }
+      const standard = body["chuan"] === true;
+      const { entry, source } = reports.decide(String(body["id"] ?? ""), standard, `shop:${tenant}`);
+      this.options.logger.info(`[bao-anh-sai] shop "${tenant}" quyet ${entry.ma} (${entry.key}): ${standard ? "anh chuan, tra lai" : "sai, chan han"}${source ? ` — nguon ${source.host}${source.chan ? " BI CHAN" : ` ${source.maSai.length} ma sai`}` : ""}`);
+      sendJson(res, 200, { ok: true, ca: this.caseView(entry) });
+      this.options.onReportsChanged?.();
+      return true;
+    }
+    if (route === "nguon-anh/danh-sach") {
+      if (!reviewer) { sendJson(res, 200, { ok: true, duocDuyet: false, ds: [] }); return true; }
+      sendJson(res, 200, { ok: true, duocDuyet: true, ds: this.sourceTable(), nguongHaBac: DOWNGRADE_AFTER_CODES }); return true;
+    }
+    sendJson(res, 404, { ok: false, error: "khong_thay" }); return true;
+  }
+
+  private mediaKeys(media: LibraryMedia): string[] {
+    return [media.sourceUrl, media.assetUrl, media.storageUrl].map((u) => imageKey(u)).filter(Boolean);
+  }
+
+  /** Danh tính tấm ảnh shop đang giữ: theo ảnh nguồn của tấm đó trong thư viện, không thì theo chính địa chỉ. */
+  private keyOf(code: string, url: string): string {
+    const k = imageKey(url);
+    const media = this.options.library.lookup(code).product?.media.find((m) => this.mediaKeys(m).includes(k));
+    return imageKey(media?.sourceUrl || url);
+  }
+
+  private resolveImages(code: string, assets: string[], brandHint: string): ImageToReport[] {
+    const product = this.options.library.lookup(code).product;
+    const out: ImageToReport[] = [];
+    for (const asset of assets) {
+      const k = imageKey(asset);
+      if (!k) continue;
+      const media = product?.media.find((m) => this.mediaKeys(m).includes(k));
+      const key = imageKey(media?.sourceUrl || asset);
+      const same = this.options.library.productsWithMedia((m) => this.mediaKeys(m).includes(key));
+      const trang = media?.source.url ?? "";
+      out.push({
+        key, anh: media?.assetUrl || asset, trang, host: hostOf(trang), hang: product?.brand || brandHint,
+        assets: [...new Set([asset, ...same.flatMap((x) => x.media.flatMap((m) => [m.assetUrl, m.storageUrl, m.sourceUrl]))].filter(Boolean))],
+        maCung: same.map((x) => x.product.code)
+      });
+    }
+    return out;
+  }
+
+  /** Nguồn từng ảnh shop đang giữ (nhãn trên trang sản phẩm, danh sách "máy nghi"). */
+  private sourcesOf(code: string, assets: string[], brandHint: string, tenant: string): Record<string, unknown> {
+    const reports = this.options.reports!;
+    const product = this.options.library.lookup(code).product;
+    const brand = product?.brand || brandHint;
+    const feed = reports.feedFor(tenant);
+    const anh = assets.map((url) => {
+      const k = imageKey(url);
+      const media = product?.media.find((m) => this.mediaKeys(m).includes(k));
+      const trang = media?.source.url ?? "";
+      const host = hostOf(trang);
+      const base = trang && this.options.sources ? this.options.sources.baseTier(trang) : null;
+      const entry = reports.byKey(imageKey(media?.sourceUrl || url));
+      const state = entry ? feed.find((f) => f.id === entry.id)?.trangThai : undefined;
+      return {
+        url, trang, host, nguon: media?.source.provider ?? "",
+        bac: media?.source.provider === "anh-shop-chia-se" ? "shop-chia-se" : base ? reports.effectiveTier(host, brand, base) : "",
+        trangThai: state && state !== "tra-lai" ? state : "", ca: entry?.id ?? ""
+      };
+    });
+    return { ma: code, hang: brand, thuVienCoHang: Boolean(product?.brand), anh };
+  }
+
+  private caseView(entry: ImageCase): Record<string, unknown> {
+    const reports = this.options.reports!;
+    const product = this.options.library.lookup(entry.ma).product;
+    const base = entry.trang && this.options.sources ? this.options.sources.baseTier(entry.trang) : "khac";
+    const source = reports.sources().find((r) => r.host === entry.host && r.hang === entry.hang.toLowerCase());
+    const others = product ? this.visible(product, null).media.filter((m) => !this.mediaKeys(m).includes(entry.key)).slice(0, 8).map((m) => m.assetUrl) : [];
+    return {
+      id: entry.id, ma: entry.ma, ten: product?.name ?? "", hang: entry.hang, maCung: entry.maCung, anh: entry.anh, trang: entry.trang, host: entry.host,
+      bac: base, bacThat: entry.host ? reports.effectiveTier(entry.host, entry.hang, base) : base,
+      nguoiBao: entry.nguoiBao, phanDoi: entry.phanDoi,
+      soShopDangAn: Object.values(entry.apDung).filter((n) => n > 0).length, soAnhDangAn: Object.values(entry.apDung).reduce((a, n) => a + n, 0),
+      trangThai: entry.trangThai, taoLuc: entry.taoLuc, quyetLuc: entry.quyetLuc ?? "", nguoiQuyet: entry.nguoiQuyet ?? "",
+      anhKhac: others, thuVienCoHang: Boolean(product?.brand),
+      nguon: { maSai: source?.maSai.length ?? 0, chan: source?.chan ?? false, nguong: DOWNGRADE_AFTER_CODES }
+    };
+  }
+
+  /** Bảng uy tín: trang có trong thư viện (số ảnh, số mã) gộp với sổ (mã sai, bị chặn). */
+  private sourceTable(): Record<string, unknown>[] {
+    const reports = this.options.reports!;
+    const rows = new Map<string, { host: string; hang: string; soAnh: number; ma: Set<string>; trang: string }>();
+    for (const { product, media } of this.options.library.productsWithMedia(() => true)) {
+      for (const m of media) {
+        const host = hostOf(m.source.url);
+        if (!host || m.source.provider === "anh-shop-chia-se") continue;
+        const hang = product.brand.trim().toLowerCase();
+        const key = `${host}|${hang}`;
+        const row = rows.get(key) ?? { host, hang, soAnh: 0, ma: new Set<string>(), trang: m.source.url };
+        row.soAnh += 1; row.ma.add(product.code); rows.set(key, row);
+      }
+    }
+    const records = reports.sources();
+    for (const r of records) if (!rows.has(`${r.host}|${r.hang}`)) rows.set(`${r.host}|${r.hang}`, { host: r.host, hang: r.hang, soAnh: 0, ma: new Set(), trang: `https://${r.host}/` });
+    return [...rows.values()].map((row) => {
+      const record = records.find((r) => r.host === row.host && r.hang === row.hang);
+      const base = this.options.sources ? this.options.sources.baseTier(row.trang) : "khac";
+      return { host: row.host, hang: row.hang, soAnh: row.soAnh, soMa: row.ma.size, bac: base, bacThat: reports.effectiveTier(row.host, row.hang, base), maSai: record?.maSai.length ?? 0, chan: record?.chan ?? false, chanVi: record?.chanVi ?? "" };
+    }).sort((a, b) => Number(b.chan) - Number(a.chan) || b.maSai - a.maSai || b.soAnh - a.soAnh).slice(0, 300);
   }
 
   /**

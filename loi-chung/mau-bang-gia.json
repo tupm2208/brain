@@ -1,0 +1,48 @@
+{
+  "_doc": [
+    "TANG 1 — BANG GIA MAU CHUNG (02/10/2026). Moi shop, moi nganh deu thay cac mau nay o OMI -> Kho -> Cach tinh gia -> 'Bat dau tu mau'.",
+    "Shop chon mot mau thi landing CHEP no thanh bang gia cua RIENG shop (tang 3) roi shop sua; Xeon khong bao gio ap mau vao gia nao.",
+    "Vi la mau chung nen KHONG ghi ten hang, ten nganh, con so lai cua shop nao: so tien / phan tram de 0 cho shop tu dien.",
+    "Mau rieng mot nganh dat o nganh/<id>/mau-bang-gia.json (cung hinh dang), hien SAU cac mau chung.",
+    "Hinh dang: { mau: [ { id, ten, moTa, bang } ] }; bang = { dong[], conLai, gioiHan[], lamTron[], khongQuaNiemYet } — xem landing_page/src/modules/hang-kho/price-table.ts.",
+    "Xeon soi tep nay luc khoi dong (packages/xeon/src/selling-price/price-templates.ts): sai truong la Xeon khong bat, noi ro truong nao."
+  ],
+  "mau": [
+    {
+      "id": "bang-trong",
+      "ten": "Bảng trống",
+      "moTa": "Không có dòng nào: mọi mã đều chưa định giá cho tới khi shop tự thêm dòng. Dùng khi muốn viết từ đầu hoặc kể bằng lời cho AI viết giúp.",
+      "bang": {
+        "dong": [],
+        "conLai": { "kieu": "trong", "tien": 0, "pt": 0 },
+        "gioiHan": [],
+        "lamTron": [],
+        "khongQuaNiemYet": false
+      }
+    },
+    {
+      "id": "cong-phan-tram",
+      "ten": "Cộng theo phần trăm",
+      "moTa": "Mọi mã: giá bán = giá gốc cộng một phần trăm shop tự điền (đang để 0, điền trước khi lưu), rồi làm tròn lên chục nghìn, không trừ đuôi.",
+      "bang": {
+        "dong": [],
+        "conLai": { "kieu": "pt", "tien": 0, "pt": 0 },
+        "gioiHan": [],
+        "lamTron": [{ "dk": [], "buoc": 10000, "huong": "len", "tru": 0, "tronTram": false }],
+        "khongQuaNiemYet": false
+      }
+    },
+    {
+      "id": "cong-so-tien",
+      "ten": "Cộng số tiền cố định",
+      "moTa": "Mọi mã: giá bán = giá gốc cộng một số tiền shop tự điền (đang để 0, điền trước khi lưu), rồi làm tròn lên chục nghìn, không trừ đuôi.",
+      "bang": {
+        "dong": [],
+        "conLai": { "kieu": "tien", "tien": 0, "pt": 0 },
+        "gioiHan": [],
+        "lamTron": [{ "dk": [], "buoc": 10000, "huong": "len", "tru": 0, "tronTram": false }],
+        "khongQuaNiemYet": false
+      }
+    }
+  ]
+}

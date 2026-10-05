@@ -7,8 +7,10 @@
  */
 
 import { priceOf, type FoundItem } from "../catalog-score";
+import { itemKey } from "../order-care";
+import type { StockFacts } from "../stock-facts";
 import { escapeRe } from "../text-analysis";
-import { dotted, gateNormalize, pricesIn, wordIn, type GateContext, type ReplyRule, type RuleResult } from "./support";
+import { dotted, gateNormalize, pricesIn, splitSentences, tidy, wordIn, type GateContext, type ReplyRule, type RuleResult } from "./support";
 
 export class EvidenceRule implements ReplyRule {
   readonly id = "evidence";
@@ -29,21 +31,40 @@ export class EvidenceRule implements ReplyRule {
       out = this.topicReply(g);
     }
 
-    // (2) contradicting the stock facts, both ways
+    // (2) contradicting the stock facts, both ways. 05/10/2026 (phiếu Desk "cổng đè cả câu agent bằng câu
+    // tồn kho mẫu khác"): only a sentence that talks about THE FACTS' ITEM contradicts them — the latest
+    // item named before the stock words decides (`StockSubject`); that sentence is replaced, the offers of
+    // something else right after it go, every other sentence of the draft stays.
     if (facts !== null && facts.requestedSize !== "") {
       const size = escapeRe(gateNormalize(facts.requestedSize).replace(/\//g, " "));
-      const n = norm().replace(/\//g, " ");
-      const hit = (patterns: string[]): boolean => patterns.some((p) => g.test(p.split("{size}").join(size), n));
-      const saysOut = hit(ev.saysOut);
-      const saysIn = hit(ev.saysIn);
-      const price = facts.price > 0 ? facts.price : priceOf(g.src.found.find((it) => it.ma === facts.productCode) ?? { ma: "", ten: "", cac_size: [] });
-      const vars = { ten: facts.productName, ma: facts.productCode, size: facts.requestedSize, ton: facts.stock?.qty ?? "", gia: priceText(price) };
-      if (facts.stock !== null && (facts.stock.qty ?? 1) > 0 && saysOut) {
-        trace.push("contradicts_stock_in");
-        out = g.fill(ev.inStockReply, vars);
-      } else if (facts.stock === null && saysIn && !g.echoedInShop(`con size ${facts.requestedSize}`)) {
-        trace.push("contradicts_stock_out");
-        out = g.fill(g.test(ev.colorsAsked, g.custNow) ? ev.outOfStockColorsReply : ev.outOfStockReply, vars);
+      const compile = (patterns: string[]): RegExp[] => patterns.map((p) => g.re(p.split("{size}").join(size))).filter((r): r is RegExp => r !== null);
+      const inStock = facts.stock !== null && (facts.stock.qty ?? 1) > 0;
+      const wrong = inStock ? compile(ev.saysOut) : facts.stock === null && !g.echoedInShop(`con size ${facts.requestedSize}`) ? compile(ev.saysIn) : [];
+      const subject = new StockSubject(g, facts);
+      const alternative = g.re(g.cfg.orderedItem.alternative);
+      const sentences = splitSentences(out);
+      let first = -1;
+      let dropOffers = false;
+      const kept: string[] = [];
+      sentences.forEach((sentence, i) => {
+        const n = gateNormalize(sentence).replace(/\//g, " ");
+        const m = earliest(wrong, n);
+        if (m !== null && subject.aboutFacts(n.slice(0, m.end))) {
+          if (first < 0) { first = i; kept.push("\u0000"); }
+          dropOffers = true;
+          return;
+        }
+        if (dropOffers && alternative !== null && alternative.test(n)) return;
+        dropOffers = false;
+        kept.push(sentence);
+      });
+      if (first >= 0) {
+        const price = facts.price > 0 ? facts.price : priceOf(g.src.found.find((it) => it.ma === facts.productCode) ?? { ma: "", ten: "", cac_size: [] });
+        const vars = { ten: facts.productName, ma: facts.productCode, size: facts.requestedSize, ton: facts.stock?.qty ?? "", gia: priceText(price) };
+        const fixed = inStock ? g.fill(ev.inStockReply, vars) : g.fill(g.test(ev.colorsAsked, g.custNow) ? ev.outOfStockColorsReply : ev.outOfStockReply, vars);
+        trace.push(inStock ? "contradicts_stock_in" : "contradicts_stock_out");
+        // A list written line by line stays a list.
+        out = tidy(kept.map((s) => (s === "\u0000" ? fixed : s)).join(out.includes("\n") ? "\n" : " "));
       }
     }
 
@@ -91,6 +112,8 @@ export class EvidenceRule implements ReplyRule {
     const found = g.src.found;
     const knownCodes = new Set(found.map((q) => q.ma.toUpperCase()));
     if (facts !== null) knownCodes.add(facts.productCode.toUpperCase());
+    // 05/10/2026: a code printed on the customer's photo, or the one the system matched it to, is not an invented one.
+    [...(g.src.photoCodesRead ?? []), ...(g.src.photoCodes ?? [])].forEach((c) => knownCodes.add(c.toUpperCase()));
     const alien = codes.filter((c) => !knownCodes.has(c) && !wordIn(g.shop, gateNormalize(c)) && !wordIn(g.catalog, gateNormalize(c)) && !wordIn(g.cust, gateNormalize(c)));
     if (alien.length > 0) {
       trace.push(`alien_code:${alien.join(",")}`);
@@ -185,5 +208,72 @@ export class EvidenceRule implements ReplyRule {
     if (discovery && link !== "") return g.fill(ev.discoveryLinkReply, { link });
     if (discovery) return g.fill(ev.discoveryAskReply);
     return g.fill(ev.topicReply);
+  }
+}
+
+/** The earliest match of any pattern in `text`, with where it ends. */
+function earliest(patterns: readonly RegExp[], text: string): { index: number; end: number } | null {
+  let best: { index: number; end: number } | null = null;
+  for (const re of patterns) {
+    const m = re.exec(text);
+    if (m !== null && (best === null || m.index < best.index)) best = { index: m.index, end: m.index + m[0].length };
+  }
+  return best;
+}
+
+/** All whole-word positions of `needle` (normalised) in `hay` (normalised). */
+function positions(hay: string, needle: string): number[] {
+  if (needle === "") return [];
+  const re = new RegExp(`(^|[^a-z0-9])(${escapeRe(needle)})(?=[^a-z0-9]|$)`, "g");
+  const out: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(hay)) !== null) { out.push(m.index + m[1]!.length); re.lastIndex = m.index + m[0].length; }
+  return out;
+}
+
+/**
+ * Which item a stock sentence talks about (05/10/2026). Mentions are the facts' item (its code, the
+ * strong words of its name, its brand) or another one (another code, a brand of the industry's lexicon
+ * that is not the item's, a strong word only another found item carries). The LAST mention before the
+ * stock words wins ("<the item's name> … but <size> is out" is the item; "<another brand> this one, … out of
+ * <size>" is not).
+ * No mention: the sentence is about the item, unless the customer sent a photo this turn that was not
+ * matched to it — then nobody knows which item "this one" is, and the draft is kept (the safe side).
+ */
+class StockSubject {
+  private readonly code: string;
+  private readonly own: Set<string>;
+  private readonly others: Set<string>;
+
+  constructor(private readonly g: GateContext, facts: StockFacts) {
+    this.code = itemKey(facts.productCode);
+    const strong = (name: string): string[] => gateNormalize(name).split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !/^\d+$/.test(t));
+    const item = g.src.found.find((it) => itemKey(it.ma) === this.code);
+    this.own = new Set([...strong(facts.productName), ...strong(item?.ten ?? ""), ...(item?.hang !== undefined ? [gateNormalize(item.hang)] : [])].filter((t) => t !== ""));
+    const brands = (g.src.brandWords ?? []).map(gateNormalize).filter((b) => b !== "" && !this.own.has(b));
+    const ownBrandInName = brands.filter((b) => wordIn(gateNormalize(facts.productName), b));
+    ownBrandInName.forEach((b) => this.own.add(b));
+    const otherWords = g.src.found.filter((it) => itemKey(it.ma) !== this.code).flatMap((it) => [...strong(it.ten), ...(it.hang !== undefined ? [gateNormalize(it.hang)] : [])]);
+    this.others = new Set([...brands, ...otherWords].filter((t) => t !== "" && !this.own.has(t)));
+  }
+
+  private sameCode(key: string): boolean {
+    if (key === "" || this.code === "") return false;
+    if (key === this.code) return true;
+    const [short, long] = key.length < this.code.length ? [key, this.code] : [this.code, key];
+    return short.length >= 6 && long.startsWith(short);
+  }
+
+  aboutFacts(prefix: string): boolean {
+    let last: { at: number; own: boolean } | null = null;
+    const note = (at: number, own: boolean): void => { if (last === null || at >= last.at) last = { at, own }; };
+    const codeRe = this.g.re(this.g.cfg.evidence.codePattern, "g");
+    if (codeRe !== null) for (const m of prefix.toUpperCase().matchAll(codeRe)) note(m.index ?? 0, this.sameCode(itemKey(m[0])));
+    for (const w of this.own) for (const at of positions(prefix, w)) note(at, true);
+    for (const w of this.others) for (const at of positions(prefix, w)) note(at, false);
+    const found = last as { at: number; own: boolean } | null;
+    if (found !== null) return found.own;
+    const photoIsItem = (this.g.src.photoCodes ?? []).some((c) => this.sameCode(itemKey(c)));
+    return !(this.g.src.hasImages === true && !photoIsItem);
   }
 }

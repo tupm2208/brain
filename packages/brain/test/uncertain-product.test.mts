@@ -11,7 +11,7 @@ import { ALL, BOSTON13, hoiLaiFiller, lines, pack, query, scorer } from "./stage
 const gate = new B.UncertainProductGate(scorer, lines);
 const resolver = new B.CatalogResolver(scorer);
 const NOW = "2026-09-25T09:00:00.000Z";
-const hoiLai = hoiLaiFiller({ "banHang.cauKhongCo": "bên em chưa kinh doanh hãng này" });
+const hoiLai = hoiLaiFiller({});
 
 const base = (over: Partial<B.UncertainInput> = {}): B.UncertainInput => ({
   message: "đôi này size 42 còn không",
@@ -78,26 +78,27 @@ test("a category question about trousers anchored on a shoe → the type link, n
   assert.equal(specific.why, "type_mismatch");
 });
 
-test("a brand the shop declares it does not carry → the brand sentence, an answer that never hands off", () => {
-  const out = gate.apply(base({
-    message: "có giày salomon speedcross size 42 không", entities: { productCode: "", productName: "salomon speedcross", brand: "salomon" },
-    analysis: { productName: "salomon speedcross", brand: "salomon" }, state: { hasRecentImageEvidence: false, askedBackBefore: true }
-  }));
-  assert.ok(out !== null && out.action === "ask_clarification", JSON.stringify(out));
-  assert.equal(out.why, "brand_not_carried");
-  assert.match(out.reply, /chưa kinh doanh hãng này/, "the shop's own sentence ({banHang.cauKhongCo}) is what is said");
-  assert.deepEqual(out.missingData, []);
-  // A carried brand with nothing in the catalog → "đang hết", only when the caller SAYS the catalog has none.
+test("a brand the stock search did not return → 'nhà em hiện đang hết hàng', other brands only from the stock (02/10/2026)", () => {
   // ("Kawana" is no line of the DNA: a known line would be the cascade's job, not the gate's.)
   const out2 = gate.apply(base({
     message: "có giày hoka kawana 2 size 42 không", entities: { productCode: "", productName: "hoka kawana 2", brand: "hoka" },
-    analysis: { productName: "hoka kawana 2", brand: "hoka" }, brandInCatalog: false
+    analysis: { productName: "hoka kawana 2", brand: "hoka" }, brandInCatalog: false, carriedBrands: ["adidas", "hoka"]
   }));
   assert.ok(out2 !== null && out2.action === "ask_clarification");
   assert.equal(out2.why, "brand_out_of_stock");
-  assert.match(out2.reply, /hàng hoka bên em hiện đang hết/);
-  assert.match(out2.reply, /adidas/, "the pack's other brands are offered instead");
-  assert.doesNotMatch(out2.reply, /sẵn hoka/, "the asked brand is not offered as an alternative");
+  assert.match(out2.reply, /hãng hoka nhà em hiện đang hết hàng/);
+  assert.match(out2.reply, /adidas/, "a brand the stock search returned is offered instead");
+  assert.doesNotMatch(out2.reply, /đang có hoka/, "the asked brand is not offered as an alternative");
+  assert.doesNotMatch(out2.reply, /chưa kinh doanh|không bán/);
+  // No brand from the stock to offer: no brand is named, the bot asks the need instead.
+  const bare = gate.apply(base({
+    message: "có giày hoka kawana 2 size 42 không", entities: { productCode: "", productName: "hoka kawana 2", brand: "hoka" },
+    analysis: { productName: "hoka kawana 2", brand: "hoka" }, brandInCatalog: false
+  }));
+  assert.ok(bare !== null && bare.action === "ask_clarification");
+  assert.equal(bare.why, "brand_out_of_stock");
+  assert.match(bare.reply, /hãng hoka nhà em hiện đang hết hàng/);
+  assert.doesNotMatch(bare.reply, /đang có/, "nothing the stock did not return is claimed");
   const unknown = gate.apply(base({ message: "có giày hoka kawana 2 size 42 không", entities: { productCode: "", productName: "hoka kawana 2", brand: "hoka" }, analysis: { productName: "hoka kawana 2", brand: "hoka" } }));
   assert.ok(unknown !== null && unknown.action === "ask_clarification");
   assert.equal(unknown.why, "no_product", "without the catalog's word, 'hết' is never claimed");

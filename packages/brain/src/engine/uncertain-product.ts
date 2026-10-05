@@ -20,14 +20,14 @@
 
 import type { MatchingConfig } from "../pack/types";
 import type { CatalogResolution } from "./catalog-resolver";
-import type { CatalogScorer } from "./catalog-score";
+import type { CatalogScorer, FoundItem } from "./catalog-score";
 import { findLine, type ProductLine } from "./dialogue-frame";
 import { hoursBetween, packRegex } from "./fill-text";
 import { normalize } from "./text-analysis";
 
 export type UncertainReason =
   | "no_product" | "no_product_have_image" | "no_product_have_media"
-  | "brand_not_carried" | "brand_out_of_stock"
+  | "brand_out_of_stock"
   | "type_mismatch" | "type_mismatch_category" | "emoji_only_cold";
 
 export interface UncertainState {
@@ -57,13 +57,23 @@ export interface UncertainInput {
   cascadeFound?: boolean | undefined;
   /** The message continues the page's last question (a frame answer). */
   continuation?: boolean | undefined;
+  /**
+   * 05/10/2026: the customer's product words are ALL names of the catalog's own groups — the landing
+   * read them. A category question: no "which item?".
+   */
+  groupQuestion?: boolean | undefined;
+  /**
+   * 05/10/2026: the item the conversation is already pinned to (the carried focus), as the stock search
+   * returned it — an anchor too, even when the scorer selected nothing for this message.
+   */
+  anchorItems?: readonly FoundItem[] | undefined;
   stickerLike?: boolean | undefined;
   state: UncertainState;
   now: string;
-  lexicon: { brands: readonly string[]; knownBrandsNotCarried: readonly string[]; aliases?: Readonly<Record<string, string>> | undefined };
+  lexicon: { brands: readonly string[]; aliases?: Readonly<Record<string, string>> | undefined };
   /** Whether the brand appears anywhere in the shop's catalog; `undefined` = unknown, so "hết" is never claimed. */
   brandInCatalog?: boolean | undefined;
-  /** Brands in stock to offer instead (`{dsHang}`); the pack's brands minus the asked one when absent. */
+  /** Brands IN STOCK to offer instead (`{dsHang}`), from what the stock search returned. Absent = say nothing about other brands, ask the need. */
   carriedBrands?: readonly string[] | undefined;
   /** Storefront link per product type ("quan" → …/?type=Quần áo), from the caller (the landing owns its URLs). */
   typeLinks?: Readonly<Record<string, string>> | undefined;
@@ -103,9 +113,13 @@ export class UncertainProductGate {
     const saidName = input.analysis?.productName ?? "";
 
     // (a) The type the customer said (shirt / trousers…) is not the type of the anchor (a shoe).
-    const requestedType = this.scorer.canonicalType(input.entities.productType ?? input.analysis?.productType ?? "");
+    // 05/10/2026 (phiếu Desk 09/09): LLM#1 may leave the type empty — then the message's own words, but only
+    // in the shape of a category question ("có … không"): an address or a phrase that only shares a word with a type is no type.
+    const categoryShape = packRegex(u.categoryQuestion)?.test(normalize(message)) ?? false;
+    const requestedType = this.scorer.canonicalType(input.entities.productType || input.analysis?.productType || "")
+      || (categoryShape ? this.typeInMessage(message) : "");
     if (requestedType !== "" && nonPrimary.has(requestedType) && productTalk.has(intent) && input.entities.productCode === "") {
-      const anchorKinds = selected.map((c) => this.scorer.typeOf(c.item));
+      const anchorKinds = [...selected.map((c) => c.item), ...(input.anchorItems ?? [])].map((item) => this.scorer.typeOf(item));
       if (anchorKinds.some((k) => primary.has(k))) {
         const categoryQuestion = intent !== "place_order" && !this.refersToSpecificItem(message, saidName, requestedType);
         return categoryQuestion ? "type_mismatch_category" : "type_mismatch";
@@ -115,12 +129,12 @@ export class UncertainProductGate {
     // (b) A question about ONE item that nothing identifies.
     const askedType = requestedType !== "" ? requestedType : this.typeInMessage(message);
     const categoryTypeQuestion = askedType !== "" && nonPrimary.has(askedType) && intent !== "place_order" && !this.refersToSpecificItem(message, saidName, askedType);
-    const specific = (["place_order", "ask_product_confirmation"].includes(intent) || this.refersToSpecificItem(message, saidName, askedType)) && !categoryTypeQuestion;
+    const specific = (["place_order", "ask_product_confirmation"].includes(intent) || this.refersToSpecificItem(message, saidName, askedType)) && !categoryTypeQuestion
+      && !(input.groupQuestion === true && intent !== "place_order");
     const lineNamed = findLine(message, this.lines) !== null || findLine(input.entities.productName, this.lines) !== null;
     if (askProduct.has(intent) && specific && selected.length === 0 && !input.hasImage && !input.hasFocus
       && input.continuation !== true && input.cascadeFound !== true && !lineNamed) {
       const brand = this.brandKey(input.analysis?.brand || input.entities.brand);
-      if (brand !== "" && this.brandNotCarried(brand, input.lexicon)) return "brand_not_carried";
       if (brand !== "" && input.brandInCatalog === false && this.brandCarried(brand, input.lexicon)) return "brand_out_of_stock";
       if (input.state.hasRecentImageEvidence) return "no_product_have_image";
       if (input.hasMedia === true) return "no_product_have_media";
@@ -145,11 +159,11 @@ export class UncertainProductGate {
     const why = this.reason(input);
     if (why === "") return null;
     const selected = input.resolution?.selected ?? [];
-    const dropped = [...new Set([selected[0]?.code, input.entities.productCode].filter((c): c is string => typeof c === "string" && c !== ""))];
+    const dropped = [...new Set([selected[0]?.code, input.entities.productCode, ...(why === "type_mismatch_category" || why === "type_mismatch" ? (input.anchorItems ?? []).map((it) => it.ma) : [])].filter((c): c is string => typeof c === "string" && c !== ""))];
     const saidName = (input.analysis?.productName ?? "").trim();
 
     if (why === "type_mismatch_category") {
-      const askedType = this.scorer.canonicalType(input.entities.productType ?? input.analysis?.productType ?? "") || this.typeInMessage(input.message);
+      const askedType = this.scorer.canonicalType(input.entities.productType || input.analysis?.productType || "") || this.typeInMessage(input.message);
       const label = this.cfg.types.labels[askedType] ?? askedType;
       const link = input.typeLinks?.[askedType] ?? "";
       const productType = { type: askedType, label, link };
@@ -159,15 +173,16 @@ export class UncertainProductGate {
     }
 
     const brand = (input.analysis?.brand || input.entities.brand || "").trim();
-    const carried = (input.carriedBrands ?? input.lexicon.brands.filter((b) => this.brandKey(b) !== this.brandKey(brand))).slice(0, 4);
+    // Only brands the stock search really returned are offered (02/10/2026): the industry's brand list
+    // is vocabulary, not stock — "bên em đang có sẵn <hãng>" from it was a claim nobody checked.
+    const carried = (input.carriedBrands ?? []).filter((b) => b.trim() !== "" && this.brandKey(b) !== this.brandKey(brand)).slice(0, 4);
     const vars = { hang: brand, dsHang: carried.join(", "), ten: saidName };
-    const reply = why === "brand_not_carried" ? input.hoiLai("hangKhongBan", vars)
-      : why === "brand_out_of_stock" ? input.hoiLai("hangHetHang", vars)
+    const reply = why === "brand_out_of_stock" ? (carried.length > 0 ? input.hoiLai("hangHetHang", vars) : input.hoiLai("hangHetHangHoiNhuCau", vars) ?? input.hoiLai("hangHetHang", vars))
       : why === "no_product_have_media" ? (input.hoiLai("daCoVideo", vars) ?? input.hoiLai("tenMau", vars))
       : (why === "no_product_have_image" || input.state.hasRecentImageEvidence)
         ? ((saidName !== "" ? input.hoiLai("daCoAnhTen", vars) : null) ?? input.hoiLai("daCoAnh", vars) ?? input.hoiLai("tenMau", vars))
         : (input.hoiLai("sanPham", vars) ?? input.hoiLai("chung", vars));
-    const isAnswer = why === "brand_not_carried" || why === "brand_out_of_stock";
+    const isAnswer = why === "brand_out_of_stock";
     const askedBefore = input.state.askedBackBefore === true || (input.state.askBackCount ?? 0) > 0;
     if (askedBefore && !isAnswer) {
       const handoff = input.hoiLai("sauHoiLai", vars) ?? "";
@@ -212,12 +227,6 @@ export class UncertainProductGate {
 
   private brandKey(value: string | undefined): string {
     return normalize(value ?? "").replace(/[^a-z0-9]/g, "");
-  }
-
-  private brandNotCarried(key: string, lexicon: UncertainInput["lexicon"]): boolean {
-    if (key.length < 3) return false;
-    const canonical = this.canonicalBrand(key, lexicon);
-    return lexicon.knownBrandsNotCarried.some((b) => this.brandKey(b) === canonical);
   }
 
   private brandCarried(key: string, lexicon: UncertainInput["lexicon"]): boolean {

@@ -39,6 +39,29 @@ export function readRawBody(req: IncomingMessage, maxBytes = MAX_BODY_BYTES): Pr
 }
 
 /**
+ * Reads at most `maxBytes`, like `readRawBody`, but an oversized body resolves `null` instead of
+ * cutting the socket — the rest is drained (up to `drainBytes`) so the caller's 400 still reaches
+ * the sender. Past `drainBytes` the request is destroyed after all.
+ */
+export function readRawBodyOrNull(req: IncomingMessage, maxBytes: number, drainBytes = 1024 * 1024): Promise<Buffer | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let settled = false;
+    const finish = (value: Buffer | null) => { if (!settled) { settled = true; resolve(value); } };
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size <= maxBytes) { chunks.push(chunk); return; }
+      chunks.length = 0;
+      if (size > drainBytes) { req.destroy(); finish(null); }
+    });
+    req.on("end", () => finish(size > maxBytes ? null : Buffer.concat(chunks)));
+    req.on("close", () => finish(size > maxBytes ? null : Buffer.concat(chunks)));
+    req.on("error", (error) => { if (!settled) { settled = true; reject(error); } });
+  });
+}
+
+/**
  * Reads a JSON object body. On a malformed or oversized body the error response is written and
  * `null` is returned, so callers simply stop.
  */

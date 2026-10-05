@@ -40,17 +40,30 @@ export interface InboundMessageBody {
    * person only), `off`. Anything but `auto` is never sent by `/tin-den`. Absent = auto (older landings).
    */
   cheDo?: string | undefined;
+  /**
+   * 05/10/2026 (phiếu Desk "nhường xong phải tiếp quản"): the landing pushes the customer's last message
+   * AGAIN. `het-nhuong` = the yield window passed and the customer is still waiting (the bot answers unless
+   * a person is still active); `nguoi-bam` = a person pressed "bot trả lời tiếp" (no yield applies).
+   */
+  tiepQuan?: "het-nhuong" | "nguoi-bam" | undefined;
 }
 
 /** Result of handling an inbound message, returned to the landing. */
 export type InboundResult =
   | { daTraLoi: true; hanhDong: "send" | "ask_back" | "agent"; traLoi: string }
   | { daTraLoi: false; viSao: "chuyen_nguoi_that"; traLoi: string }
-  /** A human answered this conversation in the last few minutes: the bot stays out of it. */
-  | { daTraLoi: false; viSao: "nguoi_dang_truc" }
+  /**
+   * A human answered (or is typing in) this conversation within the yield window: the bot stays out of it.
+   * `nhuongDen` (05/10/2026) = when the window ends; the brain then asks the landing to hand the turn back.
+   */
+  | { daTraLoi: false; viSao: "nguoi_dang_truc"; nhuongDen?: string | undefined }
   /** The customer sent another message before this one was answered: the later turn answers the whole burst. */
   | { daTraLoi: false; viSao: "gop_vao_tin_sau" }
+  /** 05/10/2026: the landing says this customer message was already answered (another turn got there first) — nothing sent. */
+  | { daTraLoi: false; viSao: "da_tra_loi_tin_nay" }
   | { daTraLoi: false; viSao: "khong_phuc_vu_shop" }
+  /** 05/10/2026: the customer said "ok" again after the bot's short acknowledgement of their order — nothing to add. */
+  | { daTraLoi: false; viSao: "khong_can_tra_loi" }
   /** Đ7: the conversation (or its page, or the shop) is in suggest-only or off mode. */
   | { daTraLoi: false; viSao: "che_do_khong_tu_gui" };
 
@@ -89,6 +102,10 @@ export const CSRF_HEADER_VALUE = "xeon";
 /** Well-known paths. */
 export const PATHS = {
   health: "/health",
+  /** The platform's own legal pages (02/10/2026): one copy for the Meta app, every shop links here. */
+  policyPrivacy: "/chinh-sach",
+  policyTerms: "/chinh-sach/dieu-khoan",
+  policyDeletion: "/chinh-sach/xoa-du-lieu",
   licensePrefix: "/license/",
   licenseCheck: "/license/kiem",
   licenseDuty: "/license/truc",
@@ -120,6 +137,8 @@ export const PATHS = {
    */
   aiProfileTemplate: "/ai/mau-ho-so",
   aiPromptPreview: "/ai/loi-dan-xem-thu",
+  /** 02/10/2026: the shop's document (frequent questions, own procedure) split into points for its profile. */
+  aiShopDoc: "/ai/nap-tai-lieu",
   /** Đ8 — the Content screen: critique (three judges), optimise against the critique, weekly trend research. */
   contentReview: "/noi-dung/phan-bien",
   contentOptimize: "/noi-dung/toi-uu",
@@ -130,6 +149,16 @@ export const PATHS = {
    * nothing until a person approves what came back.
    */
   contentProfile: "/noi-dung/hieu-y",
+  /**
+   * 02/10/2026 — the shop's PRICE TABLES (OMI → Kho → Cách tính giá): the ready-made tables to
+   * start from (the platform's, then the shop's industry's), and the shop's own words turned into a
+   * table. Xeon prices nothing and stores nothing: the table lives on the landing, which saves only
+   * when a person presses "Lưu bảng giá".
+   */
+  priceTemplates: "/kho/mau-bang-gia",
+  priceRulesFromWords: "/kho/bang-gia/hieu-y",
+  /** 02/10/2026 — the shop's INDUSTRY default wording for its website (`nganh/<id>/mac-dinh-web.json`). */
+  industryWebDefaults: "/nganh/mac-dinh-web",
   /** Đ9 — industry knowledge (sample profiles, research queue, line knowledge) and the Video Studio ticket. */
   knowledgePrefix: "/kien-thuc/",
   videoTicket: "/video/ve",
@@ -145,6 +174,13 @@ export const PATHS = {
   metaLogin: "/meta/dang-nhap",
   metaLoginDone: "/meta/dang-nhap/xong",
   metaLoginResult: "/meta/dang-nhap/ket-qua",
+  /**
+   * 02/10/2026 — the developer app's "Data deletion callback URL" and "Deauthorize callback URL"
+   * (Meta POSTs a `signed_request`), and the public status page the deletion answer links to.
+   */
+  metaDataDeletion: "/meta/xoa-du-lieu",
+  metaDataDeletionStatus: "/meta/xoa-du-lieu/trang-thai",
+  metaDeauthorize: "/meta/go-app",
   /** Admin log viewer: build log + stderr tail (authenticated, same session as /quan-tri). */
   adminLog: "/quan-tri/api/nhat-ky",
   /** Public activity log: every webhook, message, outbound call — ring buffer in memory. */

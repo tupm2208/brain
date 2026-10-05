@@ -194,7 +194,8 @@ test("stock_unknown_assert: 'còn hàng' while the item is unknown becomes the a
 
 test("contradicts_stock_in: 'hết rồi' when the warehouse has the size → the stock sentence with count and price", () => {
   const facts = B.buildStockFacts([BOSTON13], { code: "JS4955", requestedSize: "42" }, matching);
-  const r = gate.run("Dạ size 42 mẫu này hết rồi ạ.", sources({ found: [BOSTON13], stockFacts: facts }));
+  // 05/10/2026: the customer asked the size (that is where stock facts come from) — a buying sign, the closing invite stays.
+  const r = gate.run("Dạ size 42 mẫu này hết rồi ạ.", sources({ found: [BOSTON13], stockFacts: facts, customerSaid: "size 42 còn không shop" }));
   assert.ok(has(r.trace, "contradicts_stock_in"));
   assert.equal(r.reply, "Dạ mẫu ADIZERO BOSTON 13 M (JS4955) size 42 bên em còn 2 đôi, giá 3.190.000đ ạ. Bác lấy đôi này em lên đơn nhé?");
 });

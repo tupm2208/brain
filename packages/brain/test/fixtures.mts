@@ -184,6 +184,6 @@ export const gateInput = (over: Partial<B.GateInput> = {}): B.GateInput => ({
   state: { tenant: TENANT, conversationId: CONV, turns: [] },
   now: T0, draft: "", facts: [], intent: null,
   itemIdentified: true, wouldAskBack: false, online: true, catalogSize: 1200,
-  claimsBrandNotCarried: false, hasPolicySource: false, echoedValues: [],
+  hasPolicySource: false, echoedValues: [],
   ...over
 });

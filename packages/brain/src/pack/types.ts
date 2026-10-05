@@ -30,10 +30,11 @@ export interface PackIdentity {
 
 // ----------------------------------------------------------------- 2. Lexicon
 export interface PackLexicon {
-  /** Brands the shop carries. */
+  /**
+   * Brand names of the industry, to RECOGNISE a brand in a customer's message (and search the stock
+   * for it). Never a list of what one shop sells: that is the stock (02/10/2026).
+   */
   brands: string[];
-  /** Real brands the shop does NOT carry, so the bot can say so instead of asking around. */
-  knownBrandsNotCarried: string[];
   /** Categories: "giay chay", "ao gio", ... A category question does not require a specific item. */
   categories: string[];
   /** Common misspellings -> canonical form. Keys are normalised (no diacritics, joined). */
@@ -131,8 +132,6 @@ export type GateRule =
   | { kind: "ask_back_once"; windowMinutes: number; maxTimes?: number }
   /** Every number in the reply must come from a tool result. */
   | { kind: "no_unsourced_numbers" }
-  /** "We do not carry brand X" is only allowed when the catalog is large enough. */
-  | { kind: "brand_not_carried_needs_catalog"; minItems: number }
   /** A sentence containing a forbidden phrase is not sent. */
   | { kind: "forbidden_phrases" }
   /**
@@ -147,7 +146,7 @@ export type GateRule =
 /** Templates every pack must define. Packs may add their own beyond this list. */
 export const REQUIRED_TEMPLATES = [
   "greeting", "ask_item", "ask_slot", "handoff",
-  "offline", "brand_not_carried", "out_of_stock", "in_stock"
+  "offline", "out_of_stock", "in_stock"
 ] as const;
 export type TemplateKey = (typeof REQUIRED_TEMPLATES)[number];
 
@@ -245,6 +244,12 @@ export interface CommonAgent {
   handoffReplyPattern: string;
   /** Phrases no shop may say. */
   cauCam: string[];
+  /**
+   * 05/10/2026 (phiếu Desk 01/09 "agent và cổng soát thiếu nguồn thật"): tools every industry's agent has — the
+   * ones that read the SHOP's own truth (its policy, its account). Listed after the industry's own; an industry
+   * declaring a tool of the same name rewrites it. Absent = none.
+   */
+  tools?: PackAgentTool[] | undefined;
   /**
    * What the agent is told when it SEES the customer's photos itself (02/10/2026: measured 87%
    * right against 72% for a note-only agent, none wrong). Absent = the built-in wording.
@@ -364,6 +369,11 @@ export interface DialogueConfig {
   pageTurn: Record<string, string[]>;
   /** The page asked something not covered above (ends with "?" / "khong"). */
   askedOther: string[];
+  /**
+   * 05/10/2026: the page asked to SEE what the customer uses now / its label (a reference to measure by),
+   * on accent-stripped text; tier 1 and the industry are concatenated. A photo sent next is a reference.
+   */
+  askedReference?: string[] | undefined;
   /** Customer agrees, on the ORIGINAL text (diacritics kept), case-insensitive. */
   ack: string;
   deny: string;
@@ -493,6 +503,14 @@ export interface ReconcilePatterns {
   sadPhrase: string;
   policyQuestion: string;
   shippingFee: string;
+  /**
+   * 05/10/2026 (phiếu Desk "bot xác nhận màu thay khách"): the customer REJECTS the item / colour the page
+   * showed ("không phải màu này", "sai mẫu", "màu này chứ") — before buying it is a sign the match was
+   * wrong, not a question to reassure. Lists are concatenated (the industry adds its nouns).
+   */
+  productRejection: string[];
+  /** …but the goods were already received ("nhận hàng", "giao tới"): that is a complaint, not a rejection. */
+  afterReceipt: string;
 }
 
 /**
@@ -587,6 +605,12 @@ export interface EntityConfig {
   sizeBarePatterns: string[];
   apparelSizePatterns: string[];
   apparelSizePrefix: string;
+  /**
+   * 05/10/2026 (phiếu Desk 26/09): a size said WITH its system ("US 9", "9us", "UK 7.5", "US W 7") — named
+   * groups `he` (system), `so` (number), optional `gioi` (a women's / men's word). Read as "<HE> [W|M] <so>" so
+   * the landing's finder converts it through the item's own brand chart. Empty = no system read.
+   */
+  sizeSystemPatterns: string[];
   bareTag: BareTagPatterns;
   needs: string[];
   footForms: Record<string, string[]>;
@@ -686,6 +710,17 @@ export interface MatchingConfig {
   /** Gender key ("M" / "W") → regex on the accent-stripped name. */
   genderTokens: Record<string, string>;
   types: TypeRules;
+  /**
+   * 05/10/2026: the industry's EVERYDAY words for the storefront's groups (`nhomHang` in `cham-diem.json`):
+   * how customers say a group → the group's label. Xeon sends them with every stock search; the landing only takes a word whose
+   * group its own catalog carries. A key with accents matches words typed with accents only.
+   */
+  groups: { aliases: Record<string, string>; notGroup: string[] };
+  /**
+   * 05/10/2026 (phiếu Desk 05/09 "còn màu khác không"): regexes (accent-stripped) of a question
+   * about the OTHER variants of the item in focus (`hoiBienTheKhac`; tier 1's general words ⊕ the industry's nouns).
+   */
+  otherVariantsAsked: string[];
   sizes: SizeReading;
   uncertain: UncertainPatterns;
   /** Prompt wording of the stock facts (`otherKho`, `inStock`, `outOfStock`, `houseKho`, `partnerKho`). */
@@ -739,6 +774,12 @@ export interface ReplyGatePayment {
   /** The neutral sentence that replaces a claim (Dũng, 24/09/2026). */
   pendingText: string;
   handoffReason: string;
+  /**
+   * 05/10/2026: the draft asserts the CUSTOMER's money already went ("tiền cọc mình đã chuyển sẽ được
+   * trừ…") — the same claim seen from the other side. Allowed only with evidence: a person on duty said
+   * the money came, or an order certainly linked to the conversation carries a paid amount.
+   */
+  customerPaid: string[];
 }
 
 /** At closing the SYSTEM sends the order form: the bot must not ask for a phone number itself. */
@@ -750,6 +791,13 @@ export interface ReplyGateContact {
   formNoteMarker: string;
   /** When the shop closes through a person (`banHang.khiChot = goi-nguoi`). */
   personNote: string;
+  /**
+   * 05/10/2026 (phiếu Desk "thẻ đặt hàng không đi"): accent-stripped — a sentence that PROMISES the order
+   * form ("em gửi phiếu bên dưới"). Checked AFTER the landing answered: no form went → the sentence is cut.
+   */
+  formPromise: string;
+  /** The promise was cut and nothing is left, and no item is settled yet: ask which item / variant. */
+  askItem: string;
 }
 
 /** Warranty / authenticity promises without a source. `cut` runs on the DIACRITIC reply (flags giu). */
@@ -784,6 +832,19 @@ export interface ReplyGateExchange {
   /** "em đã đổi sang size 40 cho bác rồi" — the bot has no tool to edit an order. */
   done: string;
   doneNote: string;
+  /**
+   * 05/10/2026 (phiếu Desk "agent thấy transcript thô"): a reply that only says YES ("Dạ đúng rồi ạ") to a
+   * customer asking whether they can exchange (`policyWords` in their message) promises exactly the same.
+   */
+  affirm: string;
+  /**
+   * 05/10/2026 (phiếu Desk 31/08, soát lại): the ASSERTED form "đổi <thing> được" — a tier 1 pattern on the
+   * reply AS WRITTEN (accents: "đổi" ≠ "đôi", flags `iu`) whose `{doiTuong}` is the alternation of `affirmedObjects`; a question ("… được không")
+   * or a refusal ("không đổi … được") is not one. The things are words: tier 1's for every trade, the industry's
+   * own added on top (lists concatenate).
+   */
+  affirmed: string;
+  affirmedObjects: string[];
 }
 
 export interface ReplyGatePhotos {
@@ -797,6 +858,50 @@ export interface ReplyGatePhotos {
   linkClaim: string;
   /** What replaces a reply that was only such a sentence. */
   cardsNote: string;
+}
+
+/**
+ * 05/10/2026: a pronoun that reads like a content word once accents are stripped (Vietnamese "anh" the
+ * pronoun vs "ảnh" a photo). An occurrence typed WITHOUT its accent is the pronoun unless the words
+ * around it are surely about photos; it is then masked to `replacement` before the photo patterns run.
+ */
+export interface ReplyGatePronoun {
+  /** The ambiguous word as typed without accents ("anh"). Empty = the rule is off. */
+  word: string;
+  /** What a pronoun occurrence becomes ("minh") — a word no photo pattern reads. */
+  replacement: string;
+  /** After the word (accent-stripped): surely a photo ("that", "chi tiet"…), in any typing. */
+  photoAfter: string;
+  /** A message typed with no accent at all: a request verb right before AND a fitting word after. */
+  askBefore: string;
+  askAfter: string;
+  /** Same, for "send" verbs, which also take a person ("gửi anh về địa chỉ cũ"). */
+  sendBefore: string;
+  sendAfter: string;
+  /** On the ORIGINAL text right after a pronoun: the accented photo word ("ảnh") — the pronoun is dropped so "gửi anh ảnh" reads "gửi ảnh". */
+  photoNext: string;
+}
+
+/**
+ * 05/10/2026: a reply that says an item is OUT OF STOCK when it is the very item (code + size) of the
+ * running order linked to the conversation — the order holds it, that is why it is "out". The clause
+ * becomes "already in the order", the alternative suggestion after it goes.
+ */
+export interface ReplyGateOrderedItem {
+  /** The clause says out of stock / sold out (accent-stripped). */
+  outOfStock: string[];
+  /** "mẫu này" — a reference to the item in focus, not a name. */
+  deictic: string[];
+  /** The clause / sentence after it offers something else instead. */
+  alternative: string;
+  /** The clause names a size / variant at all. */
+  mentionsVariant: string;
+  /** The customer said they BUY MORE (a buying verb + more), after the order was placed. */
+  buysMore: string;
+  /** {ten} {ma} {size} {maDon} {giaiDoan} {khach} {Khach} {shop}. */
+  replacement: string;
+  /** Stage → words the customer reads. */
+  stageLabels: Record<string, string>;
 }
 
 export interface ReplyGateLink {
@@ -880,6 +985,74 @@ export interface ReplyGateSizeChart {
   mentionsSize: string;
   hedge: string;
   askBack: string;
+  /**
+   * 05/10/2026 (phiếu Desk 26/09 "cổng size thay mọi size trong tin"): on the ORIGINAL sentence (flags
+   * `iu`), the words that make it a conversion from a measurement ("chân"). Only such a sentence — or
+   * one quoting the customer's own measurement — is repaired; a stock sentence beside it is not.
+   */
+  conversion: string;
+  /** On the original text (flags `giu`): a variant the BOT names after an advice cue; group 1 + 2 = the label. */
+  botVariant: string;
+  /** On the original text (flags `giu`): every variant label the CUSTOMER typed; group 1 + 2 = the label. */
+  customerVariant: string;
+  /** On the original sentence (`iu`): an advice verb ("nên", "lấy") … */
+  adviceVerb: string;
+  /** … unless a stock word says it is about stock ("còn", "hết"). */
+  stockWord: string;
+  /** The measurements are missing: the sentence that asks for them ({thieu} = what is missing, {daCo} = what was given). */
+  askMeasures: string;
+  /** The same, short, when someone already asked once (`askedBefore` in what the page said). */
+  askMeasuresShort: string;
+  askedBefore: string;
+  /** The reply already asks for the measurements (normalised): nothing is added. */
+  alreadyAsks: string;
+  /** A cut sentence carried a shop link: it stays, without its variant ({link}). */
+  linkLine: string;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk 01/09 "cổng không kiểm cặp size ↔ cm ↔ tem ↔ UK"): every PAIR the bot writes —
+ * a variant label beside a centimetre value, a variant label beside another system's label — must be
+ * one row of the brand's chart. Tokens are read on the ORIGINAL reply; pairs are neighbours only.
+ */
+/**
+ * 05/10/2026 (phiếu Desk 01/09: the warehouse returned one label and the model wrote a range of others it inferred): a variant label the
+ * draft names must be one the stock lookups of the turn returned, or one the customer said — never a range
+ * the model inferred. `label` (accent-stripped reply) captures the label's key in group 1 (tier 2: how the
+ * industry writes such labels); `note` replaces a reply that was only invented labels. Empty `label` = off.
+ */
+export interface ReplyGateStockLabel {
+  label: string;
+  note: string;
+}
+
+export interface ReplyGateSizePair {
+  /** A variant label token (`giu`); group 1 + 2 = the label. */
+  size: string;
+  /** A measurement token (`giu`); group 1 = the number. */
+  unit: string;
+  /** On the ~18 letters before a measurement token (`iu`): it is the BODY measurement (a foot length). */
+  bodyLead: string;
+  /** … it is the TAG value. */
+  linkLead: string;
+  /** … it measures something else (a box, a sole): never paired. */
+  noiseLead: string;
+  /** Normalised gap words that break a pair ("hoặc", "và"). */
+  gapStop: string;
+  /** Normalised text right before a label that makes it a variant ("size", "EU") — needed to pair with another system. */
+  prefix: string;
+  /** Other label systems: id → regex (`gi`) whose group 1 is the number ({ "uk": "\\bUK\\s*(\\d…)" }). */
+  alt: Record<string, string>;
+  /** Normalised forward gap allowed from another system's label to the variant ("tương đương"). */
+  altForward: string;
+  /** Normalised: what may follow a number the customer typed for it NOT to be a variant / measurement ("k", "tuổi"). */
+  customerNotNumber: string;
+  /** Normalised: a women's item; with `variantWomenDiffer` no pair is checked. */
+  women: string;
+  /** Normalised: "nam nữ" (unisex) is not a women's item. */
+  unisex: string;
+  /** Normalised: what joins the two ends of a range ("–", "đến"); a label inside a range is never paired. */
+  rangeJoin: string;
 }
 
 /** Links the pipeline prepared and the model forgot (Desk `server.js` after level 2). */
@@ -887,6 +1060,46 @@ export interface ReplyGateAppendLinks {
   lineText: string;
   groupText: string;
   filterText: string;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "khẳng định đúng là mẫu từ ảnh khách" + "bot xác nhận màu thay khách"): a match
+ * from the customer's photo is a GUESS. While a customer photo is in play, a sentence that asserts the
+ * photo IS the shop's item ("đúng là / chính là mẫu … bên em", "đúng màu", "giống hệt") is rewritten to a
+ * likeness, or cut, and the customer is asked to confirm on the shop's picture. Exempt: a question, a
+ * hedge, a code the customer typed or that is PRINTED on the photo, a sentence a person on duty said.
+ */
+export interface ReplyGatePhotoClaim {
+  /** Accent-stripped: the sentence asserts sameness with the customer's photo. */
+  claims: string[];
+  /** Accent-stripped, on the text right BEFORE the claim: a negation / hedge ("chưa chắc", "có phải"). */
+  hedgeBefore: string;
+  /** Accent-stripped, on the whole sentence: a question to the customer, not an assertion. */
+  question: string;
+  /** On the ORIGINAL sentence (flags giu): pattern → replacement ("Đúng là mẫu" → "nhìn giống mẫu"); what still claims after it is cut. */
+  rewrite: Record<string, string>;
+  /** Accent-stripped: the reply already asks the customer to confirm. */
+  confirmAsked: string;
+  /** The ask appended when the shop's pictures go with the reply (cards). */
+  confirmCards: string;
+  /** The ask appended when no picture goes with the reply. */
+  confirmNoCards: string;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "cổng chống thúc ép chốt cắt oan"): a customer with no sign of buying is not
+ * pushed to close. Only the PUSH clause goes ("chốt lấy không ạ", "em lên đơn nhé"); a CONDITION that
+ * explains the process ("bác chốt thì em đặt") stays; a reply that is nothing but push is kept whole and
+ * a person is called — never a farewell sentence in place of an answer.
+ */
+export interface ReplyGatePushClose {
+  /** Accent-stripped: an invitation to close / the bot announcing it places the order. */
+  push: string[];
+  /** Accent-stripped: a condition clause ("… chốt thì em đặt", "khi … cọc"), not a push. */
+  condition: string;
+  /** Accent-stripped, on the customer's recent words: already thinking of buying (stock, size, time, ship, pay…). */
+  buySignal: string;
+  handoffReason: string;
 }
 
 /** Everything the reply gate reads (`cong-soat-chung.json` ⊕ `cong-soat.json`). An empty pattern switches its rule off. */
@@ -905,5 +1118,81 @@ export interface ReplyGateConfig {
   advice: ReplyGateAdvice;
   evidence: ReplyGateEvidence;
   sizeChart: ReplyGateSizeChart;
+  sizePair: ReplyGateSizePair;
+  stockLabel: ReplyGateStockLabel;
   appendLinks: ReplyGateAppendLinks;
+  daiTu: ReplyGatePronoun;
+  orderedItem: ReplyGateOrderedItem;
+  photoClaim: ReplyGatePhotoClaim;
+  pushClose: ReplyGatePushClose;
+  photoAgain: ReplyGatePhotoAgain;
+  priceStory: ReplyGatePriceStory;
+  bargain: ReplyGateBargain;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "khách mặc cả kiểu viết tắt"): the customer asks for a lower price — even in a few
+ * words, an amount + "được không" ("1tr dc kh a"). The reply follows the shop's own bargaining choice
+ * (`banHang.macCa`, tier 3): no promise beyond it, never "what price do you want"; undeclared = the listed
+ * price stays and a person is called. Asking about the shop's PROGRAMME ("giảm bao nhiêu %", "đang sale
+ * không") is not bargaining. Patterns on the accent-stripped text; empty `reply` switches the rule off.
+ */
+export interface ReplyGateBargain {
+  /** On the customer's message: a request to lower the price. */
+  ask: string[];
+  /** Right after an amount the customer names (read by the gate's money reader): "được không" — an offer. */
+  amountAsk: string;
+  /** On the customer's message: a question about the shop's programme — never bargaining. */
+  notBargain: string[];
+  /** A draft sentence that promises a lower price. */
+  promise: string[];
+  /** A draft sentence that asks the customer what price they want. */
+  askTarget: string[];
+  /** The draft already says the price stays. */
+  refusal: string;
+  /** The shop does not lower prices ({shop}/{khach}). */
+  reply: string;
+  /** The same, the item being already on sale. */
+  replySale: string;
+  /** The shop declared nothing: the price stays and a person answers ({tenNguoiPhuTrach}). */
+  replyUnset: string;
+  reason: string;
+  unsetReason: string;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "khách gửi ảnh rồi hỏi, bot vẫn xin ảnh"): the customer sent a photo within the
+ * fresh window and the draft asks for "a photo" again — the sentence becomes the data's acknowledgement +
+ * name / code request. Asking for ANOTHER picture (a label, the box) is not asking again. Every pattern
+ * runs on the ORIGINAL sentence (diacritics kept): "anh" the pronoun is never "ảnh".
+ */
+export interface ReplyGatePhotoAgain {
+  /** The sentence asks the customer for a picture. */
+  asks: string[];
+  /** The picture asked is something else than the one sent (a label, a box…); the industry adds its own. */
+  other: string[];
+  /** The reply already says the photo was received. */
+  acknowledged: string;
+  /** The sentence put in place of the request ({khach}/{Khach}); empty = the rule is off. */
+  replacement: string;
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "bot bịa lý do đổi giá và cãi giá khách"): the system keeps NO price history, so any
+ * sentence explaining WHY a price changed ("vừa cập nhật giá", "giá đợt trước", "web chưa kịp cập nhật") is
+ * invented — cut, unless a person on duty / the policy said it. And a customer who is checking a price
+ * (`contest`) and names an amount is never contradicted with another amount: that sentence goes, a person
+ * checks. Patterns on the accent-stripped text; empty `reply` switches both rules off.
+ */
+export interface ReplyGatePriceStory {
+  /** A sentence that explains a price change. */
+  story: string[];
+  /** On the customer's current message: they are checking / disputing a price. */
+  contest: string;
+  /** Right before a BARE number in the customer's message ("giá 1250"): it is an amount in thousands. */
+  bareLead: string;
+  /** The sentence that replaces what was cut ({khach}/{Khach}). */
+  reply: string;
+  storyReason: string;
+  contestReason: string;
 }

@@ -26,6 +26,9 @@ import { packRegex } from "./fill-text";
 import { hasKeyword } from "./intent-rules";
 import { normalize, tokens } from "./text-analysis";
 
+/** Letters (upper case, 1–5) + ONE space + digits: how a product code is typed by hand ("IM 7681"). */
+const SPACED_CODE = /(?<![\p{L}\d])([A-Z]{1,5}) (\d{2,})(?![\p{L}])/gu;
+
 /** How the size was read; the prompt and the gates tell a tag reading from a typed size by it. */
 export type SizeSource = "" | "explicit" | "tag" | "bare_tag" | "letter" | "apparel";
 
@@ -35,6 +38,11 @@ export interface Entities {
   sizeSource: SizeSource;
   /** "tem 26.5cm → size 42" when the size was converted from a tag reading. */
   sizeNote: string;
+  /**
+   * 05/10/2026: the centimetres on the tag ("25", "28.5") when the size is a tag reading. `size` is then only the
+   * INDUSTRY table's label, a net: the stock tool converts the tag with the brand chart of each item.
+   */
+  sizeTag?: string | undefined;
   productCode: string;
   productName: string;
   brand: string;
@@ -157,28 +165,58 @@ export class EntityExtractor {
 
   // ------------------------------------------------------------------ size
 
-  private size(message: string, forSize: string, ctx: { brand: string; productCode: string; productName: string; turns: readonly Turn[]; candidates: readonly SizeCandidate[] }): Pick<Entities, "size" | "sizeSource" | "sizeNote"> {
+  private size(message: string, forSize: string, ctx: { brand: string; productCode: string; productName: string; turns: readonly Turn[]; candidates: readonly SizeCandidate[] }): Pick<Entities, "size" | "sizeSource" | "sizeNote" | "sizeTag"> {
     const none = { size: "", sizeSource: "" as SizeSource, sizeNote: "" };
     // A range label as the warehouse writes it for socks / apparel ("43-46", "43–46") is one size: kept whole (kb2-12).
     const range = /(?:^|\s)(\d{2})\s*[-–]\s*(\d{2})(?=\s|$)/.exec(forSize);
     if (range !== null && Number(range[2]) > Number(range[1]) && Number(range[2]) - Number(range[1]) <= 6) return { size: `${range[1]}-${range[2]}`, sizeSource: "apparel", sizeNote: "" };
+    const system = this.systemSize(forSize);
+    if (system !== "") return { size: system, sizeSource: "explicit", sizeNote: "" };
     const explicit = this.explicitSize(forSize);
     if (explicit !== "") return { size: explicit, sizeSource: "explicit", sizeNote: "" };
     const tag = this.tagSize(forSize);
     if (tag !== "") {
       const row = this.chart.fromTag(tag);
-      return row === null ? { size: tag, sizeSource: "tag", sizeNote: "" } : { size: row.size, sizeSource: "tag", sizeNote: `tem ${row.tem}cm → size ${row.size}` };
+      const cm = Number(tag) >= 100 ? Number(tag) / 10 : Number(tag);
+      const sizeTag = row !== null ? { sizeTag: String(row.tem) } : Number.isFinite(cm) ? { sizeTag: String(cm) } : {};
+      return row === null ? { size: tag, sizeSource: "tag", sizeNote: "", ...sizeTag } : { size: row.size, sizeSource: "tag", sizeNote: `tem ${row.tem}cm → size ${row.size}`, ...sizeTag };
     }
     const bare = this.bareSize(forSize);
     if (bare !== "") {
       const resolved = this.resolveBareTagSize(bare, message, ctx.turns, ctx.candidates, ctx.productCode, ctx.productName);
-      return resolved === null ? { size: bare, sizeSource: "bare_tag", sizeNote: "" } : { size: resolved.size, sizeSource: "bare_tag", sizeNote: `khach noi "size ${bare}" = so cm tem ${resolved.tem}cm → size ${resolved.size}` };
+      return resolved === null ? { size: bare, sizeSource: "bare_tag", sizeNote: "" } : { size: resolved.size, sizeSource: "bare_tag", sizeNote: `khach noi "size ${bare}" = so cm tem ${resolved.tem}cm → size ${resolved.size}`, sizeTag: String(resolved.tem) };
     }
-    const letter = packRegex(this.cfg.sizeLetterPattern)?.exec(forSize);
+    const letter = packRegex(this.cfg.sizeLetterPattern)?.exec(this.withoutApparelPrefix(forSize));
     if (letter?.[1]) return { size: letter[1].toUpperCase(), sizeSource: "letter", sizeNote: "" };
     const apparel = this.apparelSize(message, forSize);
     if (apparel !== "") return { size: apparel, sizeSource: "apparel", sizeNote: "" };
     return none;
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk 26/09): a size said WITH its system — the industry's `sizeSystemPatterns`, named
+   * groups `he` / `so` and an optional `nu` / `nam` — as "<HE> [W|M] <so>" ("US 9", "UK 7.5", "US W 7"):
+   * the landing converts it through the item's own brand chart, never this side.
+   */
+  systemSize(forSize: string): string {
+    for (const p of this.cfg.sizeSystemPatterns) {
+      const g = packRegex(p)?.exec(forSize)?.groups;
+      if (g?.["he"] === undefined || g["so"] === undefined) continue;
+      const gender = g["nu"] !== undefined ? " W" : g["nam"] !== undefined ? " M" : "";
+      return `${g["he"].toUpperCase()}${gender} ${g["so"].replace(",", ".")}`;
+    }
+    return "";
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk 01/09, "size A/L"): the industry's apparel prefix (`apparelSizePrefix`, how the
+   * warehouse writes a label) in front of a LETTER size is dropped, so the letter reads as the size.
+   */
+  withoutApparelPrefix(forSize: string): string {
+    const prefix = this.cfg.apparelSizePrefix.toLowerCase().trim();
+    if (prefix === "") return forSize;
+    const body = [...prefix].map((ch) => (/[a-z0-9]/.test(ch) ? ch : `\\s*\\${ch}\\s*`)).join("");
+    return forSize.replace(new RegExp(`(^|[^a-z0-9])${body}(?=[a-z])`, "g"), "$1");
   }
 
   /** "size 42", "di 41-1/3", "chot 44 2/3", "size 42,5", "size 42 rưỡi" → "42", "41 1/3", "44 2/3", "42.5", "42.5". */
@@ -332,9 +370,20 @@ export class EntityExtractor {
       re.lastIndex = 0;
       for (const m of message.matchAll(re)) if (m[1] && accept(m[1])) return m[1].toUpperCase();
     }
+    // 05/10/2026 (phiếu Desk "mã viết cách có khoảng trắng"): a code typed by hand with ONE space between its
+    // letters and its digits ("IM 7681") — the industry's shapes again on the joined form. Upper-case letters
+    // only, so ordinary words before a number ("so 1234", "size 42") never join into a code.
+    const joined = message.replace(SPACED_CODE, "$1$2");
+    if (joined !== message) {
+      for (const re of this.codePatterns) {
+        re.lastIndex = 0;
+        for (const m of joined.matchAll(re)) if (m[1] && accept(m[1])) return m[1].toUpperCase();
+      }
+    }
     const fallback = packRegex(this.cfg.productCodeFallback, "g");
     if (fallback === null) return "";
-    for (const m of message.matchAll(fallback)) if (m[0] && accept(m[0])) return m[0];
+    // The catalogue stores codes without spaces: the fallback's "XY 2040" is looked up as "XY2040".
+    for (const m of message.matchAll(fallback)) if (m[0] && accept(m[0])) return m[0].replace(/\s+/g, "");
     return "";
   }
 
@@ -354,6 +403,8 @@ export class EntityExtractor {
     // Punctuation glued to a word ("khong,") would hide it from the stop list.
     let cleaned = normalized.replace(/[,;!?()"']+/g, " ");
     if (productCode !== "") cleaned = cleaned.split(normalize(productCode)).join(" ");
+    // A code the customer typed with a space ("im 7681") leaves neither half behind as a name word.
+    if (productCode !== "") cleaned = cleaned.split(normalize(productCode).replace(/^([a-z]+)(\d)/, "$1 $2")).join(" ");
     const words = tokens(cleaned)
       .filter((t) => t.length >= 3 || t === normalize(brand))
       .filter((t) => !noise.has(t))
@@ -435,6 +486,35 @@ export class EntityExtractor {
     const hasHouseNumber = packRegex(a.houseNumber)?.test(normalized) ?? false;
     return hasPlaceWord && (hasHouseNumber || normalized.split(" ").length >= (a.minWords > 0 ? a.minWords : 5));
   }
+}
+
+/**
+ * 05/10/2026 (phiếu Desk 22/09 "size 2x trần là cm tem", phần 2): a variant a MODEL filled in (LLM#1's
+ * `size`) is kept only when the CUSTOMER said it — a model reading the bot's own earlier sentence
+ * ("44 2/3") and handing it back as the customer's size made the bot defend what it invented. A number
+ * label must appear in the customer's lines (a half "44,5" / "44 rưỡi" stands for the upper third,
+ * "44 2/3"); the page's last message counts only when the customer's current message AGREES to it
+ * (`agreedTo` = that message, "" otherwise). A letter label must appear as a word.
+ */
+export function variantSaidByCustomer(variant: string, customerTexts: readonly string[], agreedTo = ""): boolean {
+  const want = String(variant ?? "").trim();
+  if (want === "") return false;
+  const texts = [...customerTexts, agreedTo].filter((t) => String(t ?? "").trim() !== "");
+  const wantNum = sizeToNumber(want);
+  if (!Number.isFinite(wantNum)) {
+    const word = normalize(want);
+    return word !== "" && texts.some((t) => new RegExp(`(^|[^a-z0-9])${word.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}([^a-z0-9]|$)`).test(normalize(t)));
+  }
+  for (const text of texts) {
+    const n = normalize(String(text).replace(/(\d),(\d)/g, "$1.$2"));
+    for (const m of n.matchAll(/(?<![\d.])(\d{1,2})(?:\s*-?\s*([12])\s*\/\s*3|\.(5)|\s+(ruoi))?(?![\d]|\.\d)/g)) {
+      const base = Number(m[1]);
+      if (m[2]) { if (Math.abs(base + Number(m[2]) / 3 - wantNum) < 0.01) return true; continue; }
+      if (m[3] || m[4]) { if (Math.abs(base + 0.5 - wantNum) < 0.01 || Math.abs(base + 2 / 3 - wantNum) < 0.01) return true; continue; }
+      if (Math.abs(base - wantNum) < 0.01) return true;
+    }
+  }
+  return false;
 }
 
 /** The lexicon an extractor needs, from a pack's lexicon and dialogue config. */

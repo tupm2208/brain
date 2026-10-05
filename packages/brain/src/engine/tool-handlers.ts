@@ -167,7 +167,17 @@ class StockLookupHandler implements ToolHandler {
     }
 
     const total = rows.reduce((s, x) => s + x.qty, 0);
-    const prices = [...new Set(rows.map((x) => x.price))].sort((a, b) => a - b);
+    // 05/10/2026 (phiếu Desk "giá theo size lấy thấp nhất giữa kho"): ONE price per variant, as the storefront
+    // shows it — the lowest POSITIVE price among the warehouses holding it (a 0 is "no price yet", never a price).
+    // A range is BETWEEN variants, never between two warehouses of the same variant.
+    const perVariant = new Map<string, number>();
+    for (const x of rows) {
+      const price = Number(x.price);
+      if (!(price > 0)) continue;
+      const seen = perVariant.get(x.variantLabel);
+      if (seen === undefined || price < seen) perVariant.set(x.variantLabel, price);
+    }
+    const prices = [...new Set(perVariant.values())].sort((a, b) => a - b);
     const warehouses = new Set(rows.map((x) => x.warehouseId));
     const first = rows[0];
 

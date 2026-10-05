@@ -111,6 +111,12 @@ Quy tắc cứng:
 - Thứ tự ghép (`composeSystemPrompt`): tầng 1 → tầng 2 (khối đã tắt/viết lại theo hồ sơ) → hồ sơ shop → kiến thức shop dạy + ghi chú ảnh → năng lực (ghi đè khi mâu thuẫn) → giao thức công cụ.
 - Máy luật nhận gói ngành đã phủ hồ sơ shop (`applyShopProfile`): xưng hô, hãng, câu "không có", câu cấm cộng dồn ba tầng.
 - Cửa cho tab Chatbot: `POST /ai/mau-ho-so` (gợi ý + khối + vân tay) và `POST /ai/loi-dan-xem-thu` (lời dặn thật cho shop lúc này).
+- Cửa cho bảng giá của shop (02/10/2026, `packages/xeon/src/selling-price/`): `POST /kho/mau-bang-gia` → `{ nganh, mau[] }` =
+  mẫu chung `loi-chung/mau-bang-gia.json` rồi mẫu ngành `nganh/<id>/mau-bang-gia.json` (không có tệp = không có mẫu ngành);
+  `POST /kho/bang-gia/hieu-y` → `{ bang, hieuLa, chuaRo }`: lời shop kể thành bảng, lời dặn ở `loi-chung/bang-gia-hieu-y.json`,
+  mô hình viết bài (`ANTHROPIC_API_KEY`, thiếu thì 503). Xeon tự soát sau mô hình: giá trị không có trong danh mục shop bị bỏ
+  (điều kiện mất hết giá trị thì bỏ cả dòng), dòng cụ thể bị dòng chung che thì đưa lên — mọi chỗ sửa ghi đầu `chuaRo`.
+  Ngành lấy theo license (key còn hạn + landing đã đăng ký), **không** đòi đã mua chatbot. Xeon không định giá, không lưu bảng.
 - Đánh giá: `node bo-nao/scripts/danh-gia-chatbot.mjs that|kich-ban …` chạy hội thoại qua hộp cát, ghi `logs/danh-gia/`.
 
 ### Nhận ảnh khách: so với ảnh catalog (01/10/2026)
@@ -171,16 +177,16 @@ tin khách ─► [1] nền lượt ─► [2] đọc ảnh ─► [3] LLM#1 ─
 
 | # | Bước | Mã | Là gì |
 |---|---|---|---|
-| 1 | Nền lượt | `TurnContextBuilder` (`turn-context.ts`) | đọc `conversation.recent`, dán nhãn ba loại tác giả (bot / người / không rõ), tin khách đang trả lời vào, thẻ người trực vừa gửi trong 30 phút, sổ hội thoại + phiên mua trong bộ nhớ, **khung hội thoại** (`dialogue-frame.ts`: "42", "ok" là câu trả lời cho câu page vừa hỏi). Người trực vừa nhắn <5 phút → bot im. Hồ sơ shop (tầng 3) đọc **một lần** đầu lượt. |
+| 1 | Nền lượt | `TurnContextBuilder` (`turn-context.ts`) | đọc `conversation.recent`, dán nhãn ba loại tác giả (bot / người / không rõ), tin khách đang trả lời vào, thẻ người trực vừa gửi trong 30 phút, sổ hội thoại + phiên mua trong bộ nhớ, **khung hội thoại** (`dialogue-frame.ts`: "42", "ok" là câu trả lời cho câu page vừa hỏi). Người trực vừa nhắn tay hoặc đang gõ trong **cửa sổ nhường** (ô hồ sơ `chuyenNguoi.phutNhuong`, trống = 5 phút; tin bot, dòng hệ thống Meta, tin không rõ nguồn không tính) → bot im; hết cửa sổ Xeon xin landing giao lại lượt (`/api/hop-thu/tiep-quan`), người trực có nút "Bot trả lời tiếp"; người ra tay trong lúc bot soạn thì landing bỏ câu bot (`human-yield.ts`, 05/10/2026). Hồ sơ shop (tầng 3) đọc **một lần** đầu lượt. |
 | 2 | Đọc ảnh | `ImageIntake` (`image-intake.ts`) | tải ảnh về (thử lại 1,5 s vì CDN Meta), hỏi mô hình ảnh là **loại gì** (sản phẩm / biên lai / màn hình đơn / khác), khớp catalog qua `catalog.matchImage`; ảnh không khớp vân tay thì **so với ảnh catalog của chính shop** (01/10/2026, xem dưới); ảnh page vừa xin để đo size là **tham chiếu**, không phải hàng bán. Biên lai → câu trung tính + gọi người, **không mô hình nào viết**. |
 | 3 | LLM#1 | `ContextAnalyzer` (`context-analyzer.ts`) | đọc cả hội thoại, trả ý định + mẫu (tách hãng/dòng/đời) + biến thể + nhu cầu + mẫu chính + tối đa 3 lệnh tra cứu; nhiệt độ 0, JSON; hỏng → `null`, lượt vẫn chạy. Trần `XEON_AI_PHAN_TICH_MS`; chỉ tối đa 15 s của nó tính vào ngân sách 60 s của lượt. |
 | 4 | Bộ định tuyến | `RuleRouter` (`rule-router.ts`, `intent-rules.ts`, `entities.ts`) | 15 ý định Desk + ba bộ nhận diện ngữ nghĩa (`paidMoney`, `deposit`, chào thuần), trích thực thể (size, SĐT, hãng, mã, nhu cầu, ngân sách, địa chỉ, tín hiệu chốt), sửa theo khung hội thoại, hoà giải với LLM#1 (`local_script_override`, `payment_claim_demoted`…). Kết quả: `script_reply` gửi ngay · `ask_clarification` gửi và đếm · `human_handoff` (khiếu nại, báo đã chuyển tiền) · `agent_draft`. Mọi câu là JSON (`kich-ban-chung.json` ⊕ `kich-ban.json`); chỗ trống shop chưa khai → **không dùng kịch bản đó**. |
-| 5 | Sự thật | `groundTruth` trong pipeline + `catalog-score.ts`, `catalog-resolver.ts`, `uncertain-product.ts`, `focus-resolver.ts`, `stock-facts.ts`, `CatalogVerifier` | Desk bước 5–7, **trước khi mô hình nào viết**: bậc thang tồn (`catalog.resolveStock` của landing, hoặc Xeon tự đi từng nấc `catalog.find` theo `planStockCascade`), chấm điểm ứng viên, kết luận một/nhiều/không mẫu (`needVerify`), **LLM#2** xác nhận khi chỉ có một phỏng đoán yếu, chọn mẫu đang nói tới theo thứ tự tin cậy Desk, dựng sự thật tồn theo size/kho, tra đơn + nhận khách (`order.lookup`, `customer.recognize`) theo SĐT khách **tự gõ**. Cổng "chưa chắc mẫu" có thể kết thúc lượt ở đây (hỏi lại **một lần**, hãng không bán, link danh mục). |
+| 5 | Sự thật | `groundTruth` trong pipeline + `catalog-score.ts`, `catalog-resolver.ts`, `uncertain-product.ts`, `focus-resolver.ts`, `stock-facts.ts`, `CatalogVerifier` | Desk bước 5–7, **trước khi mô hình nào viết**: bậc thang tồn (`catalog.resolveStock` của landing, hoặc Xeon tự đi từng nấc `catalog.find` theo `planStockCascade`), chấm điểm ứng viên, kết luận một/nhiều/không mẫu (`needVerify`), **LLM#2** xác nhận khi chỉ có một phỏng đoán yếu, chọn mẫu đang nói tới theo thứ tự tin cậy Desk, dựng sự thật tồn theo size/kho, tra đơn + nhận khách (`order.lookup`, `customer.recognize`) theo SĐT khách **tự gõ**. **Hồ sơ tư vấn** (`consult-profile.ts`, 05/10/2026): khách gọi đích danh mẫu → không hỏi nhu cầu / hồ sơ; nhu cầu phổ thông → khối PHO_THONG; nhu cầu chuyên môn → đã biết / còn thiếu / page đã hỏi (mỗi thông tin một lần trong phiên) → khối HO_SO_TU_VAN, khung nhiều dòng chỉ khi hồ sơ đủ, cổng `consultAsk` cắt câu hỏi lại. Cổng "chưa chắc mẫu" có thể kết thúc lượt ở đây (hỏi lại **một lần**, hãng không bán, link danh mục). |
 | 6 | Ghi chú | `FactNoteComposer` (`fact-note.ts`) + `ledger.ts`, `episode.ts` | ghi chú hệ thống 9 khối của Desk (VAN_DON đứng đầu vì cắt 4000 ký tự từ cuối) + khung + mẫu chính + ảnh + đọc của LLM#1. |
 | 7 | Agent tầng 2 | `SalesAgent` | chạy khi có mô hình, ngành có sổ tay, landing mở đủ công cụ, còn quota. Cổng sập cả lượt → nghỉ 5 s, chạy lại **một** lần (bỏ dấu vết lần đầu). Lượt có ảnh: agent **tự xem ảnh** + công cụ `xem_anh` (02/10/2026, xem trên). |
 | 8 | LLM#3 nháp | `DraftWriter` (`draft-writer.ts`) | lưới dưới agent: **một** lần gọi, không công cụ, prompt gọn (`LEAN_CORE` + luật theo tình huống + 8–12 câu người trực thật + guardrails cắt 12k) từ sự thật đã có; qua **cùng** bộ soát của agent. |
 | 9 | Máy luật | `TurnEngine` | lưới cuối, nhận ý định của bộ định tuyến làm gợi ý. Đã thử mô hình mà máy luật cũng không hiểu → chuyển người + báo shop, không nói câu chào suông. |
-| 10 | Cổng soát, gửi kèm, gửi | `ReplyGate` (`reply-gate.ts`), `ReplyDispatcher` (`dispatcher.ts`) | vòng 2 **sau** khi mô hình viết (Desk `enforceReplyEvidence` + `enforcePolicyClaims`): **sửa** chứ không chặn — cắt câu, đổi số, thay câu an toàn, nối link tra cứu, `needsHuman` không bao giờ lật lại. Rồi quyết định gửi kèm: ≤2 thẻ sản phẩm (≥3 mã còn hàng → link lọc), phiếu đặt hàng (`order.formLink`) khi chốt được mã + size và shop chốt qua phiếu, ảnh đo chân, chào AI lần đầu — landing gửi qua `POST /api/hop-thu/gui`, trả `ketQua.daGui`. |
+| 10 | Cổng soát, gửi kèm, gửi | `ReplyGate` (`reply-gate.ts`), `ReplyDispatcher` (`dispatcher.ts`) | vòng 2 **sau** khi mô hình viết (Desk `enforceReplyEvidence` + `enforcePolicyClaims`): **sửa** chứ không chặn — cắt câu, đổi số, thay câu an toàn, nối link tra cứu, `needsHuman` không bao giờ lật lại. Rồi quyết định gửi kèm: ≤2 thẻ sản phẩm (≥3 mã còn hàng → link lọc), phiếu đặt hàng (`order.formLink`) khi chốt được mã + size và shop chốt qua phiếu, ảnh đo chân, chào AI lần đầu — landing gửi qua `POST /api/hop-thu/gui`, trả `ketQua.daGui`. Mỗi câu mang `theoTin` (tin khách mới nhất lượt đã thấy) + `bangChung` (yếu/chắc, số ảnh đọc được, có sự thật): **cửa gửi landing** (`judgeBotTurn`, một lần ghi có khoá trên sổ hội thoại) bỏ câu soạn trên ngữ cảnh cũ (`tinMoi`), bỏ câu trả lời trùng một tin (`daTraLoi`) trừ **đính chính đúng một lần** khi câu trước yếu và lượt sau có bằng chứng mạnh hơn; gửi hỏng trả lại cửa (05/10/2026). |
 | 11 | Nhớ + hồ sơ | `rememberTurn` + `DiskDossierStore` | ghi sổ hội thoại, phiên mua, nhãn ảnh **sau** khi đã gửi; hồ sơ lượt v2 ghi **một lần** cuối lượt. |
 
 Ngân sách một lượt: 60 s cho mọi lệnh mô hình (LLM#1 tối đa `XEON_AI_PHAN_TICH_MS`, mặc định 15 s;
@@ -234,12 +240,54 @@ hôm đó phải ra y hệt — hồ sơ thiếu thứ gì thì `chan-doan` nói
 | `POST /license/landing-dang-ky` | bộ cài landing, một lần | `{ key, diaChi }` → khoá công Xeon + mã nhận tin riêng |
 | `GET /license/khoa-cong` | ai cũng được | khoá công ký |
 | `POST /tin-den` | landing, bằng mã nhận tin riêng | tin khách → bộ não trả lời qua `POST <landing>/api/hop-thu/gui` |
+| `POST /meta/xoa-du-lieu` | Meta | "Data deletion callback" của app Meta trung tâm (02/10/2026) — xem mục dưới |
+| `POST /meta/go-app` | Meta | "Deauthorize callback" của app Meta trung tâm (02/10/2026) |
+| `GET /meta/xoa-du-lieu/trang-thai?ma=` | người dùng Facebook (Meta đưa link) | trang trạng thái yêu cầu, công khai, không có tên người / shop |
 | `GET /health` | | còn sống, mấy shop |
 | `/quan-tri` | anh | cấp key, khoá/mở, gia hạn, đổi mảnh, xem máy, bỏ máy, chọn máy trực |
 | `/may` | chủ key, vào bằng key | xem 3 máy, bỏ máy, chọn máy trực |
 
 Mọi cửa `/license/*` hạn 60 lần / 15 phút một địa chỉ. Đăng nhập admin sai 10 lần / 15 phút là chặn.
 Mọi POST của hai trang web phải kèm tiêu đề `X-Yeu-Cau: xeon` (chống CSRF).
+
+## App Meta trung tâm: xoá dữ liệu và gỡ app (02/10/2026)
+
+Anh chốt: **chỉ tự động nút xoá của app Meta**. Khách mua hàng muốn xoá dữ liệu hội thoại thì liên hệ shop,
+nhân viên shop xử lý — không đi qua đây.
+
+**Khai trên Meta** (developers.facebook.com → app trung tâm), với `<xeon>` = `XEON_DIA_CHI` (máy này:
+`https://brain.elevenvoice.site`):
+
+| Ở đâu | Chọn / ô | Dán |
+|---|---|---|
+| App settings → Basic → **User data deletion** | chọn **Data deletion callback URL** | `https://<xeon>/meta/xoa-du-lieu` |
+| Facebook Login → Settings | **Deauthorize callback URL** | `https://<xeon>/meta/go-app` |
+
+Cần `FACEBOOK_APP_SECRET` (thiếu thì hai cửa trả 503). Link trang trạng thái lấy từ `XEON_DIA_CHI` (thiếu thì
+lấy Host của lời gọi). Xeon phải được build + bật lại mới có hai cửa này.
+
+**Chạy thế nào** (`meta/signed-request.ts`, `meta/app-users.ts`, `meta/data-deletion.ts`, `http/meta-controller.ts`):
+
+1. Lúc đăng nhập Facebook (Đ6), Xeon đọc id theo app của người đăng nhập (`me?fields=id`) và chỉ giữ
+   **HMAC-SHA256(App Secret, id)**. Khi landing **nhận** trang (`/meta/dang-nhap/ket-qua`) thì ghi người → shop →
+   mã trang vào `du-lieu/meta-nguoi-cap-quyen.json`. Không giữ id thô, tên, email, token. Đọc id hỏng thì vẫn
+   kết nối bình thường, chỉ ghi nhật ký. Trang được người khác đăng nhập nối lại SAU thì thuộc người sau.
+2. Meta gọi một trong hai cửa với `signed_request` (form hoặc JSON). Sai chữ ký / sai thuật toán / thân hỏng →
+   400, ghi nhật ký, không đổi gì.
+3. Mỗi shop người đó đã nối: ngắt định tuyến các trang shop đó còn giữ (`license.disconnectPages`), rồi gọi
+   landing `POST /api/hop-thu/quen-trang` `{ trang, lyDo: "nguoi-cap-quyen-go-app" }` bằng vé dịch vụ — landing
+   xoá token và đánh dấu `matKetNoi` để OMI thấy trang cần nối lại. Xong thì xoá người khỏi sổ.
+4. Ghi yêu cầu theo **mã xác nhận** 12 ký tự (giữ 180 ngày, tối đa 5.000, không bao giờ xoá yêu cầu dưới 90
+   ngày; không có người trong đó). Cửa xoá dữ liệu trả `{ url: "<xeon>/meta/xoa-du-lieu/trang-thai?ma=…",
+   confirmation_code }`; cửa gỡ app trả `{ ok: true }`.
+
+Trạng thái: `da-xoa` · `khong-co-du-lieu` (sổ không có người này — kể cả mọi trang nối **trước 02/10/2026**,
+hoặc đã xoá ở lần gọi trước) · `landing-chua-nhan` (landing không trả lời: Xeon đã ngắt, token trên landing
+còn đó — xem nhật ký `[meta] … chua xac nhan quen token`). Nhật ký `/nhat-ky` loại **Xoá dữ liệu Meta**, chỉ
+ghi 8 ký tự đầu của khoá người.
+
+Lưu ý: trang nối trước 02/10/2026 không có người ghi sổ → muốn được phủ thì shop bấm "Kết nối page" lại một
+lần trên OMI. **Đổi App Secret** thì mọi khoá người cũ không khớp nữa (trả `khong-co-du-lieu`) cho tới khi nối lại.
 
 ## Vé máy
 

@@ -4,7 +4,7 @@
     "dna": "DNA DONG GIAY (du lieu chuan noi bo — CHI dung thong tin nay khi noi ve cong nghe/tinh chat, KHONG tu bia them):"
   },
   "luat": [
-    { "id": "2", "khi": ["tu_van", "dich_danh"], "loiDan": "Khach vua nhac ten 1 mau cu the lan dau ma chua ro muc dich: xac nhan tinh trang hang + hoi DUNG 1 cau phan loai nhu cau (vi du: \"{khach} lay chay bo hay di choi cho dep a?\"). KHONG xo thong so ky thuat khi chua biet kieu khach." },
+    { "id": "2", "khi": ["tu_van", "dich_danh"], "loiDan": "Khach vua nhac ten 1 mau cu the: xac nhan tinh trang hang (con/het size, gia). KHONG hoi muc dich (\"chay bo hay di choi\"), KHONG hoi cu ly/pace — khach goi ten mau la da ro nhu cau (05/10/2026, phieu Desk 06/09; xem luat 38b + muc HO SO TU VAN). Kieu khach suy tu CACH khach noi; chua ro thi mo ta dong trung tinh 1-2 cau, KHONG xo thong so ky thuat." },
     { "id": "3", "khi": ["tu_van", "chot"], "loiDan": "buyer_type=style (mua vi thich/dep): tu van theo mau sac, phoi do, do em khi di; CAM dung thuat ngu ky thuat (carbon, energy rods, drop, stack, tempo, pace). Khach thich la ly do mua hoan toan chinh dang — khong ep sang giay khac." },
     { "id": "4", "khi": ["tu_van", "dich_danh"], "loiDan": "buyer_type=perf: duoc noi tinh chat giay nhung CHI dung thong tin trong muc DNA DONG GIAY; khong co DNA thi noi chung chung, TUYET DOI khong bia cong nghe/thong so." },
     { "id": "6b", "khi": ["het_hang", "con_bien_the", "bac_thang"], "loiDan": "Khach neu DOI SO cu the (vd Boston 13, Pegasus 41): KHONG tra loi bang doi so khac (Boston 12, Pegasus 40) nhu the la cung mau. Ke ca khi CHU DONG goi y doi cu lam phuong an re hon, PHAI noi ro 'day la DOI TRUOC/doi cu hon cua dong nay' + hoi khach co muon xem khong — cam noi kieu 'dong Boston 13 co mau Boston 12'." },
@@ -47,16 +47,13 @@
         "42 | 26,5 | 25,0 | 10,2-10,5 · 42 2/3 | 27,0 | 25,5 | 10,5-10,7 · 43 1/3 | 27,5 | 26,0 | 10,7-11,0 ·",
         "44 | 28,0 | 26,5 | 11,0-11,2 · 44 2/3 | 28,5 | 27,0 | 11,2-11,4 · 45 1/3 | 29,0 | 27,5 | 11,4-11,6 ·",
         "46 | 29,5 | 28,0 | 11,6-11,8",
-        "Luat dieu kien den truoc:",
-        "1. Tra dai chan ra size nen.",
-        "2. Tra rong chan: neu rong roi vao dai cua size cao hon thi lay size cao hon. Vi du dai 23,5 + rong 9,8 -> chot 40 2/3, khong phai 40.",
-        "3. Neu khach cho chu vi vong ban chan (day quan 1 vong cho be nhat): lay chu vi tru rong (mm), so voi moc 146 de biet chan day hay mong:",
-        "   - 140-152: chan chuan, giu size theo buoc 1-2.",
-        "   - Tren 152: chan day/mu cao -> tang nua size; tren ~158 -> uu tien mau co ban wide neu catalog co.",
-        "   - Duoi 140: chan mong -> neu size dang bi nang len vi be rong thi lui ve size theo dai chan; khong bao gio xuong thap hon size theo dai.",
-        "   (Tham chieu: chu vi chuan cua chan xap xi 0,6 x dai + 99mm; vi du dai 24,5cm -> ~246mm.)",
-        "4. Khach chay dai tu ~10km tro len (HM/FM): cong them nua size sau cung.",
-        "5. So do le giua 2 moc: lam tron LEN.",
+        "Luat nganh (chot 26/09, dua sang OMI 05/10/2026; he thong da tinh san trong ghi chu SO DO CHAN, ghi chu do la NGUON DUY NHAT):",
+        "0. Khach CHI bao dai chan (chua co rong + chu vi) → CHUA chot size: xin khach do du 3 thong so (dai, rong, chu vi vong ban chan) va hoi doi giay chay dang di (ten/anh, size, vua hay chat/rong cho nao). CAM neu size suy tu dai chan, CAM gan size vao link loc. Khach noi khong do duoc thi moi dung moc chuan theo dai chan.",
+        "1. Tra dai chan ra size theo dai (tem = dai + 1,5cm, so le lam tron LEN).",
+        "2. Rong va chu vi tra SONG SONG voi size theo dai: rong = dai rong chua so do (cot rong); chu vi = so voi dai chu vi CUA size theo dai (vung dem: trong dai = chuan, tren = day, duoi = mong).",
+        "3. Rong hoac chu vi CAO hon → len TOI DA 1 nac (mot cao mot thap: theo so lon). Ca hai khong cao hon ma co cai THAP hon → lui 1 nac. Rong tu +2 nac hoac chu vi vuot dai cua size +2 nac → goi y them ban wide neu mau co.",
+        "4. Rong lech tu 3 nac hoac chu vi ra ngoai dai cua size ±3 nac → ti le bat thuong, size chi la TAM, nhac khach do lai.",
+        "5. KHONG cong them nua size vi chay dai / cu ly (luat cu da bo 26/09), KHONG dung ti le chu vi − rong.",
         "Luon kem cau shop ho tro doi size neu chon chua vua (theo chinh sach shop). Bang ap cho giay chay form tieu chuan; dong racing om chan (de carbon) co the lech nua size theo mau — khong cam ket chac voi dong nay."
       ]
     },
@@ -100,7 +97,7 @@
       "tieuDe": "Hai kieu khach — tu van khac nhau",
       "khi": ["tu_van", "chot", "y:ask_size"],
       "loiDan": [
-        "Khi khach nhac ten mot mau cu the ma chua ro muc dich, hoi DUNG 1 cau de phan loai (vi du: \"{khach} lay chay bo hay di choi cho dep a?\"), roi tu van theo kieu khach:",
+        "Kieu khach suy tu CACH khach noi — khach da goi ten mau thi KHONG hoi them cau phan loai (\"chay bo hay di choi\"), tu van theo kieu khach:",
         "- Khach hieu giay (hoi cu ly/pace/cong nghe/so sanh): duoc noi tinh chat giay theo du lieu DNA dong giay he thong cung cap. Khong bia cong nghe ngoai du lieu.",
         "- Khach mua vi thich/dep (khen dep, hoi mau, phoi do): tu van mau sac, phoi do, do em khi di. CAM thuat ngu ky thuat (carbon, drop, stack, tempo, pace). Mua vi thich la ly do chinh dang — khong ep doi sang giay khac, khong giang giai."
       ]

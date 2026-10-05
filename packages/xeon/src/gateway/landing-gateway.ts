@@ -107,6 +107,11 @@ export interface HandoffNotice {
   maHoiThoai: string;
   lyDo: string;
   tinCuoi: string;
+  /**
+   * 05/10/2026 (phiếu Desk "bot xác nhận màu thay khách"): the landing switches the bot OFF on this
+   * conversation until a person confirms (closes the handoff or turns the bot back on). Absent = unchanged.
+   */
+  dungBot?: boolean | undefined;
 }
 
 export class LandingGateway {
@@ -223,8 +228,13 @@ export class LandingGateway {
     if (reply.phieuDatHang) body["phieuDatHang"] = reply.phieuDatHang;
     if (reply.anhHuongDan) body["anhHuongDan"] = reply.anhHuongDan;
     if (reply.chaoAi === true) body["chaoAi"] = true;
-    // KHÔNG gọi lại: landing chưa có khoá chống trùng cho việc gửi, mà gửi lại một tin đã tới là
-    // khách đọc hai lần cùng một câu. Hỏng thì ném lỗi để lượt đó được ghi là hỏng.
+    // 05/10/2026: a person pressed "bot trả lời tiếp" — the landing must not drop this reply as a takeover.
+    if (reply.tiepQuan === true) body["tiepQuan"] = true;
+    // 05/10/2026: which customer message this answers and on what evidence — the landing's send door judges it.
+    if (reply.theoTin) body["theoTin"] = reply.theoTin;
+    if (reply.bangChung) body["bangChung"] = reply.bangChung;
+    // KHÔNG gọi lại: gửi lại một tin đã tới là khách đọc hai lần cùng một câu (cửa gửi landing chỉ chặn
+    // trùng khi có `theoTin`, landing cũ thì không). Hỏng thì ném lỗi để lượt đó được ghi là hỏng.
     const r = await this.requestJson("/api/hop-thu/gui", { method: "POST", body });
     if (!r.ok) throw new Error(String(r.body["message"] ?? r.body["error"] ?? `HTTP ${r.status}`));
     return r.body;
@@ -244,6 +254,18 @@ export class LandingGateway {
   }
 
   /**
+   * Asks the landing to forget the tokens of some pages and mark them disconnected (02/10/2026): the
+   * person who granted them through the developer app removed the app or asked Meta to delete their
+   * data. GỌI LẠI ĐƯỢC: quên một trang đã quên không đổi gì (landing trả nó ở `daMatKetNoi`).
+   */
+  async forgetPages(body: { trang: string[]; lyDo: string }): Promise<{ ok: true; daQuen: string[] } | { ok: false; viSao: string }> {
+    const r = await this.requestJson("/api/hop-thu/quen-trang", { method: "POST", body, chiDoc: true });
+    if (!r.ok) return { ok: false, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["error"] ?? `HTTP ${r.status}`) };
+    const forgotten = Array.isArray(r.body["daQuen"]) ? (r.body["daQuen"] as unknown[]).map(String) : [];
+    return { ok: true, daQuen: forgotten };
+  }
+
+  /**
    * Đẩy kết quả Image Tool của một lô về landing để landing tự lưu vào kho (30/09/2026, xem
    * `product-library/image-batch-book.ts`). KHÔNG gọi lại ở đây: sổ lô tự hẹn lần gửi sau. Gửi lại
    * vô hại — landing chỉ ghi ô đang trống và nhớ ảnh đã tải (`assetDaTai`).
@@ -254,12 +276,35 @@ export class LandingGateway {
     return { ok: false, status: r.status, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["message"] ?? r.body["error"] ?? `HTTP ${r.status}`) };
   }
 
+  /**
+   * 04/10/2026 — gõ cửa landing: sổ ảnh báo sai vừa đổi (có ca mới, hay người duyệt vừa quyết). Landing
+   * tự đọc lại luồng của nó (`/thu-vien-san-pham/anh-bao-sai/trang-thai`) rồi ẩn / trả / chặn bản sao.
+   * Gọi lại vô hại; hỏng thì landing vẫn tự đọc lần sau khi OMI mở màn ảnh.
+   */
+  async nudgeImageReports(): Promise<{ ok: true } | { ok: false; viSao: string; status: number }> {
+    const r = await this.requestJson("/api/hang-kho/anh-bao-sai/tu-xeon", { method: "POST", body: {} });
+    if (r.ok) return { ok: true };
+    return { ok: false, status: r.status, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["message"] ?? r.body["error"] ?? `HTTP ${r.status}`) };
+  }
+
   /** Tells the merchant a conversation needs a human. Never throws; failures are logged. */
   async notifyHandoff(notice: HandoffNotice): Promise<boolean> {
     // Landing THAY dòng cũ của cùng hội thoại chứ không nối thêm, nên báo lại không sinh hai dòng.
     const r = await this.requestJson("/api/hop-thu/can-nguoi", { method: "POST", body: notice, chiDoc: true });
     if (!r.ok) this.logger.warn(`[noi] khong bao duoc "can nguoi" cho ${notice.maHoiThoai}: ${String(r.body["error"] ?? r.status)}`);
     return r.ok;
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk "nhường xong phải tiếp quản"): the yield window of a conversation ended — the
+   * landing hands the turn back (pushes the customer's last message with `tiepQuan: "het-nhuong"`) when the
+   * customer is still the last to speak and the bot may still answer there. The landing decides; Xeon is
+   * only the clock. Safe to call again: a conversation nobody waits in is left alone.
+   */
+  async requestTakeover(conversationId: string): Promise<{ ok: true; tiepQuan: boolean; viSao: string } | { ok: false; viSao: string }> {
+    const r = await this.requestJson("/api/hop-thu/tiep-quan", { method: "POST", body: { maHoiThoai: conversationId }, chiDoc: true });
+    if (!r.ok) return { ok: false, viSao: r.networkDown ? "landing_khong_tra_loi" : String(r.body["error"] ?? `HTTP ${r.status}`) };
+    return { ok: true, tiepQuan: r.body["tiepQuan"] === true, viSao: String(r.body["viSao"] ?? "") };
   }
 
   get landingOrigin(): string {

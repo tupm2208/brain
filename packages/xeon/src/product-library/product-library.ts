@@ -110,9 +110,31 @@ export function cleanLibraryProduct(raw: unknown, now = new Date().toISOString()
   return product;
 }
 
+/**
+ * 04/10/2026 — ảnh bị báo sai (`image-report-book.ts`). "bo" = chặn hẳn: không giữ trong thư viện nữa;
+ * "an" = tạm ẩn chờ duyệt: giữ (duyệt "ảnh chuẩn" thì trả lại) nhưng KHÔNG chiếm chỗ trong mười ảnh.
+ * `fresh` = ảnh máy tìm ảnh vừa đưa về, chưa có trong thư viện.
+ */
+export type LibraryMediaGate = (product: { code: string; brand: string }, media: LibraryMedia, fresh: boolean) => "giu" | "an" | "bo";
+/** Most media kept active per product. */
+export const LIBRARY_MEDIA_CAP = 10;
+
 export class ProductLibrary {
   private document: LibraryDocument;
+  private gate: LibraryMediaGate | null = null;
   constructor(private readonly directory: string | null, private readonly now: () => Date = () => new Date()) { this.document = this.load(); }
+
+  setMediaGate(gate: LibraryMediaGate | null): void { this.gate = gate; }
+
+  /** Every product carrying a photo that `matches`, with those photos (one tấm ảnh can sit on several codes). */
+  productsWithMedia(matches: (media: LibraryMedia) => boolean): { product: LibraryProduct; media: LibraryMedia[] }[] {
+    const out: { product: LibraryProduct; media: LibraryMedia[] }[] = [];
+    for (const product of this.document.products) {
+      const media = product.media.filter(matches);
+      if (media.length) out.push({ product, media });
+    }
+    return out;
+  }
 
   lookup(code: string): { product: LibraryProduct | null; template: ProductTemplate | null } {
     const key = codeKey(code); const product = this.document.products.find((p) => p.code === key || p.aliases.includes(key)) ?? null;
@@ -174,12 +196,20 @@ export class ProductLibrary {
     const incoming = cleanLibraryProduct({ ...object(raw), scrapedAt }, scrapedAt);
     const stored = this.lookup(incoming.code).product;
     const old = stored ? cleanLibraryProduct(stored, stored.updatedAt) : null;
-    if (!old) { this.put(incoming, persist); return incoming; }
+    if (!old) {
+      const fresh = this.gate ? incoming.media.filter((m) => this.gate!({ code: incoming.code, brand: incoming.brand }, m, true) === "giu") : incoming.media;
+      const product = fresh.length === incoming.media.length ? incoming : { ...incoming, media: fresh };
+      this.put(product, persist); return product;
+    }
     const keep = (current: string, proposed: string) => current.trim() || proposed;
     const broken = new Set(brokenAssetUrls.map((x) => String(x).trim()).filter(Boolean));
-    const retainedMedia = old.media.filter((m) => !broken.has(m.assetUrl) && !broken.has(m.storageUrl));
-    const seen = new Set(retainedMedia.flatMap((m) => [m.assetUrl, m.storageUrl]).filter(Boolean));
-    const newMedia = incoming.media.filter((m) => !seen.has(m.assetUrl) && !seen.has(m.storageUrl));
+    const owner = { code: old.code, brand: old.brand || incoming.brand };
+    const verdict = (m: LibraryMedia, fresh: boolean) => this.gate ? this.gate(owner, m, fresh) : "giu";
+    const kept = old.media.filter((m) => !broken.has(m.assetUrl) && !broken.has(m.storageUrl) && verdict(m, false) !== "bo");
+    const retainedMedia = kept.filter((m) => verdict(m, false) === "giu");
+    const parkedMedia = kept.filter((m) => verdict(m, false) === "an");
+    const seen = new Set(kept.flatMap((m) => [m.assetUrl, m.storageUrl]).filter(Boolean));
+    const newMedia = incoming.media.filter((m) => !seen.has(m.assetUrl) && !seen.has(m.storageUrl) && verdict(m, true) === "giu");
     const product = cleanLibraryProduct({
       ...old,
       name: keep(old.name, incoming.name), brand: keep(old.brand, incoming.brand), line: keep(old.line, incoming.line),
@@ -193,7 +223,7 @@ export class ProductLibrary {
       },
       specifications: { ...incoming.specifications, ...old.specifications },
       seo: { title: keep(old.seo.title, incoming.seo.title), description: keep(old.seo.description, incoming.seo.description), keywords: old.seo.keywords.length ? old.seo.keywords : incoming.seo.keywords },
-      media: [...retainedMedia, ...newMedia].slice(0, 10), status: old.status, scrapedAt
+      media: [...[...retainedMedia, ...newMedia].slice(0, LIBRARY_MEDIA_CAP), ...parkedMedia], status: old.status, scrapedAt
     }, scrapedAt);
     this.put(product, persist); return product;
   }

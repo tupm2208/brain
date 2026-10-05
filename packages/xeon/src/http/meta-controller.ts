@@ -10,6 +10,9 @@
  *   POST /meta/dang-nhap           a landing starts Facebook Login through the developer app (Đ6)
  *   GET  /meta/dang-nhap/xong      Meta sends the person back here with a one-time code
  *   GET  /meta/dang-nhap/ket-qua   the landing collects the pages (with their tokens) ONCE
+ *   POST /meta/xoa-du-lieu         Meta's "Data deletion callback": a person asked Meta to delete their data
+ *   POST /meta/go-app              Meta's "Deauthorize callback": a person removed the app
+ *   GET  /meta/xoa-du-lieu/trang-thai?ma=   the public status page the deletion answer links to
  *
  * Decided 15/09/2026: ONE developer app for every merchant. Meta allows one webhook address per
  * app, so the address is Xeon's, the app secret lives only here, and a merchant never creates an
@@ -25,10 +28,13 @@ import type { MetaForwarder } from "../meta/meta-forwarder";
 import type { MetaGraphClient } from "../meta/graph-client";
 import type { MetaPassthrough } from "../meta/meta-passthrough";
 import { splitByPage, verifyMetaSignature, type PagePacket } from "../meta/meta-packet";
+import type { AppUserRequestKind } from "../meta/app-users";
+import { CONFIRMATION_CODE_PATTERN, renderAppUserRequestPage, type MetaDataDeletion } from "../meta/data-deletion";
+import { SIGNED_REQUEST_BODY_MAX_BYTES, signedRequestFromBody, verifySignedRequest } from "../meta/signed-request";
 import { PATHS, type PageClaimOutcome } from "../protocol";
 import type { ActivityLog } from "../support/activity-log";
 import type { Logger } from "../support/logger";
-import { bearerToken, readRawBody, sendJson, type RequestContext, type RequestController } from "./http-utils";
+import { bearerToken, readRawBody, readRawBodyOrNull, sendJson, type RequestContext, type RequestController } from "./http-utils";
 
 /** Pages a landing may connect in one call. */
 export const PAGE_CLAIM_MAX = 50;
@@ -45,6 +51,11 @@ export interface MetaControllerOptions {
   xeonAddress?: string | undefined;
   /** Pages that keep going to an older inbox (TopRun Sales Desk, 28/09/2026). Absent = none. */
   passthrough?: MetaPassthrough | undefined;
+  /**
+   * The app's data deletion / deauthorize callbacks (02/10/2026): who connected which pages, and
+   * what to undo. Absent = logins record nothing and both callbacks answer 503.
+   */
+  dataDeletion?: MetaDataDeletion | undefined;
   logger: Logger;
   activityLog?: ActivityLog | undefined;
 }
@@ -63,6 +74,12 @@ interface LoginSession {
   createdAt: number;
   pages: { ma: string; ten: string; token: string }[] | null;
   error: string;
+  /**
+   * The person's key (keyed hash of their app-scoped id, never the id), read at Meta's redirect and
+   * recorded when the landing COLLECTS the pages — the moment the shop really holds their tokens.
+   * Empty = not read (the login still works; the person just cannot be traced by a deletion request).
+   */
+  userKey: string;
 }
 
 export class MetaController implements RequestController {
@@ -87,7 +104,10 @@ export class MetaController implements RequestController {
     if (ctx.path === PATHS.metaPagesDisconnect && ctx.method === "POST") { await this.disconnectPages(req, res, ctx); return true; }
     if (ctx.path === PATHS.metaLogin && ctx.method === "POST") { this.startLogin(req, res); return true; }
     if (ctx.path === PATHS.metaLoginDone && ctx.method === "GET") { await this.finishLogin(req, res); return true; }
-    if (ctx.path === PATHS.metaLoginResult && ctx.method === "GET") { this.collectLogin(req, res); return true; }
+    if (ctx.path === PATHS.metaLoginResult && ctx.method === "GET") { await this.collectLogin(req, res); return true; }
+    if (ctx.path === PATHS.metaDataDeletion && ctx.method === "POST") { await this.appUserCallback(req, res, "xoa-du-lieu"); return true; }
+    if (ctx.path === PATHS.metaDeauthorize && ctx.method === "POST") { await this.appUserCallback(req, res, "go-app"); return true; }
+    if (ctx.path === PATHS.metaDataDeletionStatus && ctx.method === "GET") { this.requestStatusPage(req, res); return true; }
     return false;
   }
 
@@ -243,7 +263,7 @@ export class MetaController implements RequestController {
     }
     this.sweepLogins();
     const state = crypto.randomBytes(24).toString("base64url");
-    this.logins.set(state, { shop, createdAt: Date.now(), pages: null, error: "" });
+    this.logins.set(state, { shop, createdAt: Date.now(), pages: null, error: "", userKey: "" });
     const redirect = `${base}${PATHS.metaLoginDone}`;
     // Versioned dialog, as Desk builds it (`https://www.facebook.com/<v>/dialog/oauth`).
     const url = `https://www.facebook.com/${encodeURIComponent(this.options.graph.version)}/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirect)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(LOGIN_SCOPES.join(","))}&response_type=code`;
@@ -270,6 +290,7 @@ export class MetaController implements RequestController {
       redirectUri: `${String(this.options.xeonAddress ?? "").replace(/\/+$/, "")}${PATHS.metaLoginDone}`, code
     });
     if (!token.ok) { session.error = token.message; page("Chưa kết nối", `Meta không đổi được mã: ${token.message}`, 502); return; }
+    session.userKey = await this.readUserKey(token.value);
     const pages = await this.options.graph.pagesOfUser(token.value);
     if (!pages.ok) { session.error = pages.message; page("Chưa kết nối", `Không đọc được danh sách trang: ${pages.message}`, 502); return; }
     session.pages = pages.value.map((p) => ({ ma: p.id, ten: p.name, token: p.token }));
@@ -282,7 +303,7 @@ export class MetaController implements RequestController {
   }
 
   /** The landing collects the pages of ITS login session — once; the tokens are then forgotten. */
-  private collectLogin(req: IncomingMessage, res: ServerResponse): void {
+  private async collectLogin(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const shop = this.shopOfLanding(req, res);
     if (shop === null) return;
     const state = new URL(String(req.url || "/"), "http://xeon.local").searchParams.get("maPhien") ?? "";
@@ -293,7 +314,86 @@ export class MetaController implements RequestController {
     }
     if (session.pages === null) { sendJson(res, 200, { ok: true, xong: false, loi: session.error }); return; }
     this.logins.delete(state);
+    // The landing now holds this person's page tokens: remember who, so a deletion request finds them.
+    if (session.userKey && this.options.dataDeletion) {
+      try {
+        await this.options.dataDeletion.book.recordConnection(session.userKey, shop, session.pages.map((p) => p.ma));
+      } catch (error) {
+        this.options.logger.warn(`[meta] khong ghi duoc so nguoi cap quyen cho shop "${shop}": ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     sendJson(res, 200, { ok: true, xong: true, trang: session.pages });
+  }
+
+  /**
+   * The person's key for the deletion book, from their user token. A failure never breaks the
+   * login: it is logged, and that person simply cannot be traced by a later deletion request.
+   */
+  private async readUserKey(userToken: string): Promise<string> {
+    const book = this.options.dataDeletion?.book;
+    if (!book?.ready()) return "";
+    const id = await this.options.graph.appScopedUserId(userToken);
+    if (!id.ok) {
+      this.options.logger.warn(`[meta] dang nhap: khong doc duoc id nguoi dung (${id.message}) — van ket noi, nhung yeu cau xoa du lieu sau nay se khong tim ra trang`);
+      return "";
+    }
+    return book.keyOf(id.value);
+  }
+
+  /**
+   * Meta's data deletion callback and deauthorize callback: verify the `signed_request`, undo what
+   * the person's login left on the platform, answer. A bad body changes nothing and is 400.
+   */
+  private async appUserCallback(req: IncomingMessage, res: ServerResponse, kind: AppUserRequestKind): Promise<void> {
+    const route = kind === "xoa-du-lieu" ? PATHS.metaDataDeletion : PATHS.metaDeauthorize;
+    const deletion = this.options.dataDeletion;
+    if (!this.options.appSecret || !deletion?.book.ready()) { sendJson(res, 503, { ok: false, error: "meta_chua_cau_hinh" }); return; }
+    let raw: Buffer | null;
+    try { raw = await readRawBodyOrNull(req, SIGNED_REQUEST_BODY_MAX_BYTES); } catch { raw = null; }
+    if (raw === null) { this.refuseCallback(res, route, "qua_dai"); return; }
+    const verified = verifySignedRequest(signedRequestFromBody(raw, String(req.headers["content-type"] ?? "")), this.options.appSecret);
+    if (!verified.ok) { this.refuseCallback(res, route, verified.viSao); return; }
+
+    const outcome = await deletion.erase(verified.value.userId, kind);
+    // A login still waiting for its landing must not hand this person's tokens over afterwards.
+    for (const [state, session] of this.logins) if (session.userKey === outcome.userKey) this.logins.delete(state);
+
+    if (kind === "xoa-du-lieu") {
+      sendJson(res, 200, { url: `${this.publicBase(req)}${PATHS.metaDataDeletionStatus}?ma=${outcome.code}`, confirmation_code: outcome.code });
+    } else {
+      sendJson(res, 200, { ok: true });
+    }
+    this.options.activityLog?.add({
+      huong: "in", loai: "meta-xoa", method: "POST", duong: route, status: 200,
+      tomTat: `${kind === "xoa-du-lieu" ? "xoá dữ liệu" : "gỡ app"} ${outcome.code}: ${outcome.shops.length} shop, ${outcome.request.soTrang} trang, ${outcome.request.trangThai}`,
+      chiTiet: { ma: outcome.code, nguoi: outcome.userKey.slice(0, 8), trangThai: outcome.request.trangThai, soTrang: outcome.request.soTrang, shops: outcome.shops.map((s) => ({ shop: s.shop, trangXeon: s.trangXeon.length, landing: s.landing })) }
+    });
+  }
+
+  private refuseCallback(res: ServerResponse, route: string, why: string): void {
+    this.options.logger.warn(`[meta] ${route}: tu choi signed_request (${why}) — khong doi gi`);
+    this.options.activityLog?.add({ huong: "in", loai: "meta-xoa", method: "POST", duong: route, status: 400, tomTat: `từ chối: ${why}` });
+    sendJson(res, 400, { ok: false, error: why });
+  }
+
+  /** The public status page of one request. No person, no shop in it. */
+  private requestStatusPage(req: IncomingMessage, res: ServerResponse): void {
+    const code = (new URL(String(req.url || "/"), "http://xeon.local").searchParams.get("ma") ?? "").trim().toUpperCase();
+    const request = CONFIRMATION_CODE_PATTERN.test(code) ? this.options.dataDeletion?.book.request(code) ?? null : null;
+    const page = renderAppUserRequestPage(code, request);
+    res.writeHead(page.status, {
+      "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"
+    });
+    res.end(page.html);
+  }
+
+  /** Xeon's public address for links Meta shows people: `XEON_DIA_CHI`, else the address this request came to. */
+  private publicBase(req: IncomingMessage): string {
+    const configured = String(this.options.xeonAddress ?? "").replace(/\/+$/, "");
+    if (configured) return configured;
+    const host = String(req.headers["x-forwarded-host"] ?? req.headers.host ?? "").split(",")[0]?.trim() ?? "";
+    return host ? `https://${host}` : "";
   }
 
   private sweepLogins(): void {

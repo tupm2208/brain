@@ -20,6 +20,8 @@ export * from "./pack/registry";
 export * from "./pack/agent-text";
 export * from "./pack/prompt-text";
 export * from "./pack/shop-overlay";
+export * from "./pack/size-advice";
+export * from "./pack/consult-profile";
 export * from "./ports/index";
 export * from "./engine/text-analysis";
 export * from "./engine/conversation-state";
@@ -52,3 +54,11 @@ export * from "./engine/stock-facts";
 // Stage 6 (25/09/2026): the reply gate AFTER the draft (Desk enforceReplyEvidence / enforcePolicyClaims / payment_claim_kit).
 export * from "./engine/payment-claim";
 export * from "./engine/reply-gate";
+// 05/10/2026: the customer already has an order — the order note, the ordered codes (phiếu Desk "khách đã có đơn").
+export * from "./engine/order-care";
+// 05/10/2026: a variant from the customer's measurements (phiếu Desk nhóm số đo).
+export * from "./engine/size-advisor";
+// 05/10/2026: the consultation profile — ask a need's questions only when no item is named, once a session (phiếu Desk nhóm nhu cầu).
+export * from "./engine/consult-profile";
+// 05/10/2026: a promise of the order form is kept only when the form really went (phiếu Desk "thẻ đặt hàng không đi").
+export * from "./engine/form-promise";

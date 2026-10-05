@@ -19,9 +19,11 @@
  * returns `agent_draft` for them, with the ask-back sentence as a hint.
  */
 
-import { emptyShopProfile, profileField, profileFieldSet, type ShopProfile } from "@sp/contract";
-import type { DialogueConfig, EntityConfig, IntentRules, PackIdentity, PackLexicon, ScriptEntry, ScriptTexts } from "../pack/types";
-import { loadDialogueConfig, loadEntityConfig, loadIntentRules, loadPack, loadScriptTexts } from "../pack/registry";
+import { emptyShopProfile, profileField, profileFieldSet, type LinkedOrderBrief, type ShopProfile } from "@sp/contract";
+import { itemKey, runningOrders } from "./order-care";
+import type { DialogueConfig, EntityConfig, IntentRules, PackIdentity, PackLexicon, ReplyGatePronoun, ScriptEntry, ScriptTexts } from "../pack/types";
+import { loadDialogueConfig, loadEntityConfig, loadIntentRules, loadPack, loadReplyGateConfig, loadScriptTexts } from "../pack/registry";
+import { maskPronoun } from "./reply-rules/support";
 import type { Turn } from "../ports/index";
 import type { DialogueFrame } from "./dialogue-frame";
 import { EntityExtractor, entityLexiconOf, type Entities, type SizeCandidate } from "./entities";
@@ -74,6 +76,11 @@ export interface RouterInput {
   tenShop?: string | undefined;
   bank?: BankInfo | null | undefined;
   currentOrder?: CurrentOrder | null | undefined;
+  /**
+   * 05/10/2026: the orders CERTAINLY linked to this conversation, with the stage the landing computed
+   * (`conversation.recent` → `hoiThoai.donCuaHoiThoai`). Absent = the bot knows of no order.
+   */
+  orders?: readonly LinkedOrderBrief[] | undefined;
   /** Products in focus, for the bare tag-size reading. */
   candidates?: readonly SizeCandidate[] | undefined;
 }
@@ -81,9 +88,12 @@ export interface RouterInput {
 export type RouterDecision =
   | { kind: "script_reply"; reason: string; reply: string; safeToAutoSend: true }
   | { kind: "ask_clarification"; reason: string; reply: string }
-  | { kind: "human_handoff"; reason: string; reply: string; safeToAutoSend: boolean }
+  /** `pauseBot` (05/10/2026): the bot stays silent on this conversation until a person confirms (the landing keeps that state). */
+  | { kind: "human_handoff"; reason: string; reply: string; safeToAutoSend: boolean; pauseBot?: boolean | undefined }
   /** The agent writes; `hint` is the ask-back sentence the rules would have used, or "". */
-  | { kind: "agent_draft"; reason: string; hint: string };
+  | { kind: "agent_draft"; reason: string; hint: string }
+  /** 05/10/2026: nothing to add — the customer said "ok" again after the bot's own short acknowledgement. */
+  | { kind: "silent"; reason: string };
 
 export interface RouterOutput {
   decision: RouterDecision;
@@ -105,6 +115,8 @@ export interface RuleRouterConfig {
   dialogue: DialogueConfig;
   lexicon: PackLexicon;
   identity?: Pick<PackIdentity, "customerPronoun" | "selfPronoun"> | undefined;
+  /** 05/10/2026: the pronoun that reads like "ảnh" once accents go (`cong-soat` `daiTu`); absent = no masking. */
+  pronoun?: ReplyGatePronoun | undefined;
 }
 
 const STOCK_INTENTS = ["ask_size", "place_order", "ask_price", "product_advice"];
@@ -183,6 +195,21 @@ export class RuleRouter {
     if (paymentFrame === null) {
       mark(this.localPaymentOverride(localIntent, intent), "local_payment_override");
       mark(this.paymentClaimDemoted(localIntent, intent), "payment_claim_demoted");
+    }
+
+    // 05/10/2026: "ok" / "cảm ơn" right after the page's notice about a RUNNING order closes the exchange —
+    // whatever intent a model guessed (a size question to someone whose parcel is on its way is the bug).
+    const ack = paymentFrame === null ? this.orderNoticeAck(message, turns, input, pipeline) : null;
+    if (ack !== null) {
+      intent = { intent: "small_talk", confidence: 0.9, matched: [...intent.matched, ack.reason] };
+      return { decision: ack, intent, localIntent, entities, frame, paymentFrame, pipeline };
+    }
+
+    // 05/10/2026: the customer rejects the item / colour the page showed, BEFORE buying: the match was wrong.
+    const rejected = paymentFrame === null ? this.productRejected(message, turns, input, pipeline) : null;
+    if (rejected !== null) {
+      intent = { intent: "complaint_or_human", confidence: 0.95, matched: [...intent.matched, rejected.reason] };
+      return { decision: rejected, intent, localIntent, entities, frame, paymentFrame, pipeline };
     }
 
     // (c)/(d) The decision.
@@ -315,10 +342,90 @@ export class RuleRouter {
     return { intent: "unknown", confidence: 0.5, matched: [...intent.matched, "post_payment_continuation"] };
   }
 
+  /**
+   * 05/10/2026 (phiếu Desk "bot xác nhận màu thay khách", anh chốt 15/09): "không phải màu này", "sai mẫu",
+   * "màu này chứ" BEFORE the goods are in hand says the bot showed the wrong item — never something to
+   * reassure. The first time a person is called with a neutral sentence; when the customer already
+   * rejected once and the page answered, the bot also PAUSES on this conversation until a person confirms
+   * (no clock reopens it — the landing keeps that state). Goods already received (the words, or an order
+   * delivered / on its way) stay a complaint. The count is read from the history: the brain holds no state.
+   */
+  private productRejected(message: string, turns: readonly RouterTurn[], input: RouterInput, pipeline: string[]): Extract<RouterDecision, { kind: "human_handoff" }> | null {
+    const rc = this.cfg.intentRules.reconcile;
+    const patterns = rc.productRejection.map((p) => packRegex(p)).filter((re): re is RegExp => re !== null);
+    if (patterns.length === 0) return null;
+    const afterReceipt = packRegex(rc.afterReceipt);
+    const rejects = (text: string): boolean => {
+      const n = normalize(text);
+      return patterns.some((re) => re.test(n)) && !(afterReceipt?.test(n) ?? false);
+    };
+    if (!rejects(message)) return null;
+    if ((input.orders ?? []).some((o) => o.giaiDoan === "dang_giao" || (o.giaiDoan === "da_ket_thuc" && o.ketThuc === "da_giao"))) return null;
+    // An earlier rejection the page already answered (two messages of one burst are still the first time).
+    const again = turns.some((t, i) => t.role === "customer" && rejects(t.text) && turns.slice(i + 1).some((u) => u.role === "shop"));
+    const reason = again ? "product_rejected_again" : "product_rejected";
+    pipeline.push(reason);
+    const scripted = this.scripted(reason, reason, input, pipeline);
+    const decision: Extract<RouterDecision, { kind: "human_handoff" }> = scripted.kind === "human_handoff"
+      ? scripted
+      : { kind: "human_handoff", reason, reply: "", safeToAutoSend: false };
+    return again ? { ...decision, pauseBot: true } : decision;
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk "khách đã có đơn"): the customer only acknowledges ("ok", "cảm ơn", a thumbs-up)
+   * RIGHT AFTER the page told them about a running order — the page's last messages carry that order's
+   * id, its waybill code or tracking link, or a "money received" line of a person (`pageSaidPaid`). The
+   * exchange is over: one short fixed sentence (`order_notice_ack`), no question, no lookup. Not when
+   * the page's last message ASKS something (then "ok" is an answer the models must read), and silence
+   * when the bot already acknowledged. Matched on DATA (the order's own ids), not on the wording.
+   */
+  private orderNoticeAck(message: string, turns: readonly RouterTurn[], input: RouterInput, pipeline: string[]): Extract<RouterDecision, { kind: "script_reply" | "silent" }> | null {
+    const running = runningOrders(input.orders);
+    if (running.length === 0) return null;
+    const rc = this.cfg.intentRules.reconcile;
+    const trimmed = message.trim();
+    const n = normalize(message);
+    const words = n.split(" ").filter(Boolean).length;
+    const bare = (packRegex(rc.bareAck, "i")?.test(trimmed) ?? false)
+      || ((packRegex(rc.thanks)?.test(n) ?? false) && words <= Math.max(1, rc.smallTalkMaxWords))
+      || (trimmed !== "" && /^[\p{Extended_Pictographic}\p{Emoji_Modifier}‍️\s!.~]+$/u.test(trimmed));
+    if (!bare) return null;
+    // The page's last burst: what it said after the customer's previous message.
+    const burst: RouterTurn[] = [];
+    for (let i = turns.length - 1; i >= 0; i -= 1) {
+      const t = turns[i]!;
+      if (t.role !== "shop") break;
+      if (t.text.trim() !== "") burst.unshift(t);
+    }
+    const last = burst.at(-1);
+    if (last === undefined) return null;
+    const sentence = this.fillScript(this.cfg.scripts.scripts["order_notice_ack"], input);
+    if (sentence === null) return null;
+    if (normalize(last.text) === normalize(sentence)) {
+      pipeline.push("order_notice_ack_repeat");
+      return { kind: "silent", reason: "order_notice_ack_repeat" };
+    }
+    // The page ASKED something (a "?" outside a link, or the language's question endings): "ok" answers it.
+    const lastWords = last.text.replace(/https?:\/\/\S+/g, " ");
+    if (lastWords.includes("?") || (packRegex(rc.pageAsked)?.test(normalize(lastWords)) ?? false)) return null;
+    const said = burst.map((t) => t.text).join("\n");
+    const saidKey = itemKey(said);
+    const ids = running.flatMap((o) => [itemKey(o.maDon), itemKey(o.vanDon?.ma ?? "")]).filter((k) => k.length >= 6);
+    const links = running.map((o) => o.vanDon?.link ?? "").filter((l) => l !== "");
+    const personSaidPaid = burst.some((t) => t.byPerson === true) && (packRegex(rc.pageSaidPaid)?.test(normalize(burst.filter((t) => t.byPerson === true).map((t) => t.text).join(" "))) ?? false);
+    const notice = ids.some((k) => saidKey.includes(k)) || links.some((l) => said.includes(l)) || personSaidPaid;
+    if (!notice) return null;
+    pipeline.push("order_notice_ack");
+    return { kind: "script_reply", reason: "order_notice_ack", reply: sentence, safeToAutoSend: true };
+  }
+
   /** "cho chi xin them hinh": the customer ASKS for photos, they are not sending one. */
   private customerRequestsPhotos(message: string, intent: IntentVerdict, attachments: number): IntentVerdict | null {
     if (attachments > 0 || !["send_image", "unknown"].includes(intent.intent)) return null;
-    if (!(packRegex(this.cfg.intentRules.reconcile.asksForPhotos)?.test(normalize(message)) ?? false)) return null;
+    // 05/10/2026: "cho anh hỏi…" is the pronoun, not "xin ảnh" — masked before the pattern reads it.
+    const said = this.cfg.pronoun !== undefined ? maskPronoun(message, this.cfg.pronoun) : message;
+    if (!(packRegex(this.cfg.intentRules.reconcile.asksForPhotos)?.test(normalize(said)) ?? false)) return null;
     return { intent: "product_advice", confidence: 0.8, matched: [...intent.matched, "customer_requests_photos"] };
   }
 
@@ -483,6 +590,6 @@ export function ruleRouterFor(packId: string): RuleRouter {
   const pack = loadPack(packId);
   return new RuleRouter({
     intentRules: loadIntentRules(packId), entities: loadEntityConfig(packId), scripts: loadScriptTexts(packId),
-    dialogue: loadDialogueConfig(packId), lexicon: pack.lexicon, identity: pack.identity
+    dialogue: loadDialogueConfig(packId), lexicon: pack.lexicon, identity: pack.identity, pronoun: loadReplyGateConfig(packId).daiTu
   });
 }

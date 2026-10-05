@@ -25,17 +25,27 @@
  * Every model call is inside `withUsage`, so the token ledger knows shop, agent and conversation.
  */
 
-import { TOOLS, readShopProfile, type ConversationId, type InboxOrderFormAttachment, type OrderBrief, type ShopProfile, type TenantId, type ToolName, type ToolOutput } from "@sp/contract";
+import { TOOLS, readShopProfile, type ConversationId, type InboxOrderFormAttachment, type LinkedOrderBrief, type OrderBrief, type ShopProfile, type TenantId, type ToolName, type ToolOutput } from "@sp/contract";
 import {
   CatalogResolver, CatalogScorer, FactNoteComposer, FocusResolver, PaymentClaimKit, ReplyGate, TurnEngine, UncertainProductGate, appendShopTurn, appendTurn, applyShopProfile,
-  buildStockFacts, catalogQueryOf, detectIntent, findLine, hasRecentImageEvidence, inStockRows, loadContextAnalysisText, loadDialogueConfig, loadDraftText,
+  itemKey, orderedItemKeys, renderOrderNote, runningOrders,
+  askedBackWithin, asksOtherVariants, buildStockFacts, catalogQueryOf, detectIntent, findLine, hasRecentImageEvidence, inStockRows, loadContextAnalysisText, loadDialogueConfig, loadDraftText,
   loadCatalogVerifyText, loadEntityConfig, loadHumanExamples, loadImageCompareText, loadImageReadText, loadIntentRules, loadLedgerTexts, loadMatchingConfig, loadNoteTexts, loadProductLines,
   loadRawProductLines, loadReplyGateConfig, loadScriptTexts, normalize, planStockCascade, redactPII, ruleRouterFor, turnFactsFromStock,
   type CascadeLine, type CatalogQuery, type CatalogResolution, type ConversationState, type Entities, type EpisodeTurn, type FocusResolution, type FoundItem,
   type GateSources, type HandleResult, type MemoryPort, type ProductRef, type RouterOutput, type RouterTurn, type RuleRouter, type StockFacts, type ToolPort,
-  type TurnEvidence, type TurnFacts, type UncertainVerdict
+  type TurnEvidence, type TurnFacts, type UncertainVerdict,
+  MeasureReader, SizeAdvisor, loadSizeAdvice, variantSaidByCustomer, type BrandChartRow, type SizeHint,
+  repairFormPromise
 } from "@sp/brain";
-import { ReplyDispatcher, type DispatchPlan } from "./dispatcher";
+// 05/10/2026 (phiếu Desk ảnh / phiên): the one session; the variants of the note.
+import { sessionStartIndex, variantsForNote } from "@sp/brain";
+// 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): the consultation profile of the turn.
+import { ConsultProfiler, loadConsultProfile, type ConsultVerdict } from "@sp/brain";
+// 05/10/2026 (phiếu Desk "giá theo size lấy thấp nhất giữa kho"): an item's price is the lowest in-stock size price, never its first row's.
+import { bargainSaid, gateNormalize, priceOf } from "@sp/brain";
+import { ReplyDispatcher, closingOnly, type DispatchPlan } from "./dispatcher";
+import { humanYield, writtenByPerson } from "./human-yield";
 import type { ImageIntake, PhotoReading } from "./image-intake";
 import type { CatalogVerifier } from "./catalog-verifier";
 import type { GatewayBreaker } from "../agent/gateway-breaker";
@@ -78,19 +88,69 @@ const BREAKER_NOTICE_MS = 10 * 60_000;
 const ANALYSIS_BUDGET_CAP_MS = 15_000;
 /** LLM#3 never gets less than this, so a slow agent does not turn the draft into a certain timeout. */
 const DRAFT_MIN_BUDGET_MS = 5000;
-/** Message authors on the landing that are NOT a human on duty. */
-const BOT_AUTHORS = new Set(["bo-nao"]);
 const HISTORY_LIMIT = 25;
-/** Two lines further apart than this open a new session (Desk episode gap): what "this session names" means to the focus resolver. */
-const SESSION_GAP_MS = 6 * 3600 * 1000;
-/** "còn màu nào khác" — the customer asks for the same model's other colourways (Desk `asksColors`). */
-const OTHER_COLORS_RE = /(mau|mau sac) (nao |gi )?khac|con mau (nao|gi)|mau khac (khong|ko|k)\b/;
 /** A Vietnamese mobile number the customer typed (the engine reads it the same way). */
 const PHONE_RE = /(?:^|\D)(0\d{9})(?:\D|$)/;
 /** How much of a lookup result the dossier keeps per item. */
 const LOOKUP_ITEMS_KEPT = 12;
 
 export const SUPERSEDED: InboundResult = { daTraLoi: false, viSao: "gop_vao_tin_sau" };
+
+/** Desk v93e: asked back within this long = do not ask a second time, call a person. Unset in the pack = this. */
+const ASK_BACK_WINDOW_DEFAULT_MINUTES = 30;
+
+/** The industry's ask-back window (`gates[ask_back_once].windowMinutes`), the platform default when unset. */
+export function askBackWindowMinutes(pack: { gates?: readonly { kind: string; windowMinutes?: number | undefined }[] | undefined }): number {
+  const rule = (pack.gates ?? []).find((g) => g.kind === "ask_back_once");
+  const minutes = Number(rule?.windowMinutes);
+  return Number.isFinite(minutes) && minutes > 0 ? minutes : ASK_BACK_WINDOW_DEFAULT_MINUTES;
+}
+
+/**
+ * 05/10/2026: the newest customer message a turn has in view — the last customer line of the thread it read,
+ * or the message it was pushed for when the thread does not have that one yet. "" = no message id known.
+ */
+export function newestCustomerMessage(lines: readonly { chieu: string; maTin?: string | undefined }[], pushed: string | undefined): string {
+  const own = String(pushed ?? "").trim();
+  if (own !== "" && !lines.some((m) => m.maTin === own)) return own;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const id = String(lines[i]!.maTin ?? "").trim();
+    if (lines[i]!.chieu === "den" && id !== "") return id;
+  }
+  return own;
+}
+
+/** 05/10/2026: the landing dropped the reply because a person took the conversation over meanwhile. */
+export class HumanTookOver extends Error {
+  constructor(readonly conversationId: string) {
+    super(`nguoi truc da tiep quan ${conversationId} trong luc bot soan`);
+    this.name = "HumanTookOver";
+  }
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "tin khách đến trong lúc AI chạy", "chống gửi trùng"): the landing's send door refused
+ * the reply — `tin-moi`: the customer wrote after the newest message this turn saw (that message has its own
+ * turn); `da-tra-loi`: another turn already answered it and this reply is no correction. Nothing was sent.
+ */
+export class ReplyRefused extends Error {
+  constructor(readonly conversationId: string, readonly why: "tin-moi" | "da-tra-loi") {
+    super(`landing bo cau tra loi ${conversationId}: ${why}`);
+    this.name = "ReplyRefused";
+  }
+}
+
+/**
+ * 05/10/2026 (phiếu Desk "kết quả phân tích mù ảnh … gửi lỗi thì lần sau phải gửi lại"): the landing could not send
+ * the reply (Meta refused, the landing failed). The landing gave the send door back; the brain may run the turn
+ * again once (`BrainService`). Nothing reached the customer, nothing was remembered.
+ */
+export class ReplyNotSent extends Error {
+  constructor(readonly conversationId: string, readonly why: string) {
+    super(`landing khong gui duoc cau tra loi ${conversationId}: ${why}`);
+    this.name = "ReplyNotSent";
+  }
+}
 
 /** Only tools that READ. A draft or a demo must never leave a trace on the shop's data. */
 export function readOnlyTools(inner: ToolPort): ToolPort {
@@ -154,6 +214,41 @@ interface Truth {
   /** Further plain lines for the models: the stock facts, "confirm first", the customer portrait, the order. */
   lines: string[];
   lookups: LookupRecord[];
+  /** 05/10/2026: the catalog group(s) the customer's words named, as the landing read them; `question` = nothing but group words. */
+  group?: CatalogGroupAsk | null;
+  /** 05/10/2026: the ready category sentence (type link), sent only when no model answers — the agent answers first. */
+  net?: string;
+  /**
+   * 05/10/2026 (phiếu Desk nhóm số đo): the customer's measurements read by tier 1, the brand in focus
+   * and its own chart from the landing (`null` = none / not asked), and what the table says.
+   */
+  size?: { brand: string; chart: BrandChart | null; hint: SizeHint | null };
+  /**
+   * 05/10/2026 (phiếu Desk 22/09): the size a TAG reading came to — by the item's own brand chart (the landing's
+   * conversion, or `variant.brandChart`), or `general` = the industry table because that brand has no chart.
+   */
+  tagSize?: { tem: string; size: string; brand: string; general: boolean };
+  /** 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): the consultation profile — item named, everyday, known / missing / asked. */
+  consult?: ConsultVerdict | null;
+}
+
+/** A brand's chart as the landing's `variant.brandChart` returned it. */
+interface BrandChart {
+  rows: BrandChartRow[];
+  womenDiffer: boolean;
+}
+
+/** What the landing read as groups of ITS catalog in the customer's message (`catalog.find` with `chi_nhom`). */
+interface CatalogGroupAsk {
+  loai: string;
+  mon: string;
+  link: string;
+  /** In-stock items of the group (at most the finder's eight). */
+  items: FoundItem[];
+  /** Every product word is a group name: a category question, not one item. */
+  question: boolean;
+  /** The words that are neither group names nor chatter: a narrower item than the group. */
+  leftover: string[];
 }
 
 /** One step of "AI nghĩ gì", in the order it happened; the AI desk numbers them. */
@@ -173,6 +268,8 @@ export interface TurnMessage {
   soAnh?: number | undefined;
   anh?: string[] | undefined;
   traLoiTin?: string | undefined;
+  /** 05/10/2026: the landing handed this message back (`het-nhuong`) or a person asked the bot to answer (`nguoi-bam`). */
+  tiepQuan?: "het-nhuong" | "nguoi-bam" | undefined;
 }
 
 /** "gui": the live door — sends, notifies, remembers. "khong-gui": draft / sandbox — none of that, tools read-only. */
@@ -284,6 +381,16 @@ interface Turn {
   analysisMs: number;
   /** A model path was tried (agent eligible, or LLM#3 ran): the engine must not fall back to a bare greeting. */
   modelTried: boolean;
+  /**
+   * 05/10/2026: the orders CERTAINLY linked to this conversation, with the stage the landing computed
+   * (`conversation.recent` → `hoiThoai.donCuaHoiThoai`); [] on an older landing.
+   */
+  orders: LinkedOrderBrief[];
+  /**
+   * 05/10/2026: the newest customer message (`maTin`) in the thread this turn read — sent with the reply as
+   * `theoTin`, so the landing can tell a reply written before the customer's latest message. "" = unknown.
+   */
+  seenUpTo: string;
 }
 
 /** One industry's stage-3 machinery, built once per pack. */
@@ -329,11 +436,13 @@ export class TurnPipeline {
     // turn only the message itself; every step below still runs on that.
     const recent = req.recent ?? await this.readRecent(tenant, binding, tools, conversationId);
     const nowMs = this.deps.clock.now().getTime();
-    // A human on duty answered moments ago: they own the conversation, the bot keeps quiet. Not in
+    // A human on duty wrote or typed within the shop's yield window (`human-yield.ts`): they own the
+    // conversation, the bot keeps quiet — and says until when, so the turn is handed back then. Not in
     // a draft — a person pressing "Soạn bot" IS the human on duty.
-    if (live && recent.tin.some((m) => m.chieu === "di" && !BOT_AUTHORS.has(m.boi) && nowMs - Date.parse(m.luc) < HUMAN_YIELD_MS)) {
-      this.deps.logger.info(`[agent] ${conversationId}: nguoi truc vua tra loi — bot im`);
-      return this.outcome({ daTraLoi: false, viSao: "nguoi_dang_truc" }, { reply: "", source: "", action: "", needsHuman: false, reason: "Người trực vừa trả lời — bot im.", steps, analysis: null, router: null, engine: null });
+    const yielding = live ? humanYield({ recent, profile: hoSo, nowMs, takeover: message.tiepQuan }) : { yields: false };
+    if (yielding.yields && yielding.untilMs !== undefined) {
+      this.deps.logger.info(`[agent] ${conversationId}: nguoi truc ${yielding.why === "dang-go" ? "dang go" : "vua tra loi"} — bot im toi ${new Date(yielding.untilMs).toISOString()}`);
+      return this.outcome({ daTraLoi: false, viSao: "nguoi_dang_truc", nhuongDen: new Date(yielding.untilMs).toISOString() }, { reply: "", source: "", action: "", needsHuman: false, reason: "Người trực đang xử lý hội thoại — bot im.", steps, analysis: null, router: null, engine: null });
     }
     const loaded = await memory.load(tenant as TenantId, conversationId as ConversationId).catch(() => null);
     const contexts = this.turnContextFor(binding);
@@ -342,8 +451,14 @@ export class TurnPipeline {
 
     const turn: Turn = {
       req, live, isLatest: req.isLatest ?? (() => true), draft, steps, startedMs, text, channel, tools, memory, shop, hoSo,
-      contexts, ctx, photos: null, analysis: null, router: null, engine: null, truth: null, ownStockOnly: false, modelTried: false, modelsOff: false, chaoAi: false, policy: null, analysisMs: 0
+      contexts, ctx, photos: null, analysis: null, router: null, engine: null, truth: null, ownStockOnly: false, modelTried: false, modelsOff: false, chaoAi: false, policy: null, analysisMs: 0,
+      orders: [...(recent.hoiThoai?.donCuaHoiThoai ?? [])],
+      seenUpTo: newestCustomerMessage(recent.tin, message.maTin)
     };
+    if (turn.orders.length > 0) {
+      const running = runningOrders(turn.orders);
+      steps.push({ loai: "doc", ten: "Đơn của hội thoại", chiTiet: turn.orders.map((o) => `${o.maDon} (${o.giaiDoan}${o.vanDonDong ? ", vận đơn đã đóng" : ""})`).join("; ") + (running.length > 0 ? " — chế độ chăm sóc đơn" : "") });
+    }
 
     // A public comment is answered by the engine alone, under the comment, as before the pipeline:
     // neither the scripts nor the models were written for a thread the whole Fanpage can read.
@@ -354,18 +469,29 @@ export class TurnPipeline {
     draft.cauDaoMo = turn.modelsOff ? true : undefined;
     // The landing prepends its greeting to the opening reply (Giai đoạn 7); every model is told so it does not greet again.
     // Desk `introAlreadySent`: the page never wrote in this thread (bot or person, text or picture) AND the landing has not greeted.
-    turn.chaoAi = !ctx.daChaoAi && !recent.tin.some((m) => m.chieu === "di");
+    // 05/10/2026 (phiếu Desk "chào AI khi khách chỉ khép chuyện"): only the bot's OWN earlier lines no longer
+    // count — a customer it acknowledged without the greeting is greeted on the first message with content; a
+    // message that only closes the exchange ("ok", "cảm ơn em") never carries the greeting.
+    turn.chaoAi = !ctx.daChaoAi && !recent.tin.some((m) => writtenByPerson(m) || (m.chieu === "di" && m.boi === "")) && !closingOnly(text, loadIntentRules(binding.packId).reconcile);
 
     // 2. The photos, BEFORE anything writes: a picture the model never looked at is exactly how
     // "cho em xin ảnh" got sent to a customer who had just sent one. The page just asked for the shoe
     // the customer wears (frame `asked_size`): the photo is a size REFERENCE, not something to sell.
     turn.photos = turn.modelsOff ? null : await this.deps.intake.read({
       tenant, binding, photos: ctx.photos, kenh: channel, conversationId, text: loadImageReadText(binding.packId), compareText: loadImageCompareText(binding.packId),
-      reference: ctx.frame?.kind === "asked_size", receiptTextPatterns: loadLedgerTexts().receiptTextPatterns,
-      agentSees: this.agentSees(binding)
+      // 05/10/2026: or the page asked to SEE what the customer uses now (`askedReference`, the industry's words).
+      reference: ctx.frame?.kind === "asked_size" || ctx.frame?.asksReference === true, receiptTextPatterns: loadLedgerTexts().receiptTextPatterns,
+      agentSees: this.agentSees(binding),
+      // 05/10/2026: freshness from the customer's message, not the clock — a draft made later still sees the photo.
+      asOf: ctx.anchorAt
     });
+    // 05/10/2026 (phiếu Desk "ảnh ngoài lượt"): a photo older than the fresh window is history — said in the dossier.
+    if (ctx.stalePhotos > 0) {
+      steps.push({ loai: "doc", ten: "Ảnh cũ", chiTiet: `${ctx.stalePhotos} ảnh khách gửi quá 15 phút trước — không coi là ảnh khách vừa gửi.` });
+      draft.anh = { loai: "", soAnh: 0, thamChieu: false, loi: [], boCu: ctx.stalePhotos };
+    }
     if (turn.photos !== null) {
-      draft.anh = { loai: turn.photos.loai, soAnh: turn.photos.looks.length, thamChieu: turn.photos.thamChieu, loi: turn.photos.loi };
+      draft.anh = { loai: turn.photos.loai, soAnh: turn.photos.looks.length, thamChieu: turn.photos.thamChieu, loi: turn.photos.loi, ...(ctx.stalePhotos > 0 ? { boCu: ctx.stalePhotos } : {}) };
       if (turn.photos.note) steps.push({ loai: "doc", ten: "Đọc ảnh khách gửi", chiTiet: turn.photos.note.slice(0, 400) });
       for (const e of turn.photos.loi) steps.push({ loai: "loi", ten: "Ảnh khách gửi", chiTiet: e });
       // A transfer receipt: the neutral sentence and a person, before any model writes (Desk's payment claim path).
@@ -392,13 +518,18 @@ export class TurnPipeline {
     draft.router = {
       quyetDinh: router.decision.kind, lyDo: router.decision.reason, yDinh: router.intent, yDinhCucBo: router.localIntent,
       thucThe: router.entities, duongOng: router.pipeline,
-      traLoi: router.decision.kind === "agent_draft" ? "" : router.decision.reply,
+      traLoi: router.decision.kind === "agent_draft" || router.decision.kind === "silent" ? "" : router.decision.reply,
       goiY: router.decision.kind === "agent_draft" ? router.decision.hint : "",
       ...(router.decision.kind === "human_handoff" ? { tuGui: router.decision.safeToAutoSend } : {})
     };
     steps.push({ loai: "quyet-dinh", ten: "Bộ định tuyến", chiTiet: `${router.decision.kind} (${router.decision.reason}) · ý định ${router.intent.intent} · ${router.pipeline.join(" › ")}` });
 
     const decision = router.decision;
+    if (decision.kind === "silent") {
+      // 05/10/2026: "ok" again after the bot's own short acknowledgement — nothing to add, nothing sent.
+      draft.duongDi = "kich-ban";
+      return this.outcome({ daTraLoi: false, viSao: "khong_can_tra_loi" }, { reply: "", source: "", action: "", needsHuman: false, reason: "Khách chỉ xác nhận lại — bot đã trả lời câu ngắn, không gửi thêm.", steps, analysis: turn.analysis, router, engine: null });
+    }
     if (decision.kind === "script_reply") {
       draft.duongDi = "kich-ban";
       return this.deliver(turn, { reply: decision.reply, source: "kich-ban", action: "script_reply", hanhDong: "send", reason: `Kịch bản "${decision.reason}".` });
@@ -413,7 +544,8 @@ export class TurnPipeline {
       // handoff sentence and a person — the router's own draft is for the agent to improve, which
       // is not this path (Desk `buildDecision`).
       if (decision.safeToAutoSend && decision.reply !== "") {
-        return this.deliver(turn, { reply: decision.reply, source: "kich-ban", action: "human_handoff", hanhDong: "send", handoff: decision.reason, reason: `Kịch bản "${decision.reason}" — gọi người phụ trách.` });
+        // 05/10/2026: `pauseBot` — the landing switches the bot off on this conversation until a person confirms.
+        return this.deliver(turn, { reply: decision.reply, source: "kich-ban", action: "human_handoff", hanhDong: "send", handoff: decision.reason, pauseBot: decision.pauseBot === true, reason: `Kịch bản "${decision.reason}" — gọi người phụ trách${decision.pauseBot === true ? ", bot dừng hội thoại này tới khi người trực xác nhận" : ""}.` });
       }
       return this.handOverToPerson(turn, `bo dinh tuyen: ${decision.reason}`, "kich-ban");
     }
@@ -428,9 +560,11 @@ export class TurnPipeline {
     // any model writes; the brain scores the catalog, decides whether the product is clear enough,
     // settles the focus and builds the stock truth. The gate may end the turn here (ask which
     // product — once; a brand the shop does not carry; a category link).
-    // What the shop taught the AI comes first: "Tạm dừng hàng đối tác" narrows every finder call below.
+    // The conversation's context from the shop comes first: "Tạm dừng hàng đối tác" narrows every finder call below.
     const knowledge = await this.knowledgeFor(binding, tools, conversationId, text);
-    if (knowledge) steps.push({ loai: "doc", ten: "Kiến thức shop đã duyệt", chiTiet: `${knowledge.hoiDap.length} hỏi đáp, ${knowledge.quyTac.length} quy tắc, ${knowledge.cauMau.length} câu mẫu, ${knowledge.kienThuc.length} ghi chú fit${knowledge.spNgoai ? `, SP ngoài đang chốt ${knowledge.spNgoai.ma}` : ""}` });
+    if (knowledge && (knowledge.spNgoai || knowledge.cauHinh.tatHangDoiTac)) {
+      steps.push({ loai: "doc", ten: "Ngữ cảnh shop", chiTiet: [knowledge.spNgoai ? `SP ngoài đang chốt ${knowledge.spNgoai.ma}` : "", knowledge.cauHinh.tatHangDoiTac ? "đang tạm dừng hàng đối tác" : ""].filter(Boolean).join(" · ") });
+    }
     turn.ownStockOnly = knowledge?.cauHinh.tatHangDoiTac === true;
     const truth = await this.groundTruth(turn);
     turn.truth = truth;
@@ -454,7 +588,7 @@ export class TurnPipeline {
         return this.deliver(turn, { reply: verdict.reply, source: "kich-ban", action: "script_reply", hanhDong: "send", reason: "Khách hỏi loại hàng khác — gửi link loại hàng." });
       }
       if (verdict.reply !== "") {
-        return this.deliver(turn, { reply: verdict.reply, source: "kich-ban", action: "human_handoff", hanhDong: "send", handoff: verdict.reason, reason: "Đã hỏi lại một lần mà vẫn chưa rõ mẫu — gọi người phụ trách." });
+        return this.deliver(turn, { reply: verdict.reply, source: "kich-ban", action: "human_handoff", hanhDong: "send", handoff: verdict.reason, reason: "Đã hỏi lại một lần mà vẫn chưa rõ mẫu — gọi người phụ trách.", clearAskBack: verdict.reason.startsWith("uncertain_product_twice") });
       }
       return this.handOverToPerson(turn, verdict.reason, "kich-ban");
     }
@@ -505,7 +639,12 @@ export class TurnPipeline {
       this.deps.logger.warn(`[cong-soat] ${conversationId}: cau nhap bi bo ca cau — may luat tra loi`);
     }
 
-    // 8. The engine, last in line, with the router's intent as its hint.
+    // 8. The engine, last in line, with the router's intent as its hint. A category question whose ready
+    // link sentence was held back for the agent gets that sentence instead (05/10/2026).
+    if ((turn.truth?.net ?? "") !== "") {
+      draft.duongDi = "kich-ban";
+      return this.deliver(turn, { reply: turn.truth!.net!, source: "kich-ban", action: "script_reply", hanhDong: "send", reason: "Khách hỏi loại hàng khác — mô hình không trả lời được, gửi link loại hàng." });
+    }
     return this.engineTurn(turn);
   }
 
@@ -534,7 +673,8 @@ export class TurnPipeline {
     const analysis = await analyzer.analyze({
       turn: turn.ctx,
       frameText: turn.ctx.frame !== null ? turn.contexts.describeFrame(turn.ctx.frame) : "",
-      memoryText: turn.contexts.renderMemory(turn.ctx.state, nowIso),
+      // 05/10/2026: the order block first — LLM#1 must know the customer already has an order.
+      memoryText: [this.orderNote(turn), turn.contexts.renderMemory(turn.ctx.state, nowIso)].filter((p) => p !== "").join("\n\n"),
       text: loadContextAnalysisText(binding.packId),
       site: binding.origin, shopName: binding.shopName, hoSo: turn.hoSo,
       usage: { shop: tenant, channel: turn.channel, conversationId },
@@ -558,7 +698,8 @@ export class TurnPipeline {
       attachmentKinds: (turn.photos?.looks ?? []).map((l) => l.loai),
       aiIntent: turn.analysis !== null ? { intent: turn.analysis.intent, confidence: turn.analysis.confidence, matched: ["llm1"] } : null,
       aiFlags: turn.analysis?.riskFlags ?? [],
-      frame: turn.ctx.frame, profile: turn.hoSo, site: binding.origin, tenShop: binding.shopName
+      frame: turn.ctx.frame, profile: turn.hoSo, site: binding.origin, tenShop: binding.shopName,
+      orders: turn.orders
     };
     let out = router.route(input);
     if (out.decision.kind === "agent_draft" && out.decision.reason === "asks_bank_info_profile_missing" && turn.tools.available().includes("shop.bankAccount")) {
@@ -578,7 +719,8 @@ export class TurnPipeline {
     const memoryNote = FactNoteComposer.compose({
       site: binding.origin, customerPronoun: identity.customerPronoun,
       conversationSummary: turn.contexts.renderMemory(turn.ctx.state, nowIso),
-      hasImage: turn.ctx.photos.length > 0,
+      // 05/10/2026 (phiếu Desk "vai trò ảnh", vai 3): a photo pinned to a code IS the item — its stock list stays.
+      hasImage: turn.ctx.photos.length > 0 && !(turn.photos?.chot?.ket === "tu_tin" && !turn.photos.thamChieu),
       ...(turn.truth?.facts ?? {})
     }, loadNoteTexts(binding.packId));
     const frameNote = turn.ctx.frame !== null ? turn.contexts.describeFrame(turn.ctx.frame) : "";
@@ -600,13 +742,37 @@ export class TurnPipeline {
     // The impatience hint (an apology, then the answer) is kept; only the "ask for the model" hint gives way.
     const need = knownNeedOf(a, turn.ctx.state);
     const apology = turn.router?.decision.kind === "agent_draft" && turn.router.decision.reason === "impatience";
+    // 05/10/2026 (phiếu Desk "vai trò ảnh", vai 2): the "photo not clear → ask which / what size" hint is only for a
+    // photo nobody recognised; a photo read (or a reference) with a real question is the photo note's to answer.
+    if (turn.router?.decision.kind === "agent_draft" && turn.router.decision.reason === "image_unclear_ai" && (turn.photos?.thamChieu === true || (turn.ctx.photos.length > 0 && !this.photoUnrecognised(turn)))) hint = "";
     const hintNote = [
       apology && hint !== "" ? hint : "",
       need !== ""
         ? `KHACH DA NOI NHU CAU: ${need}. Goi cong cu tra kho theo NHU CAU va nhung gi khach da cho biet; KHONG hoi lai ten / ma mau. Chi hoi dung dieu con thieu de chon.`
         : !apology && hint !== "" ? `CAU HOI LAI MAU (dung khi thieu mau/size, viet lai cho hop): ${hint}` : ""
     ].filter((line) => line !== "").join("\n");
-    return [memoryNote, truthLines, frameNote, focusNote, photoNote, analysisNote, hintNote].filter((part) => part !== "");
+    // 05/10/2026: the order block FIRST and whole — every model must know the customer already has an order.
+    return [this.orderNote(turn), memoryNote, truthLines, frameNote, focusNote, photoNote, analysisNote, hintNote].filter((part) => part !== "");
+  }
+
+  /**
+   * Codes (normalised) THIS message names: a code typed, a name / line the catalog resolved, the photo
+   * matched this turn, the page card the customer replied to. Not the session's focus or the ledger.
+   */
+  private namedThisTurn(turn: Turn): string[] {
+    const e = turn.router?.entities;
+    const out = new Set<string>();
+    if ((e?.productCode ?? "") !== "") out.add(itemKey(e!.productCode));
+    if ((e?.productName ?? "") !== "" || (turn.truth?.query.productLine ?? "") !== "") for (const c of turn.truth?.resolution?.selected ?? []) out.add(itemKey(c.code));
+    if (turn.photos?.chot?.ket === "tu_tin" && !turn.photos.thamChieu) out.add(itemKey(turn.photos.chot.ma));
+    if (turn.ctx.focusedProduct?.by === "reply_to") out.add(itemKey(turn.ctx.focusedProduct.code ?? ""));
+    out.delete("");
+    return [...out];
+  }
+
+  /** "ĐƠN ĐANG CHẠY" / "ĐƠN CŨ" for the models (`order-care.ts`, wording in `ghi-chu-he-thong.json`); "" when no order. */
+  private orderNote(turn: Turn): string {
+    return turn.orders.length > 0 ? renderOrderNote(turn.orders, loadNoteTexts(turn.req.binding.packId).blocks) : "";
   }
 
   /** "MẪU ĐANG NÓI TỚI": the focus the resolver settled on, worded by where it came from; "" when none. */
@@ -677,7 +843,7 @@ export class TurnPipeline {
     const nowIso = this.deps.clock.now().toISOString();
     const a = turn.analysis;
     const intent = router.intent.intent;
-    const query = catalogQueryOf(router.entities, intent, a?.entities ?? {});
+    const query = catalogQueryOf(router.entities, intent, this.trustedAnalysisEntities(turn));
     const truth: Truth = { askOrderPhone: null, query, found: [], level: "", resolution: null, uncertain: null, focus: { product: null, source: "none" }, stock: null, orders: [], portrait: null, facts: {}, lines: [], lookups: [] };
     turn.truth = truth;
 
@@ -709,45 +875,98 @@ export class TurnPipeline {
     const moneyTalk = ["asks_bank_info", "deposit_instruction", "payment_confirmation"].includes(router.localIntent.intent) || ["asks_bank_info", "deposit_instruction", "payment_confirmation"].includes(intent);
     const wantsStock = !exchangeOfOrder && !moneyTalk && (aboutProduct.has(intent) || (a?.lookupCommands ?? []).some((c) => c.command === "resolve_stock"));
     const named = query.productCode !== "" || query.productName !== "" || query.productLine !== "" || photoCode !== "" || (carried?.code ?? "") !== "";
+    // 05/10/2026 (phiếu Desk 22/09 "size 2x trần là cm tem"): a TAG reading goes down as written ("25cm") — the
+    // landing converts it with the chart of EACH item's own brand. The industry table's label is only the net.
+    const tagCm = router.entities.sizeTag ?? "";
+    const tagNet = query.size;
+    let tagAsked = tagCm !== "" && query.size !== "" && query.size === router.entities.size ? `${tagCm}cm` : "";
+    // The brand is already named and has NO chart on this landing (or the landing has no charts at all): the
+    // finder could not convert either — the net straight away, said as a general conversion.
+    const tagBrand = tagAsked !== "" ? this.focusBrand(turn, truth) : "";
+    if (tagAsked !== "" && (tagBrand !== "" || !turn.tools.available().includes("variant.brandChart" as ToolName))) {
+      const chart = await this.brandChart(turn, truth, tagBrand);
+      if (chart !== null) truth.size = { brand: tagBrand, chart, hint: null };
+      else { tagAsked = ""; truth.tagSize = { tem: tagCm, size: tagNet, brand: tagBrand, general: true }; }
+    }
+    if (tagAsked !== "") query.size = tagAsked;
+    const stockCode = query.productCode || photoCode || (query.productName === "" && query.productLine === "" ? carried?.code ?? "" : "");
 
     // (a) The stock: the landing's ladder when it opens one, else Xeon walks the finder rung by rung.
     if (wantsStock && named) {
-      const code = query.productCode || photoCode || (query.productName === "" && query.productLine === "" ? carried?.code ?? "" : "");
-      await this.lookupStock(turn, kit, { ...query, productCode: code });
+      await this.lookupStock(turn, kit, { ...query, productCode: stockCode });
+    }
+
+    // (a2) 05/10/2026 (phiếu Desk 08/09, 30/09, 09/09): nothing of the kind asked came back by name — ask the
+    // landing which of ITS catalog's groups the words name (item names never carry the group's word). Every product word a group name = a CATEGORY question: look up by the group, no "which
+    // item?", no old anchor, and an empty group is "đang hết", never "không bán". A photo turn is the photo's.
+    truth.group = wantsStock && query.productCode === "" && turn.ctx.photos.length === 0 ? await this.groupLookup(turn, kit, query) : null;
+    const groupQuestion = truth.group?.question === true && intent !== "place_order";
+    if (groupQuestion) {
+      const seen = new Set(truth.found.map((it) => normalize(it.ma)));
+      for (const it of truth.group!.items) if (!seen.has(normalize(it.ma))) { seen.add(normalize(it.ma)); truth.found.push(it); }
+    }
+    if (tagAsked !== "") {
+      await this.settleTagSize(turn, query, { tem: tagCm, asked: tagAsked, net: tagNet, relook: wantsStock && named ? (size) => this.lookupStock(turn, kit, { ...query, productCode: stockCode, size }) : null });
     }
 
     // (b) Which product, and is it clear enough.
     const ledgerProducts = turn.ctx.state.ledger?.products ?? [];
-    truth.resolution = wantsStock ? kit.resolver.resolve({
+    truth.resolution = wantsStock && !groupQuestion ? kit.resolver.resolve({
       query: { ...query, productCode: query.productCode || photoCode }, found: truth.found, focused: carried, ledgerProducts,
       strongEvidence: photoCode !== "" ? "image_auto_match" : undefined
     }) : null;
     // LLM#2: one candidate, no strong reason → ask the model which one, with the last lines in view.
     if (truth.resolution !== null && truth.resolution.needVerify) await this.verifyGuess(turn, carried);
-    truth.uncertain = wantsStock ? this.applyGate(turn, kit, query, carried !== null || photoCode !== "" || focusHint !== null) : null;
+    truth.uncertain = wantsStock ? this.applyGate(turn, kit, query, carried !== null || photoCode !== "" || focusHint !== null, groupQuestion) : null;
+    // 05/10/2026 (phiếu Desk 09/09): the category link is the agent's to give, with real items — the ready
+    // sentence is only the net when no model answers (step 8).
+    if (truth.uncertain?.action === "script_reply" && this.agentMayRun(turn)) {
+      const v = truth.uncertain;
+      truth.net = v.reply;
+      truth.uncertain = { action: "drop_anchor", reason: "type_mismatch_category", why: "type_mismatch_category", productType: v.productType, dropped: v.dropped };
+    }
     if (truth.uncertain?.action === "drop_anchor") {
       truth.query = { ...query, productCode: "" };
       truth.lines.push(`KHACH HOI LOAI HANG "${truth.uncertain.productType.label}", KHONG PHAI mau dang bam — tra kho theo loai hang nay, KHONG tra loi ve mau cu.`);
     }
+    if (groupQuestion) {
+      truth.query = { ...query, productCode: "" };
+      const g = truth.group!;
+      const label = [g.loai, g.mon].filter(Boolean).join(" ");
+      const examples = g.items.slice(0, 5).map((it) => `${it.ten} (${it.ma})`).join("; ");
+      truth.lines.push(`KHACH HOI NHOM HANG "${label}" cua catalog shop (khong phai mot mau) — tra kho theo nhom (tra_kho nhom="${label}"), KHONG tra loi ve mau dang bam, KHONG noi "khong ban". `
+        + (g.items.length > 0 ? `Nhom con ${g.items.length}${g.items.length >= 8 ? "+" : ""} mau con hang, vd: ${examples}.` : `Nhom nay hien KHONG con mau nao con hang${query.size !== "" ? ` size ${query.size}` : ""}: noi "nha em hien dang het hang", moi khach xem: ${g.link || "web shop"}.`));
+    }
+    const anchorDropped = groupQuestion || truth.uncertain?.action === "drop_anchor";
 
-    // (c) The focus, in Desk's trust order.
-    truth.focus = this.resolveFocus(turn, carried, nowIso);
+    // (c) The focus, in Desk's trust order. A dropped anchor is not "the item we are talking about".
+    truth.focus = anchorDropped ? { product: null, source: "none" } : this.resolveFocus(turn, carried, nowIso);
 
     // (d) The stock truth of the focus (or the single match), and the note blocks.
-    const anchorCode = truth.focus.product?.code || truth.resolution?.selected[0]?.code || "";
+    const anchorCode = anchorDropped ? "" : truth.focus.product?.code || truth.resolution?.selected[0]?.code || "";
     const requestedSize = query.size || (turn.ctx.frame?.answer === "size" ? turn.ctx.frame.size : "");
     if (anchorCode !== "" && truth.found.length > 0) {
       const size = requestedSize;
-      truth.stock = buildStockFacts(truth.found, { code: anchorCode, requestedSize: size, otherColorsAsked: OTHER_COLORS_RE.test(normalize(turn.text)) }, cfg, {
+      truth.stock = buildStockFacts(truth.found, { code: anchorCode, requestedSize: size, otherColorsAsked: asksOtherVariants(cfg, turn.text) }, cfg, {
         lines: kit.lines,
         filterLink: (q) => `${binding.origin}/?q=${encodeURIComponent([q.line, q.version].filter((x) => x !== "").join(" "))}${q.size !== "" ? `&size=${encodeURIComponent(q.size)}` : ""}#products`
       });
     }
     const selected = truth.resolution?.selected ?? [];
+    await this.sizeAdvice(turn, truth);
+    // 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): named item / everyday need / the specialist profile, from the session.
+    truth.consult = aboutProduct.has(intent) || a?.intent === "product_advice" ? this.consultOf(turn, truth, kit) : null;
     truth.facts = {
-      ...(selected.length > 0 ? { found: selected.map((c) => ({ code: c.code, name: c.name, price: c.price || undefined, variants: c.sizes.map((r) => `${r.size}${r.so_luong !== undefined ? ` (${r.so_luong})` : ""}`), partner: c.source === "partner" })) } : {}),
+      ...(selected.length > 0 ? { found: selected.map((c) => ({ code: c.code, name: c.name, price: c.price || undefined, variants: variantsForNote(c.sizes, requestedSize, kit.scorer.sizes), partner: c.source === "partner" })) } : {}),
       ...turnFactsFromStock(truth.stock),
-      ...(router.entities.sizeNote !== "" && router.entities.size !== "" ? { variantHint: { variant: router.entities.size, label: router.entities.sizeNote } } : {})
+      ...(truth.tagSize !== undefined && truth.tagSize.size !== ""
+        ? { variantHint: { variant: truth.tagSize.size, tem: truth.tagSize.tem, bareJp: router.entities.sizeSource === "bare_tag", raw: truth.tagSize.tem, brand: truth.tagSize.brand || undefined, general: truth.tagSize.general } }
+        : router.entities.sizeNote !== "" && router.entities.size !== "" ? { variantHint: { variant: router.entities.size, label: router.entities.sizeNote } } : {}),
+      // 05/10/2026: MON (a sport group with stock) / LOAI_HANG (a type, or a group with nothing in stock: the web's list of it).
+      ...this.groupFacts(truth, groupQuestion, query.size),
+      // 05/10/2026 (phiếu Desk nhóm số đo): the variant the table gives for the customer's measurements, or "not yet".
+      ...(truth.size?.hint ? { sizeAdvice: { ...truth.size.hint, brand: truth.size.brand } } : {}),
+      ...this.consultFacts(turn, truth, query.size)
     };
     if (truth.stock !== null) truth.lines.push(`TON THUC TE cua ${truth.stock.productName} (${truth.stock.productCode})${truth.stock.requestedSize !== "" ? ` size ${truth.stock.requestedSize}` : ""} — NGUON DUY NHAT khi noi ve ton/gia bien the nay; stock=null la HET bien the do: ${JSON.stringify(truth.stock)}`);
     if (truth.resolution?.needVerify === true && selected[0] !== undefined) {
@@ -792,7 +1011,15 @@ export class TurnPipeline {
     const n = normalize(raw);
     const ledger = turn.ctx.state.ledger?.products ?? [];
     const hit = ledger.find((p) => p.code !== "" && n.includes(normalize(p.code))) ?? ledger.find((p) => p.name !== "" && (n.includes(normalize(p.name)) || normalize(p.name).includes(n)));
-    if (hit !== undefined) return { code: hit.code, name: hit.name };
+    if (hit !== undefined) {
+      // 05/10/2026 (phiếu Desk "ảnh lượt này mượn dữ liệu ngoài phiên"): under a photo nobody recognised, a
+      // memory item counts only when THIS session names it — the model read it from the old part of the thread.
+      if (this.photoUnrecognised(turn)) {
+        const session = normalize(this.sessionTexts(turn).join(" "));
+        if (!session.includes(normalize(hit.code)) && !(hit.name !== "" && session.includes(normalize(hit.name)))) return null;
+      }
+      return { code: hit.code, name: hit.name };
+    }
     const nowMs = this.deps.clock.now().getTime();
     const recent = turn.ctx.history.filter((h) => { const at = Date.parse(h.at ?? ""); return !Number.isFinite(at) || nowMs - at <= 30 * 60_000; }).map((h) => normalize(h.text)).join(" | ");
     const line = findLine(raw, kit.lines);
@@ -821,12 +1048,21 @@ export class TurnPipeline {
     const truth = turn.truth!;
     const a = turn.analysis;
     const intent = turn.router?.intent.intent ?? "";
-    if (!(intent === "product_advice" || a?.intent === "product_advice" || (turn.router?.entities.need ?? "") !== "")) return;
-    const paceText = String(a?.needBrief["pace"] ?? "") || turn.text;
-    const distanceText = String(a?.needBrief["distance"] ?? "") || turn.text;
+    // 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): with a consultation profile, lines are offered only once it is
+    // complete (or its missing pieces were already asked) — never for a named item, an everyday need, or a profile still
+    // to ask — and the profile is read from the whole session (a short follow-up keeps it); the axes the profile
+    // knows (an inference gives its band) feed the scorer.
+    const consult = truth.consult ?? null;
+    if (consult !== null && consult !== undefined) {
+      if (consult.status !== "du" && consult.status !== "da-hoi") return;
+    } else if (!(intent === "product_advice" || a?.intent === "product_advice" || (turn.router?.entities.need ?? "") !== "")) return;
+    const knownPace = consult?.axes["pace"];
+    const knownDistance = consult?.axes["distance"];
+    const paceText = knownPace?.said || String(a?.needBrief["pace"] ?? "") || turn.text;
+    const distanceText = knownDistance?.said || String(a?.needBrief["distance"] ?? "") || turn.text;
     const minutes = parsePaceMinutes(paceText);
-    const pb = paceBand(minutes);
-    const db = distanceBand(distanceText);
+    const pb = knownPace?.band || paceBand(minutes);
+    const db = knownDistance?.band || distanceBand(distanceText);
     if (pb === null && db === null) return;
     const rawLines = loadRawProductLines(binding.packId) as LineDna[];
     if (rawLines.length === 0) return;
@@ -838,12 +1074,12 @@ export class TurnPipeline {
     const data = await this.lookup(turn, "catalog.find", { phan_khuc: segment, ...(size !== "" ? { size } : {}), ...(turn.ownStockOnly ? { chi_hang_san: true } : {}) }, (d) => this.cutItems(this.itemsOf(d)));
     const items = this.itemsOf(data);
     if (items.length === 0) return;
-    const rec = knowledge.recommend({ paceText, distanceText }, items.map((it) => it.ten), 3);
+    const rec = knowledge.recommend({ paceText, distanceText, ...(pb !== null && pb !== "" ? { paceBand: pb } : {}), ...(db !== null && db !== "" ? { distanceBand: db } : {}) }, items.map((it) => it.ten), 3);
     if (rec.picks.length === 0) return;
     truth.facts.lineFamilies = rec.picks.map((pick) => {
       const line = knowledge.byId(pick.id);
       const own = items.filter((it) => knowledge.findByText(it.ten)?.id === pick.id);
-      const examples = own.slice(0, 2).map((it) => `${it.ten} (${it.ma})${it.cac_size[0]?.gia ? ` — ${Number(it.cac_size[0].gia).toLocaleString("vi-VN")}đ` : ""}`);
+      const examples = own.slice(0, 2).map((it) => `${it.ten} (${it.ma})${priceOf(it) > 0 ? ` — ${priceOf(it).toLocaleString("vi-VN")}đ` : ""}`);
       const q = line?.aliases?.[0] ?? pick.name;
       return { name: pick.name, note: pick.note, examples, url: `${binding.origin}/?q=${encodeURIComponent(q)}${size !== "" ? `&size=${encodeURIComponent(size)}` : ""}#products` };
     });
@@ -904,7 +1140,8 @@ export class TurnPipeline {
       // cost eleven finder calls for a customer who asked for one shoe.
       const alternative = step.level === "equivalent_line" || step.level === "beginner_line";
       if (alternative && served) break;
-      const data = await this.lookup(turn, "catalog.find", turn.ownStockOnly ? { ...step.find, chi_hang_san: true } : step.find, (d) => this.cutItems(this.itemsOf(d)));
+      const find = { ...this.groupWords(kit), ...step.find };
+      const data = await this.lookup(turn, "catalog.find", turn.ownStockOnly ? { ...find, chi_hang_san: true } : find, (d) => this.cutItems(this.itemsOf(d)));
       const items = this.itemsOf(data);
       walked.push(step.level);
       gather(items);
@@ -918,8 +1155,60 @@ export class TurnPipeline {
     truth.level = walked.join(" › ");
   }
 
+  /** The industry's everyday words for the catalog's groups, for every `catalog.find` (an older landing ignores them). */
+  private groupWords(kit: Stage3Kit): { biDanhNhom?: Record<string, string>; khongPhaiNhom?: string[] } {
+    const g = kit.scorer.cfg.groups;
+    return {
+      ...(Object.keys(g.aliases).length > 0 ? { biDanhNhom: g.aliases } : {}),
+      ...(g.notGroup.length > 0 ? { khongPhaiNhom: g.notGroup } : {})
+    };
+  }
+
+  /**
+   * 05/10/2026: which groups of the merchant's catalog the message names — asked only when nothing of the
+   * kind asked came back by name. The landing reads its OWN group labels (the storefront filter) plus the
+   * industry's everyday words; Xeon only decides whether the words left over are chatter or a product name.
+   */
+  private async groupLookup(turn: Turn, kit: Stage3Kit, query: CatalogQuery): Promise<CatalogGroupAsk | null> {
+    const truth = turn.truth!;
+    if (!turn.tools.available().includes("catalog.find")) return null;
+    const asked = kit.scorer.canonicalType(query.productType);
+    if (truth.found.some((it) => { const kind = kit.scorer.typeOf(it); return asked === "" || kind === "" || kind === asked; })) return null;
+    const input = { ten: turn.text, chi_nhom: true, ...this.groupWords(kit), ...(query.size !== "" ? { size: query.size } : {}), ...(turn.ownStockOnly ? { chi_hang_san: true } : {}) };
+    const data = await this.lookup(turn, "catalog.find", input, (d) => ({ nhomKhop: (d as { nhomKhop?: unknown }).nhomKhop ?? null, ketQua: this.cutItems(this.itemsOf(d)) }));
+    const match = data !== null && typeof data === "object" ? (data as ToolOutput<"catalog.find">).nhomKhop : undefined;
+    if (match === undefined || match === null || (String(match.loai ?? "") === "" && String(match.mon ?? "") === "")) return null;
+    const cfg = kit.scorer.cfg;
+    const chatter = new Set([...cfg.uncertain.genericItemTokens, ...cfg.noiseTokens].map((t) => normalize(t)));
+    const leftover = (Array.isArray(match.conLai) ? match.conLai : []).map((w) => normalize(String(w)))
+      .filter((w) => w.length > 2 && !chatter.has(w) && !kit.brands.includes(w));
+    const group: CatalogGroupAsk = { loai: String(match.loai ?? ""), mon: String(match.mon ?? ""), link: String(match.link ?? ""), items: this.itemsOf(data), question: leftover.length === 0, leftover };
+    turn.steps.push({ loai: "cong-cu", ten: "Nhóm hàng của catalog", chiTiet: `${[group.loai, group.mon].filter(Boolean).join(" / ")} — ${group.items.length} mẫu còn hàng${group.question ? "" : ` · còn chữ "${leftover.join(" ")}" → không phải câu hỏi nhóm`}` });
+    return group;
+  }
+
+  /** The note blocks of a category question: MON for a sport group with stock, else LOAI_HANG with the web's list. */
+  private groupFacts(truth: Truth, groupQuestion: boolean, size: string): Pick<TurnFacts, "sport" | "productType"> {
+    const g = truth.group;
+    if (groupQuestion && g) {
+      const label = [g.loai, g.mon].filter(Boolean).join(" ");
+      if (g.mon !== "" && g.items.length > 0) return { sport: { label: g.mon, purpose: label, count: g.items.length, ...(size !== "" ? { variant: size } : {}) } };
+      if (g.link !== "") return { productType: { type: label, link: g.link, ...(size !== "" ? { variant: size } : {}) } };
+      return {};
+    }
+    const v = truth.uncertain;
+    if (v?.action === "drop_anchor" && v.productType.link !== "") return { productType: { type: v.productType.label, link: v.productType.link } };
+    return {};
+  }
+
+  /** The agent will be asked this turn (models on, an agent with its handbook) — tools are checked when it runs. */
+  private agentMayRun(turn: Turn): boolean {
+    const agent = this.deps.agent;
+    return !turn.modelsOff && agent !== null && agent !== undefined && agent.ready() && turn.req.binding.pack.agent !== undefined;
+  }
+
   /** Desk `applyUncertainProductGate` with this shop's sentences (`hoiLai`, filled by the router's filler). */
-  private applyGate(turn: Turn, kit: Stage3Kit, query: CatalogQuery, hasFocus: boolean): UncertainVerdict | null {
+  private applyGate(turn: Turn, kit: Stage3Kit, query: CatalogQuery, hasFocus: boolean, groupQuestion = false): UncertainVerdict | null {
     const { binding } = turn.req;
     const router = turn.router!;
     const truth = turn.truth!;
@@ -932,42 +1221,242 @@ export class TurnPipeline {
       return this.routerFor(binding).fillScript({ action: "ask_clarification", reply: pre }, fillInput);
     };
     const cfg = kit.scorer.cfg;
-    const typeLinks = Object.fromEntries(Object.entries(cfg.types.labels).map(([kind, label]) => [kind, `${binding.origin}/?q=${encodeURIComponent(label)}#products`]));
+    // 05/10/2026: the storefront's TYPE filter (`?type=`, desktop and mobile), not the free-text box (`?q=`
+    // searched names on mobile, so a type label found nothing there) — Desk's link was `?type=` too.
+    const typeLinks = Object.fromEntries(Object.entries(cfg.types.labels).map(([kind, label]) => [kind, `${binding.origin}/?type=${encodeURIComponent(label)}#products`]));
     const turns = turn.ctx.turns.slice(0, -1);
     const lastPage = [...turns].reverse().find((t) => t.role === "shop");
     const lastCustomer = [...turns].reverse().find((t) => t.role === "customer");
     const now = this.deps.clock.now();
     const brand = normalize(String(turn.analysis?.entities["brand"] ?? "") || query.brand);
     const brandInCatalog = brand !== "" && truth.found.length > 0 ? truth.found.some((it) => kit.scorer.brandOf(it).includes(brand)) : undefined;
+    // Brands to offer instead of one the stock does not have: ONLY those the stock search returned (02/10/2026).
+    const carriedBrands = [...new Set(truth.found.map((it) => kit.scorer.brandOf(it)).filter((b) => b !== "" && !b.includes(brand)))];
     return kit.gate.apply({
       message: turn.text, intent: router.intent.intent,
       entities: { productCode: query.productCode, productName: query.productName, brand: query.brand, productType: query.productType },
       analysis: turn.analysis !== null ? { productName: String(turn.analysis.entities["productName"] ?? "") || undefined, brand: String(turn.analysis.entities["brand"] ?? "") || undefined, productType: String(turn.analysis.entities["productType"] ?? "") || undefined } : undefined,
       resolution: truth.resolution, hasImage: turn.ctx.photos.length > 0, hasFocus,
-      cascadeFound: truth.found.length > 0,
+      // 05/10/2026 (phiếu Desk 07/09): only an item of the kind asked counts as "found" — a shoe the name
+      // search brought up by a short word (a letter size) must not silence the "which item?" question.
+      cascadeFound: truth.found.some((it) => { const asked = kit.scorer.canonicalType(query.productType); const kind = kit.scorer.typeOf(it); return asked === "" || kind === "" || kind === asked; }),
       continuation: router.intent.matched.some((tag) => tag.startsWith("frame_")),
+      groupQuestion,
+      // 05/10/2026: the item the conversation is pinned to is an anchor too (a category question while pinned to another type).
+      anchorItems: hasFocus ? truth.found.filter((it) => { const c = normalize(it.ma); return c !== "" && (c === normalize(turn.ctx.focusedProduct?.code ?? "") || c === normalize(turn.ctx.state.episode?.focus?.code ?? "") || c === normalize(turn.ctx.state.focusItemCode ?? "")); }) : [],
       state: {
-        askedBackBefore: (turn.ctx.state.askBackCount ?? 0) > 0 || turn.ctx.state.lastAskBackAt !== undefined,
-        askBackCount: turn.ctx.state.askBackCount,
-        hasRecentImageEvidence: hasRecentImageEvidence(turn.ctx.state, now),
+        // 05/10/2026 (phiếu Desk "lượt trước đã gửi câu gì", Desk v93e): "already asked back" means asked back
+        // WITHIN the industry's ask-back window (`ask_back_once.windowMinutes`, platform default 30 minutes) — not
+        // ever in the episode, which turned every unclear message of a long chat into a handoff.
+        askedBackBefore: askedBackWithin(turn.ctx.state, now, askBackWindowMinutes(binding.pack)),
+        askBackCount: askedBackWithin(turn.ctx.state, now, askBackWindowMinutes(binding.pack)) ? turn.ctx.state.askBackCount : undefined,
+        // 05/10/2026 (phiếu Desk "gửi ảnh rồi hỏi"): the thread's photo lines too — a draft, a folded photo never reached the memory.
+        hasRecentImageEvidence: hasRecentImageEvidence(turn.ctx.state, now) || turn.ctx.photoEvidence,
         lastPageAt: lastPage?.at, lastCustomerAt: lastCustomer?.at, episodeLastAt: turn.ctx.state.episode?.lastAt
       },
       now: now.toISOString(),
       lexicon: binding.pack.lexicon,
-      brandInCatalog, typeLinks, hoiLai
+      brandInCatalog, carriedBrands, typeLinks, hoiLai
     });
   }
 
   /** Desk's focus chain: the page's card, the session test on an unrecognised photo, the catalog match, the carried focus, LLM#1's claim, the episode, the ledger. */
   /** The session: the thread's lines after the last gap of six hours or more. */
-  private sessionLines(turn: Turn): TurnContext["turns"] {
-    const lines = turn.ctx.turns;
-    let start = 0;
-    for (let i = 1; i < lines.length; i += 1) {
-      const gap = Date.parse(lines[i]!.at) - Date.parse(lines[i - 1]!.at);
-      if (Number.isFinite(gap) && gap >= SESSION_GAP_MS) start = i;
+  /**
+   * 05/10/2026 (phiếu Desk 22/09 "size 2x trần là cm tem", phần 2): LLM#1's variant is kept only when the
+   * CUSTOMER said it, or just agreed to the page's message naming it — a model reading back the bot's own
+   * "44 2/3" made the bot defend what it had invented.
+   */
+  private trustedAnalysisEntities(turn: Turn): Record<string, unknown> {
+    const entities = this.corroboratedProduct(turn, turn.analysis?.entities ?? {});
+    const raw = entities["size"];
+    const size = typeof raw === "string" || typeof raw === "number" ? String(raw).trim() : "";
+    if (size === "") return entities;
+    const agreedTo = turn.ctx.frame?.answer === "agree" ? turn.ctx.frame.pageText : "";
+    if (variantSaidByCustomer(size, this.customerSessionTexts(turn), agreedTo)) return entities;
+    return { ...entities, size: "" };
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk "ảnh lượt này mượn dữ liệu ngoài phiên", Desk ai_router.js:1279): the code LLM#1
+   * filled stands only when someone SAID it — in the thread, or in the memory the analysis was shown. On a
+   * turn whose photo nobody recognised, only THIS session counts (the photo is "cái này", not the list the page
+   * sent thirteen days ago), and a product name of which the session says no word is dropped too.
+   */
+  private corroboratedProduct(turn: Turn, entities: Record<string, unknown>): Record<string, unknown> {
+    const str = (key: string): string => { const v = entities[key]; return typeof v === "string" || typeof v === "number" ? String(v).trim() : ""; };
+    const code = str("productCode");
+    const name = str("productName");
+    if (code === "" && name === "") return entities;
+    const blindPhoto = this.photoUnrecognised(turn);
+    const scope = normalize((blindPhoto ? this.sessionTexts(turn) : turn.ctx.history.map((h) => h.text)).join(" ") + " " + turn.text);
+    const out = { ...entities };
+    if (code !== "") {
+      const memory = blindPhoto ? [] : (turn.ctx.state.ledger?.products ?? []).map((p) => normalize(p.code));
+      const printed = [turn.photos?.read.code ?? "", turn.photos?.chot?.ket === "tu_tin" ? turn.photos.chot.ma : ""].map((c) => normalize(c)).filter((c) => c !== "");
+      const k = normalize(code).replace(/\s+/g, "");
+      // 05/10/2026 (phiếu Desk "mã viết cách"): "IM 7681" typed in the thread is the same code as LLM#1's "IM7681".
+      const said = scope.includes(k) || scope.replace(/([a-z]) (?=\d)/g, "$1").includes(k);
+      if (!said && !memory.includes(k) && !printed.includes(k)) {
+        out["productCode"] = "";
+        turn.steps.push({ loai: "chan", ten: "Mã LLM#1 điền", chiTiet: `Bỏ mã ${code}: ${blindPhoto ? "phiên này" : "hội thoại"} không ai nhắc.` });
+      }
     }
-    return lines.slice(start);
+    if (blindPhoto && name !== "" && !normalize(name).split(" ").some((w) => w.length >= 3 && scope.includes(w))) out["productName"] = "";
+    return out;
+  }
+
+  /** 05/10/2026: what the current session SAID, as the transcript shows it (a recognised photo by its label). */
+  private sessionTexts(turn: Turn): string[] {
+    return turn.ctx.history.slice(sessionStartIndex(turn.ctx.history.map((h) => h.at))).map((h) => h.text);
+  }
+
+  /** 05/10/2026: the turn carries a photo nobody recognised (no code pinned or read, no confirmed line) — "cái này" is that photo. */
+  private photoUnrecognised(turn: Turn): boolean {
+    const p = turn.photos;
+    return turn.ctx.photos.length > 0 && !(p !== null && (p.chot !== null || p.read.code !== "" || (p.read.model !== "" && !p.dongChuaChac)));
+  }
+
+  /** The customer's lines of the current session, oldest first, the message being handled last. */
+  private customerSessionTexts(turn: Turn): string[] {
+    const lines = this.sessionLines(turn).filter((t) => t.role === "customer").map((t) => t.text);
+    if (lines[lines.length - 1] !== turn.text && turn.text.trim() !== "") lines.push(turn.text);
+    return lines;
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk nhóm số đo): the customer's measurements (with or without their unit) → the
+   * variant of the industry's table in the brand's own labels, or "not yet: ask for the rest". A tag
+   * reading this turn is surer than a self-measured body and wins (it already filled the size).
+   */
+  private async sizeAdvice(turn: Turn, truth: Truth): Promise<void> {
+    const cfg = loadSizeAdvice(turn.req.binding.packId);
+    if (cfg.measures.length === 0 || cfg.rows.length === 0) return;
+    const source = turn.router?.entities.sizeSource ?? "";
+    if (source === "tag" || source === "bare_tag") return;
+    const lines = this.customerSessionTexts(turn).slice(-(cfg.history > 0 ? cfg.history : 10));
+    const reading = new MeasureReader(cfg).read(lines);
+    if (Object.keys(reading.values).length === 0) return;
+    const brand = this.focusBrand(turn, truth);
+    const chart = await this.brandChart(turn, truth, brand);
+    const anchor = truth.found.find((it) => it.ma === (truth.focus.product?.code ?? "")) ?? truth.found[0];
+    const context = [...lines, truth.focus.product?.name ?? "", anchor?.ten ?? "", anchor?.nhom ?? "", turn.router?.entities.need ?? "", String(turn.analysis?.needBrief["sport"] ?? "")].join("\n");
+    const hint = new SizeAdvisor(cfg).advise(reading, { context, brand, brandRows: chart?.rows ?? null });
+    truth.size = { brand, chart, hint };
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): the consultation profile of the turn, read from the ONE session
+   * (customer lines for what is known, page lines for what was already asked); `null` when the industry has none.
+   */
+  private consultOf(turn: Turn, truth: Truth, kit: Stage3Kit): ConsultVerdict | null {
+    const cfg = loadConsultProfile(turn.req.binding.packId);
+    if (cfg.needs.length === 0) return null;
+    const customerLines = this.customerSessionTexts(turn);
+    const pageLines = this.sessionLines(turn).filter((t) => t.role !== "customer").map((t) => t.text);
+    // The verdict goes to the dossier (`suThat.hoSoTuVan`), not to the step list.
+    return new ConsultProfiler(cfg).assess({
+      customerLines, pageLines, named: this.namedItem(turn, truth, kit, customerLines),
+      analysis: turn.analysis?.needBrief ?? null, groupAliases: kit.scorer.cfg.groups.aliases
+    });
+  }
+
+  /**
+   * The customer named an item: a code, a line of the industry, a sure catalog match, a matched photo, a card replied to —
+   * this message, or earlier this session while that item is still the one talked about and nothing else is asked for.
+   */
+  private namedItem(turn: Turn, truth: Truth, kit: Stage3Kit, customerLines: readonly string[]): boolean {
+    if (truth.group?.question === true) return false;
+    // The CUSTOMER's words name it (LLM#1's own reading of a product is not the customer naming one).
+    const e = turn.router?.entities;
+    const res = truth.resolution;
+    const sure = res !== null && res.status === "single_match" && !res.needVerify && (e?.productName ?? "") !== "";
+    if ((e?.productCode ?? "") !== "" || sure || (turn.photos?.chot?.ket === "tu_tin" && !turn.photos.thamChieu) || turn.ctx.focusedProduct?.by === "reply_to") return true;
+    if (findLine(turn.text, kit.lines) !== null) return true;
+    // A follow-up ("size 42"): the item in focus is one the customer named earlier this session, and this message asks for no other.
+    const focus = truth.focus.product;
+    if (focus === null || focus === undefined) return false;
+    if (packRegexOf(loadReplyGateConfig(turn.req.binding.packId).evidence.wantsDifferent)?.test(normalize(turn.text)) === true) return false;
+    const said = normalize(customerLines.join(" \n "));
+    const focusLine = findLine(focus.name ?? "", kit.lines);
+    return ((focus.code ?? "") !== "" && said.includes(normalize(focus.code ?? "")))
+      || (focusLine !== null && customerLines.some((l) => findLine(l, kit.lines)?.id === focusLine.id));
+  }
+
+  /** PHO_THONG (an everyday need → the everyday search by purpose) and HO_SO_TU_VAN (the rest of the verdict). */
+  private consultFacts(turn: Turn, truth: Truth, size: string): Pick<TurnFacts, "everyday" | "consult"> {
+    const v = truth.consult ?? null;
+    if (v === null) return {};
+    if (v.status === "pho-thong" && v.need !== null && v.need.purpose !== "") {
+      const gender = normalize(turn.router?.entities.gender ?? "");
+      return { everyday: { purpose: v.need.purpose, ...(size !== "" ? { variant: size } : {}), ...(gender === "nu" || gender === "nam" ? { gender } : {}) } };
+    }
+    if (v.status === "chua-ro") return {};
+    const cfg = loadConsultProfile(turn.req.binding.packId);
+    const notAsked = cfg.needs.filter((n) => n.kind === "chuyen-mon").flatMap((n) => n.fields.map((f) => f.name));
+    return { consult: { ...v, notAsked: [...new Set(notAsked)] } };
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk 22/09 "size 2x trần là cm tem"): what the tag reading the stock was looked up with
+   * ("25cm") comes to. In order: the label the landing converted it to on an item (`quy_doi`, the item named first);
+   * else the brand's own chart (`variant.brandChart`, the tag is its `link`); else — the brand has no chart, or no
+   * brand is known — the industry table's label as a GENERAL conversion (the note says so), looked up by it.
+   * The query carries the settled label from here on (links, notes, stock facts).
+   */
+  private async settleTagSize(turn: Turn, query: CatalogQuery, t: { tem: string; asked: string; net: string; relook: ((size: string) => Promise<void>) | null }): Promise<void> {
+    const truth = turn.truth!;
+    const asked = t.asked.toLowerCase();
+    const convertedOn = (it: FoundItem): string => it.cac_size.find((r) => String(r.quy_doi ?? "").trim().toLowerCase() === asked)?.size ?? "";
+    const named = normalize(query.productCode);
+    const hit = [...truth.found].sort((x, y) => Number(normalize(y.ma) === named) - Number(normalize(x.ma) === named)).find((it) => convertedOn(it) !== "");
+    let settled: { size: string; brand: string; general: boolean };
+    if (hit !== undefined) {
+      settled = { size: convertedOn(hit), brand: String(hit.hang ?? "").trim().toLowerCase(), general: false };
+    } else {
+      let relooked = false;
+      let brand = this.focusBrand(turn, truth);
+      // Nothing came back and no brand is known: the net label finds the item — and with it, its brand.
+      if (brand === "" && truth.found.length === 0 && t.relook !== null && t.net !== "") { await t.relook(t.net); relooked = true; brand = this.focusBrand(turn, truth); }
+      const chart = brand !== "" ? await this.brandChart(turn, truth, brand) : null;
+      if (chart !== null) truth.size = { brand, chart, hint: null };
+      const cm = Number(t.tem);
+      const row = chart?.rows.find((r) => r.link !== null && Math.abs(r.link - cm) < 0.01);
+      if (row !== undefined) {
+        settled = { size: row.label, brand, general: false };
+      } else {
+        settled = { size: t.net, brand, general: true };
+        if (!relooked && t.relook !== null && t.net !== "") await t.relook(t.net);
+      }
+    }
+    query.size = settled.size;
+    truth.tagSize = { tem: t.tem, ...settled };
+    turn.steps.push({ loai: "doc", ten: "Quy đổi theo bảng hãng", chiTiet: `${t.asked} → ${settled.size} (${settled.general ? "bảng chung của ngành — hãng chưa có bảng" : `bảng hãng ${settled.brand || "của món"}`})` });
+  }
+
+  /** The brand of the item in focus (the focus, the item found, the customer's words, LLM#1), lower case; "" when unknown. */
+  private focusBrand(turn: Turn, truth: Truth | null | undefined): string {
+    const anchor = truth?.found.find((it) => it.ma === (truth.focus.product?.code ?? "")) ?? truth?.found[0];
+    const raw = truth?.focus.product?.brand || anchor?.hang || turn.router?.entities.brand || String(turn.analysis?.entities["brand"] ?? "");
+    return String(raw ?? "").trim().toLowerCase();
+  }
+
+  /** The brand's own chart from the landing (`variant.brandChart`), once per turn; `null` = unknown brand, no chart, or an older landing. */
+  private async brandChart(turn: Turn, truth: Truth | null | undefined, brand: string): Promise<BrandChart | null> {
+    if (truth?.size !== undefined && truth.size.brand === brand) return truth.size.chart;
+    if (brand === "" || !turn.tools.available().includes("variant.brandChart" as ToolName)) return null;
+    const data = await this.lookup(turn, "variant.brandChart" as ToolName, { brand }, (d) => ({ found: (d as { found?: unknown }).found, rows: Array.isArray((d as { rows?: unknown }).rows) ? (d as { rows: unknown[] }).rows.length : 0 }));
+    const out = data as ToolOutput<"variant.brandChart"> | null;
+    if (out === null || out.found !== true || !Array.isArray(out.rows) || out.rows.length === 0) return null;
+    return {
+      rows: out.rows.map((r) => ({ label: String(r.label ?? ""), link: typeof r.link === "number" && Number.isFinite(r.link) ? r.link : null, alt: Object.fromEntries(Object.entries(r.alt ?? {}).map(([k, v]) => [k, String(v)])) })).filter((r) => r.label !== ""),
+      womenDiffer: out.womenDiffer === true
+    };
+  }
+
+  private sessionLines(turn: Turn): TurnContext["turns"] {
+    // 05/10/2026: the ONE session of the turn (`sessionStartIndex`) — the frame and the focus use the same.
+    return turn.ctx.turns.slice(sessionStartIndex(turn.ctx.turns.map((t) => t.at)));
   }
 
   private resolveFocus(turn: Turn, carried: ProductRef | null, nowIso: string): FocusResolution {
@@ -1070,7 +1559,8 @@ export class TurnPipeline {
       ...(truth.focus.product !== null || truth.focus.dropped !== undefined ? { mauChinh: { ma: truth.focus.product?.code ?? "", ten: truth.focus.product?.name ?? "", nguon: truth.focus.source, ...(truth.focus.dropped !== undefined ? { boDi: truth.focus.dropped } : {}) } } : {}),
       bacThang: truth.level,
       ...(order !== undefined ? { donHang: { maDon: order.orderId, trangThai: order.statusLabel ?? order.status, vanDon: order.tracking?.active === true, ...(truth.facts.orderExchange !== undefined ? { doiSize: truth.facts.orderExchange.allowed } : {}) } } : {}),
-      ...(truth.portrait !== null ? { khach: { daMua: truth.portrait.orderCount, sizeHayMua: truth.portrait.usualSizes ?? [] } } : {})
+      ...(truth.portrait !== null ? { khach: { daMua: truth.portrait.orderCount, sizeHayMua: truth.portrait.usualSizes ?? [] } } : {}),
+      ...(truth.consult ? { hoSoTuVan: { trangThai: truth.consult.status, nhuCau: truth.consult.need?.name ?? "", daBiet: truth.consult.known.map((k) => `${k.name} = ${k.said}`), thieu: truth.consult.missing.map((m) => m.name), daHoi: truth.consult.asked.map((m) => m.name) } } : {})
     };
   }
 
@@ -1115,7 +1605,8 @@ export class TurnPipeline {
       agent: profile, chung: binding.chung, hoSo: turn.hoSo, chinhSach: turn.shop?.chinhSach,
       nangLuc: systemCapabilities({
         open, visionReady: this.visionReady(), hoSo: turn.hoSo, chaoAi: turn.chaoAi, guiKem: open.includes("order.formLink") || turn.ctx.theDaGui.length > 0,
-        photoLine: vision !== null ? binding.chung.xemAnh?.nangLuc : undefined
+        photoLine: vision !== null ? binding.chung.xemAnh?.nangLuc : undefined,
+        phieu: this.formThisTurn(turn)
       }),
       site: binding.origin, shopName: binding.shopName, history: turn.ctx.history,
       neverSay: applyShopProfile(binding.pack, turn.hoSo, binding.chung.cauCam).identity.neverSay,
@@ -1191,7 +1682,7 @@ export class TurnPipeline {
       for (const item of call.ketQua as { ma?: unknown; ten?: unknown; loai?: unknown; link?: unknown; cac_size?: { size?: unknown; gia?: unknown }[] }[]) {
         catalog.push({
           code: String(item.ma ?? ""), name: String(item.ten ?? ""), source: String(item.loai ?? ""), link: String(item.link ?? ""),
-          price: Number(item.cac_size?.[0]?.gia) || 0, sizes: (item.cac_size ?? []).map((s) => String(s.size ?? ""))
+          price: priceOf({ ma: "", ten: "", cac_size: (item.cac_size ?? []) as FoundItem["cac_size"] }), sizes: (item.cac_size ?? []).map((s) => String(s.size ?? ""))
         });
       }
     }
@@ -1205,7 +1696,7 @@ export class TurnPipeline {
       ...(truth?.level ? { stockCascade: { resolvedLevel: truth.level } } : {}),
       ...(truth && truth.orders.length > 0 ? { lookupResults: truth.orders.map((o) => ({ command: "check_order", orderId: o.orderId, status: o.statusLabel ?? o.status, tracking: o.tracking?.url ?? "" })) } : {}),
       ...(truth?.portrait ? { customerPortrait: truth.lines.find((l) => l.startsWith("CHAN DUNG KHACH")) } : {}),
-      imageProducts: turn.photos?.chot?.ket === "tu_tin" ? [{ code: turn.photos.chot.ma, name: turn.photos.chot.ten }] : []
+      imageProducts: turn.photos?.chot?.ket === "tu_tin" && !turn.photos.thamChieu ? [{ code: turn.photos.chot.ma, name: turn.photos.chot.ten }] : []
     };
     for (const it of truth?.found ?? []) numbersIn(it, knownAmounts);
     const nowIso = this.deps.clock.now().toISOString();
@@ -1217,6 +1708,12 @@ export class TurnPipeline {
       memoryText: turn.contexts.renderMemory(turn.ctx.state, nowIso),
       stage: turn.ctx.state.episode?.stage,
       facts, text: loadDraftText(binding.packId), examples: loadHumanExamples(binding.packId),
+      // 05/10/2026 (phiếu Desk nhóm nhu cầu): the situations only tier 1 knows — an item named, an everyday need.
+      extraTags: [
+        ...(truth?.consult?.status === "dich-danh" ? ["dich_danh"] : truth?.consult?.status === "pho-thong" ? ["pho_thong"] : []),
+        // 05/10/2026 (phiếu Desk "khách mặc cả"): the one bargaining reader of tier 1 (the gate's), not a regex of LLM#3's own.
+        ...(bargainSaid(gateNormalize(turn.text), loadReplyGateConfig(binding.packId)) ? ["mac_ca"] : [])
+      ],
       site: binding.origin, shopName: binding.shopName, hoSo: turn.hoSo,
       usage: { shop: tenant, channel: turn.channel, conversationId }, nowIso
     }, budget);
@@ -1289,7 +1786,7 @@ export class TurnPipeline {
       if (turn.live) await this.notify(turn, engineReason);
       return this.outcome({ daTraLoi: false, viSao: "chuyen_nguoi_that", traLoi: result.reply }, { reply: "", source: "", action: "human_handoff", needsHuman: true, reason: engineReason, steps: turn.steps, analysis: turn.analysis, router: turn.router, engine: result });
     }
-    if (turn.live) await this.send(turn, result.reply);
+    if (turn.live) await this.send(turn, result.reply, {}, { askBack: result.action === "ask_back" });
     return this.outcome(
       { daTraLoi: true, hanhDong: result.action, traLoi: redactPII(result.reply) },
       { reply: result.reply, source: "may-luat", action: result.action === "ask_back" ? "ask_clarification" : "script_reply", needsHuman: false, reason: engineReason, steps: turn.steps, analysis: turn.analysis, router: turn.router, engine: result }
@@ -1304,6 +1801,10 @@ export class TurnPipeline {
     toolCalls?: RecordedToolCall[] | undefined; askBack?: boolean | undefined;
     /** The notice's reason when a person must take over after this reply. */
     handoff?: string | undefined;
+    /** 05/10/2026: with the notice, ask the landing to pause the bot on this conversation until a person confirms. */
+    pauseBot?: boolean | undefined;
+    /** 05/10/2026: a person was called after the second ask-back — the ask-back count starts again (Desk v93e). */
+    clearAskBack?: boolean | undefined;
   }): Promise<TurnOutcome> {
     const base = { reply: what.reply, source: what.source, action: what.action, needsHuman: what.handoff !== undefined, reason: what.reason, steps: turn.steps, analysis: turn.analysis, router: turn.router, engine: null };
     if (!turn.isLatest()) {
@@ -1313,11 +1814,23 @@ export class TurnPipeline {
     // Giai đoạn 7: what goes with the reply — cards, the order form, the measuring guide, the greeting.
     const plan = this.planExtras(turn, what.reply, what.toolCalls ?? [], what.action);
     const extras = await this.extrasOf(turn, plan);
+    // 05/10/2026 (phiếu Desk "thẻ đặt hàng không đi khi khách chốt hoặc giục"): a promise of the form stays only
+    // when the landing really returned one for this turn (preview: when one is planned); a closing that needs a
+    // person (form refused, running order, closing not declared) calls one.
+    const formSent = turn.live ? extras["phieuDatHang"] !== undefined : plan.phieu !== undefined;
+    const formPerson = plan.canNguoiChot !== "" || (plan.phieu !== undefined && !formSent);
+    const promise = repairFormPromise(what.reply, loadReplyGateConfig(turn.req.binding.packId).contact, { formSent, personNeeded: plan.goiNguoi || formPerson, vars: this.noteVars(turn) });
+    if (promise.cut) {
+      turn.steps.push({ loai: "chan", ten: "Hứa phiếu", chiTiet: `Phiếu đặt hàng không đi lượt này — cắt câu hứa phiếu${formPerson ? ", gọi người" : ""}.` });
+      what = { ...what, reply: promise.reply };
+      base.reply = promise.reply;
+    }
     if (turn.live) {
-      await this.send(turn, what.reply, extras);
-      await this.rememberTurn(turn, what.reply, what.toolCalls ?? [], what.askBack === true);
-      if (what.handoff !== undefined) await this.notify(turn, what.handoff);
+      await this.send(turn, what.reply, extras, { askBack: what.askBack === true, toolCalls: what.toolCalls ?? [] });
+      await this.rememberTurn(turn, what.reply, what.toolCalls ?? [], what.askBack === true, what.clearAskBack === true);
+      if (what.handoff !== undefined) await this.notify(turn, what.handoff, what.pauseBot === true);
       else if (plan.goiNguoi) await this.notify(turn, "khach chot don — shop chot qua nguoi phu trach");
+      else if (formPerson && promise.callPerson) await this.notify(turn, `khach chot don — phieu khong di (${plan.canNguoiChot || "landing chan phieu"})`);
     }
     turn.steps.push({ loai: "quyet-dinh", ten: "Đề xuất phản hồi", chiTiet: what.reason });
     if (plan.lyDo.length > 0) turn.steps.push({ loai: "quyet-dinh", ten: "Gửi kèm", chiTiet: plan.lyDo.join("; ") });
@@ -1361,19 +1874,70 @@ export class TurnPipeline {
     return { result, ...rest };
   }
 
-  private async send(turn: Turn, reply: string, extras: Record<string, unknown> = {}): Promise<void> {
+  private async send(turn: Turn, reply: string, extras: Record<string, unknown> = {}, basis: { askBack?: boolean; toolCalls?: readonly RecordedToolCall[] } = {}): Promise<void> {
     const { binding, conversationId, message } = turn.req;
     // A comment is answered UNDER that comment: its id is the message id the landing sent in.
     const underComment = turn.channel === COMMENT_CHANNEL && message.maTin ? { traLoiTin: String(message.maTin) } : {};
-    const result = await binding.gateway.sendReply({ kenh: message.kenh, nguoi: message.nguoi, chu: reply, maHoiThoai: conversationId, ...underComment, ...extras });
+    const pressed = message.tiepQuan === "nguoi-bam" ? { tiepQuan: true } : {};
+    // 05/10/2026 (phiếu Desk "chống gửi trùng" / "tin khách đến trong lúc AI chạy" / "lượt trước đã gửi câu gì"):
+    // the newest customer message this turn saw, and what the reply rests on — the landing's send door judges them.
+    const judged = turn.channel !== COMMENT_CHANNEL && turn.seenUpTo !== "" ? { theoTin: turn.seenUpTo, bangChung: this.replyEvidence(turn, basis) } : {};
+    let result: Awaited<ReturnType<typeof binding.gateway.sendReply>>;
+    try {
+      result = await binding.gateway.sendReply({ kenh: message.kenh, nguoi: message.nguoi, chu: reply, maHoiThoai: conversationId, ...underComment, ...extras, ...pressed, ...judged });
+    } catch (error) {
+      throw new ReplyNotSent(conversationId, error instanceof Error ? error.message : String(error));
+    }
     // What really went: the landing answers `daGui` at the top (contract) or inside `ketQua` (older builds); a queued Zalo send must answer it too.
-    const inner = result["ketQua"] as { daGui?: typeof result.daGui; chaoAi?: boolean } | undefined;
+    const inner = result["ketQua"] as { daGui?: typeof result.daGui; chaoAi?: boolean; nhuongNguoi?: boolean; tinMoi?: boolean; daTraLoi?: boolean } | undefined;
+    // 05/10/2026: a person wrote or typed after the customer while this turn was being written — the landing
+    // sent nothing. The turn ends here as a yield: nothing remembered, nobody notified.
+    if (result["nhuongNguoi"] === true || inner?.nhuongNguoi === true) throw new HumanTookOver(conversationId);
+    // 05/10/2026: the customer wrote again (that message has its own turn), or this message was answered already.
+    if (result["tinMoi"] === true || inner?.tinMoi === true) throw new ReplyRefused(conversationId, "tin-moi");
+    if (result["daTraLoi"] === true || inner?.daTraLoi === true) throw new ReplyRefused(conversationId, "da-tra-loi");
     let daGui = result.daGui ?? inner?.daGui;
     // An older landing answers the greeting at the top only: fold it into `daGui` so the dossier reads one shape.
     const chaoAiTop = typeof result["chaoAi"] === "boolean" ? (result["chaoAi"] as boolean) : typeof inner?.chaoAi === "boolean" ? inner.chaoAi : undefined;
     if (daGui === undefined && chaoAiTop !== undefined) daGui = { the: [], boQua: [], chaoAi: chaoAiTop };
     if (turn.draft.guiKem !== undefined && daGui !== undefined) turn.draft.guiKem.daGui = daGui;
     else if (Object.keys(extras).length > 0) this.deps.logger.warn(`[gui-kem] ${conversationId}: landing khong tra daGui cho ${Object.keys(extras).join(", ")} — khong biet the/phieu/chao da di chua`);
+  }
+
+  /**
+   * 05/10/2026 (phiếu Desk "thẻ đặt hàng không đi"): the agent is told, before it writes, whether the order
+   * form goes with this turn — the same dispatcher decision the delivery takes (the item part does not
+   * depend on the reply). `undefined` = the customer is not closing. The dossier's plan is left untouched.
+   */
+  private formThisTurn(turn: Turn): "se-gui" | "khong-gui" | undefined {
+    const kept = turn.draft.guiKem;
+    const plan = this.planExtras(turn, "", []);
+    turn.draft.guiKem = kept;
+    if (!plan.chot) return undefined;
+    return plan.phieu !== undefined ? "se-gui" : "khong-gui";
+  }
+
+  /** `{khach}` / `{Khach}` / `{shop}` / `{tenNguoiPhuTrach}` of this shop, for a note added after the gate. */
+  private noteVars(turn: Turn): Record<string, string> {
+    const identity = applyShopProfile(turn.req.binding.pack, turn.hoSo).identity;
+    const khach = identity.customerPronoun.trim() || "mình";
+    return {
+      khach, Khach: khach.charAt(0).toUpperCase() + khach.slice(1), shop: identity.selfPronoun.trim() || "em",
+      tenNguoiPhuTrach: String(turn.hoSo?.tenNguoiPhuTrach ?? "").trim() || "người phụ trách"
+    };
+  }
+
+  /**
+   * 05/10/2026: what a reply rests on, for the landing's send door. WEAK = it asks the customer back, or the
+   * customer sent a photo and no product came of it — only a weak reply may later be corrected, once, by a turn
+   * that read more photos or found the product.
+   */
+  private replyEvidence(turn: Turn, basis: { askBack?: boolean; toolCalls?: readonly RecordedToolCall[] }): { yeu: boolean; soAnh: number; suThat: boolean } {
+    const toolFound = (basis.toolCalls ?? []).some((c) => c.ten === "findStock" && Array.isArray(c.ketQua) && c.ketQua.length > 0);
+    const suThat = (turn.truth?.found.length ?? 0) > 0 || toolFound || (turn.photos?.read.code ?? "") !== "";
+    // 05/10/2026: only photos a model really read are evidence (a failed look is not a photo "seen").
+    const soAnh = turn.photos?.ok === true ? turn.photos.looks.filter((l) => l.docDuoc === true).length : 0;
+    return { yeu: basis.askBack === true || (turn.ctx.photos.length > 0 && !suThat), soAnh, suThat };
   }
 
   // ---------------------------------------------------------------- stage 6 and Giai đoạn 7
@@ -1423,6 +1987,18 @@ export class TurnPipeline {
     const found: FoundItem[] = [...(truth?.found ?? [])];
     for (const call of toolCalls) if (call.ten === "findStock" && Array.isArray(call.ketQua)) found.push(...(call.ketQua as FoundItem[]).filter((it) => it && typeof it.ma === "string"));
     const order = truth?.orders[0];
+    // 05/10/2026: the running orders linked to the conversation — a tracking link only for a parcel on its
+    // way; a cancelled / returned waybill leaves the order "not looked up" so "đang giao" is still cut.
+    const running = runningOrders(turn.orders);
+    const linkedTracking = running.find((o) => o.giaiDoan === "dang_giao" && !o.vanDonDong && (o.vanDon?.link ?? "") !== "");
+    const linkedLooked = running.length > 0 && !running.some((o) => o.vanDonDong);
+    // 05/10/2026 (phiếu Desk nhóm số đo): the variant map of the brand in focus — its own chart from the landing
+    // (asked only when the draft pairs a label with a cm value or a UK label), the industry table otherwise.
+    const sizeTable = loadSizeAdvice(binding.packId);
+    const pairWords = loadReplyGateConfig(binding.packId).sizePair;
+    const pairsNumbers = sizeTable.rows.length > 0 && [pairWords.unit, ...Object.values(pairWords.alt)].some((p) => { if (p === "") return false; try { return new RegExp(p, "iu").test(reply); } catch { return false; } });
+    const sizeBrand = truth?.size?.brand ?? this.focusBrand(turn, truth);
+    const sizeChart = pairsNumbers ? await this.brandChart(turn, truth, sizeBrand) : (truth?.size?.chart ?? null);
     const sources: GateSources = {
       shopSaid: turn.ctx.history.filter((h) => h.who === "nguoi").map((h) => h.text).join("\n"),
       customerSaid: turn.ctx.history.filter((h) => h.who === "khach").map((h) => h.text).join("\n"),
@@ -1430,16 +2006,19 @@ export class TurnPipeline {
       policy: await this.policyOf(turn),
       hoSo: turn.hoSo,
       found,
+      // 05/10/2026: the stock tool's answers IN WORDS ("HET SIZE …: size dang con …") list labels too.
+      toolText: toolCalls.filter((c) => c.ten === "findStock" && typeof c.ketQua === "string").map((c) => String(c.ketQua)).join("\n"),
       stockFacts: truth?.stock ?? null,
       lookups: {
-        orderLooked: (truth?.lookups ?? []).some((l) => l.ten === "order.lookup" && l.loi === undefined),
-        tracking: order?.tracking?.url && order.tracking.active ? { url: order.tracking.url, code: order.tracking.code, statusLabel: order.statusLabel ?? order.status } : null,
+        orderLooked: (truth?.lookups ?? []).some((l) => l.ten === "order.lookup" && l.loi === undefined) || linkedLooked,
+        tracking: order?.tracking?.url && order.tracking.active ? { url: order.tracking.url, code: order.tracking.code, statusLabel: order.statusLabel ?? order.status }
+          : linkedTracking !== undefined ? { url: linkedTracking.vanDon!.link!, code: linkedTracking.vanDon!.ma } : null,
         exchange: order?.exchange ? { allowed: order.exchange.allowed } : null
       },
       // What the bot may recommend: the pipeline's candidates AND what the agent's own finder calls returned this turn.
       adviceCandidates: [
         ...(truth?.resolution?.selected ?? []).map((c) => ({ code: c.code, name: c.name, price: c.price || undefined, link: c.item.link })),
-        ...found.filter((it) => !(truth?.resolution?.selected ?? []).some((c) => c.code === it.ma)).map((it) => ({ code: it.ma, name: it.ten, price: it.cac_size.find((r) => r.gia > 0)?.gia, link: it.link }))
+        ...found.filter((it) => !(truth?.resolution?.selected ?? []).some((c) => c.code === it.ma)).map((it) => ({ code: it.ma, name: it.ten, price: priceOf(it) || undefined, link: it.link }))
       ],
       links: { ...(truth?.stock?.filterLink ? { filterLink: truth.stock.filterLink } : {}) },
       currentShoe: turn.analysis !== null ? String(turn.analysis.needBrief["currentShoe"] ?? "") || undefined : undefined,
@@ -1447,18 +2026,45 @@ export class TurnPipeline {
       uncertainProduct: truth?.uncertain !== null && truth?.uncertain !== undefined,
       moneyContext: { deposit: undefined },
       hasImages: turn.ctx.photos.length > 0,
+      // 05/10/2026 (phiếu Desk "gửi ảnh rồi hỏi"): a photo within the fresh window — asking for "a photo" again is wrong.
+      photoSent: turn.ctx.photoEvidence || hasRecentImageEvidence(turn.ctx.state, this.deps.clock.now()),
       // The cards that will go with this reply, planned on the draft as written (re-planned on the repaired one at delivery).
       cardsSent: (turn.req.binding.gateway.tools.available().includes("order.formLink") || turn.ctx.theDaGui.length > 0) && this.planExtras(turn, reply, toolCalls).theSanPham.length > 0,
       closing: turn.router?.intent.intent === "place_order",
       site: binding.origin, tenShop: binding.shopName,
-      sizeChart: loadEntityConfig(binding.packId).sizeChart
+      sizeChart: loadEntityConfig(binding.packId).sizeChart,
+      runningOrders: running.map((o) => ({ maDon: o.maDon, giaiDoan: o.giaiDoan, taoLuc: o.taoLuc, mon: o.mon.map((m) => ({ ma: m.ma, ten: m.ten, size: m.size })) })),
+      customerLines: turn.ctx.history.filter((h) => h.who === "khach").map((h) => ({ text: h.text, at: h.at ?? "" })),
+      focusCode: truth?.focus.product?.code ?? "",
+      // The only data that the customer paid: an order certainly theirs with a paid amount (never the bot's words).
+      paidEvidence: running.some((o) => Number(o.tien.daTra) > 0) || (truth?.orders ?? []).some((o) => Number(o.money?.paid) > 0),
+      // 05/10/2026 (phiếu Desk "khẳng định đúng là mẫu từ ảnh khách"): a customer photo in play — this turn's or
+      // one of the last half-hour still in the transcript; a code PRINTED on it; the code it was matched to.
+      photoContext: turn.ctx.photos.length > 0 || turn.ctx.history.some((h) => h.who === "khach" && (h.imageUrls?.length ?? 0) > 0),
+      photoCodesRead: turn.photos?.read.code ? [turn.photos.read.code] : [],
+      photoCodes: turn.photos?.chot?.ket === "tu_tin" ? [turn.photos.chot.ma] : [],
+      // 05/10/2026 (phiếu Desk "cổng đè câu agent bằng tồn mẫu khác"): the industry's brands, to tell which item a stock sentence names.
+      brandWords: binding.pack.lexicon.brands,
+      // 05/10/2026 (phiếu Desk "chống thúc ép chốt"): the router's / the model's reading of a buying step.
+      buyingSignals: (turn.router?.entities.closingSignals.length ?? 0) > 0 || turn.analysis?.needBrief["readyToBuy"] === true,
+      // 05/10/2026 (phiếu Desk nhóm số đo): what tier 1 read from the customer's measurements; the brand's variant map.
+      sizeHint: truth?.size?.hint ?? null,
+      variantRows: pairsNumbers ? new SizeAdvisor(sizeTable).variantRows(sizeBrand, sizeChart?.rows ?? null) : [],
+      variantBrand: sizeBrand,
+      variantWomenDiffer: sizeChart?.womenDiffer === true,
+      pageSaid: turn.ctx.history.filter((h) => h.who !== "khach").map((h) => h.text).join("\n"),
+      // 05/10/2026 (phiếu Desk nhóm nhu cầu / tư vấn): the questions the consultation profile says not to ask this turn.
+      consultNoAsk: truth?.consult?.noAsk ?? []
     };
     const out = new ReplyGate(loadReplyGateConfig(binding.packId)).run(reply, sources, { needsHuman });
     const mask = (text: string): string => text.replace(/\d{9,}/g, (d) => `${d.slice(0, 2)}***${d.slice(-2)}`);
     turn.draft.cong = { goc: mask(reply), sua: mask(out.reply), dauVet: out.trace, canNguoi: out.needsHuman, lyDo: out.handoffReason };
     if (out.trace.length > 0) {
       turn.steps.push({ loai: "chan", ten: "Cổng soát", chiTiet: `${out.trace.join(" › ")}${out.needsHuman ? ` — cần người (${out.handoffReason})` : ""}` });
-      this.deps.logger.info(`[cong-soat] ${tenant}/${turn.req.conversationId}: ${out.trace.join(" › ")}`);
+      // 05/10/2026: when the gate CHANGED the draft, the agent's own sentence goes to the log too (Desk trace) — a
+      // wrong repair can then be told from a wrong draft without opening the dossier.
+      const changed = out.reply !== reply ? ` — câu gốc: ${mask(reply).replace(/\s+/g, " ").slice(0, 300)}` : "";
+      this.deps.logger.info(`[cong-soat] ${tenant}/${turn.req.conversationId}: ${out.trace.join(" › ")}${changed}`);
     }
     return { reply: out.reply, needsHuman: out.needsHuman, handoffReason: out.handoffReason };
   }
@@ -1505,7 +2111,13 @@ export class TurnPipeline {
       readyToBuy: turn.analysis?.needBrief["readyToBuy"] === true,
       focusCode: truth?.focus.product?.code ?? "", requestedSize: truth?.stock?.requestedSize ?? turn.router?.entities.size ?? "",
       hoSo: turn.hoSo, asksFootMeasure: loadIntentRules(binding.packId).reconcile.asksFootMeasure, site: binding.origin,
-      sharedFilter: (codes) => this.sharedFilterOf(turn, found, codes)
+      sharedFilter: (codes) => this.sharedFilterOf(turn, found, codes),
+      // 05/10/2026: a customer with a running order — no card / form for what is already in it, and a form
+      // only for an item named in THIS message (never one carried over from the session).
+      orderedCodes: [...orderedItemKeys(turn.orders)],
+      namedThisTurn: this.namedThisTurn(turn),
+      // 05/10/2026 (phiếu Desk "thẻ đặt hàng không đi"): several codes each with its own variant → one form, one line each.
+      message: turn.text
     });
     turn.draft.guiKem = {
       the: plan.theSanPham.map((c) => c.ma), linkLoc: plan.linkLoc, ...(plan.phieu ? { phieu: { items: plan.phieu.items } } : {}),
@@ -1559,17 +2171,17 @@ export class TurnPipeline {
     return extras;
   }
 
-  private async notify(turn: Turn, lyDo: string): Promise<void> {
+  private async notify(turn: Turn, lyDo: string, pauseBot = false): Promise<void> {
     const { binding, conversationId, message } = turn.req;
-    await binding.gateway.notifyHandoff({ kenh: message.kenh, nguoi: message.nguoi, maHoiThoai: conversationId, lyDo, tinCuoi: redactPII(turn.text) });
+    await binding.gateway.notifyHandoff({ kenh: message.kenh, nguoi: message.nguoi, maHoiThoai: conversationId, lyDo, tinCuoi: redactPII(turn.text), ...(pauseBot ? { dungBot: true } : {}) });
   }
 
   /** Writes the ledger, the episode and the photo label AFTER the reply went out. A memory that cannot be saved is logged, never fatal. */
-  private async rememberTurn(turn: Turn, reply: string, toolCalls: readonly RecordedToolCall[], askBack: boolean): Promise<void> {
+  private async rememberTurn(turn: Turn, reply: string, toolCalls: readonly RecordedToolCall[], askBack: boolean, clearAskBack = false): Promise<void> {
     try {
       const truth = turn.truth;
       await turn.memory.save(this.remember(turn.contexts, turn.ctx, {
-        text: turn.text, reply, toolCalls, photos: turn.photos, analysis: turn.analysis, askBack,
+        text: turn.text, reply, toolCalls, photos: turn.photos, analysis: turn.analysis, askBack, ...(clearAskBack ? { clearAskBack } : {}),
         intentId: turn.router?.intent.intent, now: this.deps.clock.now().toISOString(),
         ...(truth !== null ? {
           focus: truth.focus.product,
@@ -1595,6 +2207,8 @@ export class TurnPipeline {
   remember(contexts: TurnContextBuilder, ctx: TurnContext, turn: {
     text: string; reply: string; toolCalls: readonly RecordedToolCall[]; photos: PhotoReading | null; now: string;
     analysis?: ContextAnalysis | null | undefined; askBack?: boolean | undefined; intentId?: string | undefined;
+    /** 05/10/2026: a person was called after the second ask-back — forget the ask-backs, or every later unclear message is a handoff (Desk v93e). */
+    clearAskBack?: boolean | undefined;
     /** The focus the resolver settled on (stage 3); the page's card when absent. */
     focus?: ProductRef | null | undefined;
     /** The catalog resolver's single match, with the stock answer for the size asked. */
@@ -1609,13 +2223,14 @@ export class TurnPipeline {
       for (const item of call.ketQua as { ma?: unknown; ten?: unknown; cac_size?: { gia?: unknown }[] }[]) {
         const code = String(item.ma ?? "").trim();
         if (code === "") continue;
-        const price = Number(item.cac_size?.[0]?.gia);
+        const price = priceOf({ ma: "", ten: "", cac_size: (item.cac_size ?? []) as FoundItem["cac_size"] });
         found.push({ code, name: String(item.ten ?? ""), ...(Number.isFinite(price) && price > 0 ? { price } : {}) });
       }
     }
     const inReply = (p: ProductRef): boolean => p.code !== undefined && p.code !== "" && turn.reply.toUpperCase().includes(p.code.toUpperCase());
     const replied = found.filter(inReply);
-    const imageProducts: ProductRef[] = turn.photos?.chot?.ket === "tu_tin" ? [{ code: turn.photos.chot.ma, name: turn.photos.chot.ten }] : [];
+    // 05/10/2026: a REFERENCE photo (what the customer uses now) is never the item in focus.
+    const imageProducts: ProductRef[] = turn.photos?.chot?.ket === "tu_tin" && !turn.photos.thamChieu ? [{ code: turn.photos.chot.ma, name: turn.photos.chot.ten }] : [];
     const page: ProductRef | undefined = ctx.focusedProduct !== null ? { code: ctx.focusedProduct.code, name: ctx.focusedProduct.name } : undefined;
     const focused: ProductRef | undefined = turn.focus ? { code: turn.focus.code, name: turn.focus.name, brand: turn.focus.brand } : page;
     const top = turn.matched?.item ?? imageProducts[0] ?? focused ?? replied[0];
@@ -1650,7 +2265,7 @@ export class TurnPipeline {
         visionOk: turn.photos.ok,
         receiptByIntent: turn.photos.loai === "bien_lai",
         visibleTexts: turn.photos.bienLai ? [turn.photos.bienLai.text, turn.photos.bienLai.amount > 0 ? String(turn.photos.bienLai.amount) : ""] : undefined,
-        match: turn.photos.chot?.ket === "tu_tin" ? { action: "auto_match", primary: imageProducts[0] }
+        match: turn.photos.thamChieu ? undefined : turn.photos.chot?.ket === "tu_tin" ? { action: "auto_match", primary: imageProducts[0] }
           : turn.photos.chot?.ket === "hoi_lai" ? { action: "ask_choose", selected: turn.photos.chot.luaChon.map((c) => ({ code: c.ma, name: c.ten })) }
           : undefined,
         // An unconfirmed line is a guess: never a name later turns would repeat as fact (01/10/2026)…
@@ -1662,7 +2277,13 @@ export class TurnPipeline {
         } : undefined
       });
       const label = recognised !== null ? ledger.imageLabel(recognised) : "";
-      for (const photo of ctx.photos) if (photo.maTin !== "" && label !== "") imageLabels[photo.maTin] = label;
+      // 05/10/2026 (phiếu Desk "kết quả phân tích mù ảnh được dùng lại"): a labelled message is skipped by later turns
+      // as "already read", so only a message EVERY photo of which a model really read gets the label — one photo the
+      // reading missed (download / model failure, beyond the per-turn cap) leaves the message to be read again.
+      const read = new Set((turn.photos.looks ?? []).filter((l) => l.docDuoc === true).map((l) => l.url));
+      const byMessage = new Map<string, string[]>();
+      for (const photo of ctx.photos) if (photo.maTin !== "") byMessage.set(photo.maTin, [...(byMessage.get(photo.maTin) ?? []), photo.url]);
+      for (const [maTin, urls] of byMessage) if (label !== "" && urls.every((u) => read.has(u))) imageLabels[maTin] = label;
       // Forty labels are plenty: older photos have long since scrolled out of the transcript.
       for (const key of Object.keys(imageLabels).slice(0, Math.max(0, Object.keys(imageLabels).length - 40))) delete imageLabels[key];
     }
@@ -1677,7 +2298,8 @@ export class TurnPipeline {
       imageLabels,
       focusItemCode: updated.episode?.focus?.code || state.focusItemCode,
       // An ask-back is counted the way the engine counts its own, so `ask_back_once` still trips.
-      ...(turn.askBack === true ? { lastAskBackAt: turn.now, askBackCount: (ctx.state.askBackCount ?? 0) + 1 } : {})
+      ...(turn.askBack === true ? { lastAskBackAt: turn.now, askBackCount: (ctx.state.askBackCount ?? 0) + 1 } : {}),
+      ...(turn.clearAskBack === true ? { lastAskBackAt: undefined, askBackCount: undefined } : {})
     };
   }
 
@@ -1692,7 +2314,9 @@ export class TurnPipeline {
     const ownStockOnly = knowledge?.cauHinh.tatHangDoiTac === true;
     return {
       findStock: async (args) => {
-        const r = await tools.call("catalog.find", ownStockOnly ? { ...args, chi_hang_san: true } : args);
+        // 05/10/2026: the industry's everyday words for the catalog's groups ride along.
+        const withGroups = { ...this.groupWords(this.kitFor(binding)), ...args };
+        const r = await tools.call("catalog.find", ownStockOnly ? { ...withGroups, chi_hang_san: true } : withGroups);
         return r.ok ? r.data.ketQua : `LOI tra kho: ${r.error.message}`;
       },
       policy: async () => this.policyText(binding, tools, shop),

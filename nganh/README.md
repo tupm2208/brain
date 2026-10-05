@@ -28,10 +28,10 @@ bộ soi (`checkBlocksFree`) từ chối, Xeon không khởi động.
 | `bo-luat.json` | **Có** | máy luật (9) | Luật chatbot: `id` (= tên thư mục), xưng hô, từ điển hãng/dòng, hình dạng mã, trục biến thể, ý định, cổng an toàn, mẫu câu |
 | `agent.json` | Không | agent (7) | Sổ tay agent ngành: `khoi[]` (id, tieuDe, `shopSua`, loiDan), `mauHoSo` (gợi ý cho shop mới), `mustHumanPattern`, `handoffReplyPattern`, `tools[].moTa`. **Không có = agent không chạy cho ngành này** |
 | `y-dinh.json` | Không | định tuyến (4) | Từ khoá ý định **định ngành**, nối thêm vào `y-dinh-chung.json` theo tên ý định (`ask_size` chỉ có ở đây vì "size" là khái niệm ngành); `reconcile` (vd `asksFootMeasure` cho ảnh đo chân) |
-| `thuc-the.json` | Không | định tuyến (4) | Trích thực thể ngành: mẫu size (`sizeCore`, nấc 1/3, rưỡi, tem cm), size quần áo, nhu cầu, form chân, tín hiệu chốt, từ nhiễu trong tên |
+| `thuc-the.json` | Không | định tuyến (4) | Trích thực thể ngành: mẫu size (`sizeCore`, nấc 1/3, rưỡi, tem cm), size quần áo, nhu cầu, form chân, tín hiệu chốt, từ nhiễu trong tên. `hoSoTuVan` (05/10/2026, bước 5–6–10): **hồ sơ tư vấn** — các nhu cầu của ngành (`chuyen-mon` cần hỏi gì trước khi chào hàng / `pho-thong` tra kho theo `mucDich`), câu khách đã cho (`doc`), câu page hỏi (`hoi`), suy ra (`suyRa`); tầng 1 `engine/consult-profile.ts` chỉ hỏi khi khách chưa gọi đích danh mẫu, mỗi thông tin một lần trong phiên |
 | `bang-size.json` | Không | định tuyến (4), cổng soát (10) | Bảng tem Nhật (cm) → size, `rows[]`; "size 265" tra thẳng cột tem |
 | `kich-ban.json` | Không | định tuyến (4), cổng chưa chắc mẫu (5) | Kịch bản trả lời cứng của ngành, ghi đè từng kịch bản chung; `hoiLai` = câu hỏi lại theo lý do (chưa rõ mẫu, xin tên, xin ảnh, hãng không bán…). Chỗ trống shop chưa khai → kịch bản đó **không dùng** |
-| `khung-hoi-thoai.json` | Không | nền lượt (1) | Phần ngành của khung hội thoại: page hỏi size / hỏi mục đích, tin khách chỉ là số size (`sizeOnly`), hình dạng mã sản phẩm |
+| `khung-hoi-thoai.json` | Không | nền lượt (1) | Phần ngành của khung hội thoại: page hỏi size / hỏi mục đích, tin khách chỉ là số size (`sizeOnly`), hình dạng mã sản phẩm, page vừa xin xem món khách ĐANG DÙNG / tem (`askedReference` → ảnh tiếp theo là tham chiếu, 05/10/2026) |
 | `cham-diem.json` | Không | sự thật (5) | Phần ngành của chấm điểm ứng viên catalog: từ nhiễu, từ chung (air/pro/max), đời số dễ lẫn size (35–52), dòng ngầm định hãng, luật phân loại hàng từ tên, `uncertain` |
 | `line-dna.json` | Không | sự thật (5), kiến thức | Dòng sản phẩm (`lines[]`: id, name, aliases, equivalents, beginnerAlternative, purpose, note, ma trận pace × cự ly) — bậc thang tồn đi sang dòng tương đương / dòng cho người mới, và tư vấn theo nhu cầu |
 | `xac-nhan-catalog.json` | Không | sự thật (5) | Ví dụ ngành cho LLM#2 (xác nhận mẫu khi chỉ có một phỏng đoán yếu) |
@@ -44,13 +44,14 @@ bộ soi (`checkBlocksFree`) từ chối, Xeon không khởi động.
 | `cong-soat.json` | Không | cổng soát (10) | Phần ngành của cổng soát sau nháp: cách nói còn/hết size, size nấc lẻ, bảo hành / "bao check" / chính hãng, size quy từ cm phải theo `bang-size.json` |
 | `kien-thuc.json` | Không | xưởng nội dung | Kiến thức ngành của Xeon: chữ gọi ngành, họ nghiên cứu, luật chấm dòng, bảng đánh giá, câu hỏi Fit Finder |
 | `mau-mac-dinh.json` | Không | xưởng nội dung | Bộ mẫu sản phẩm mặc định cho nút "Nạp lại mẫu mặc định" (`{ "mau": [...] }`) |
+| `mau-bang-gia.json` | Không | kho → cách tính giá | Bảng giá mẫu của ngành (`{ "mau": [{ id, ten, moTa, bang }] }`), hiện **sau** mẫu chung qua `POST /kho/mau-bang-gia`. Số trong `bang` là **mẫu** để shop chép rồi sửa thành bảng của riêng shop — Xeon không bao giờ áp vào giá. Giá trị `loai` phải đúng từ vựng phân loại của landing. Dòng cụ thể đứng trước dòng chung; dòng bị che, điều kiện lạ, bước làm tròn lạ là Xeon **không khởi động** |
 | `nghien-cuu.md` | Không | xưởng nội dung | Prompt nghiên cứu; khai tên tệp ở `kit.researchPrompts` trong `kien-thuc.json` |
 
 ### Tệp trong `loi-chung/` (tầng 1, mọi ngành — mọi shop, kể cả nhà thuốc, đều chịu)
 
 | Tệp | Bước dùng | Vai trò |
 |---|---|---|
-| `agent-chung.json` | agent (7) | Lời dặn chung cho agent mọi ngành: `khoi[]`, `mustHumanPattern`, `cauCam`, `handoffReplyPattern`. Không tên hãng, tên mẫu, con số shop nào |
+| `agent-chung.json` | agent (7) | Lời dặn chung cho agent mọi ngành: `khoi[]`, `mustHumanPattern`, `cauCam`, `handoffReplyPattern`, `tools` (05/10/2026: `chinh_sach`, `tai_khoan_shop` — nối sau công cụ của ngành có agent, ngành khai trùng tên thì bản ngành thắng). Không tên hãng, tên mẫu, con số shop nào |
 | `y-dinh-chung.json` | định tuyến (4) | 15 ý định Desk (`rules`), ý định giao dịch át xã giao, chào thuần, `paidMoney` / `paidAboutGoods` (báo đã chuyển tiền, loại trừ câu về hàng), `deposit` (hỏi cọc ≠ báo đã cọc), `paymentFrame`, 7 luật `reconcile` hoà giải với LLM#1 |
 | `thuc-the-chung.json` | định tuyến (4) | SĐT, mã sản phẩm dự phòng / bỏ qua, địa chỉ, ngân sách, giới tính, tín hiệu chốt, size chữ |
 | `kich-ban-chung.json` | định tuyến (4) | Kịch bản cứng chung (`scripts`) + `hoiLai`; câu ghi nhận chuyển khoản là câu **trung tính** — bot không bao giờ tự nói đã nhận tiền |
@@ -63,7 +64,9 @@ bộ soi (`checkBlocksFree`) từ chối, Xeon không khởi động.
 | `xac-nhan-catalog.json` | sự thật (5) | Lời dặn LLM#2: ứng viên nào đúng là mẫu khách nói, được phép trả "không mã nào" |
 | `ghi-chu-he-thong.json` | ghi chú (6) | Câu khung 9 khối ghi chú hệ thống cho agent, thứ tự `order` (VAN_DON đầu vì cắt 4000 ký tự từ cuối) |
 | `soan-nhap.json` | LLM#3 (8) | Prompt nháp dự phòng: `heThong`, `cauChuyenNguoi`, `luat` với `luon` (LEAN_CORE) / `khi` (tình huống), `guardrails`, `nhomViDu` |
-| `cong-soat-chung.json` | cổng soát (10) | Luật soát sau nháp chung: danh tính bot, "đã nhận tiền", xin SĐT khi chốt, cọc / số tiền không nguồn, hứa đổi trả không chính sách, xin thêm ảnh → link, link trang khác, ETA, link tra cứu, tư vấn |
+| `mau-bang-gia.json` | kho → cách tính giá | Bảng giá mẫu chung mọi ngành (bảng trống, cộng %, cộng số tiền), số để 0 cho shop tự điền; `POST /kho/mau-bang-gia` trả trước mẫu ngành |
+| `bang-gia-hieu-y.json` | kho → cách tính giá | Lời dặn "kể bằng lời" (`POST /kho/bang-gia/hieu-y`): `heThong`, `cachDien`, `nhan`, `dongCuoi` (câu chống `malformed_function_call`). Hướng dẫn định dạng bảng do landing gửi kèm, Xeon không giữ bản sao |
+| `cong-soat-chung.json` | cổng soát (10) | Luật soát sau nháp chung: danh tính bot, "đã nhận tiền", xin SĐT khi chốt, cọc / số tiền không nguồn, hứa đổi trả không chính sách, xin thêm ảnh → link, link trang khác, ETA, link tra cứu, tư vấn, xin lại ảnh khách vừa gửi (`photoAgain`, 05/10/2026) |
 
 Đang có: `giay-chay` (đủ mọi tệp trên), `nha-thuoc` (mới có luật + chữ gọi ngành, chưa có dòng nào).
 

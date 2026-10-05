@@ -58,7 +58,12 @@
       "e": "em"
     },
     "pendingText": "Dạ em đã nhận thông tin, em báo {tenNguoiPhuTrach} đối chiếu và báo lại {khach} ngay ạ.",
-    "handoffReason": "bot_khong_duoc_xac_nhan_da_nhan_tien"
+    "handoffReason": "bot_khong_duoc_xac_nhan_da_nhan_tien",
+    "_customerPaidDoc": "05/10/2026 (phieu Desk 'bot tu noi da nhan tien', ca 'Tien coc minh da chuyen se duoc tru vao tong don'): cau khang dinh TIEN CUA KHACH DA DI — cung mot loi tu phia khach. Chi duoc noi khi co bang chung: loi NGUOI TRUC (khong phai bot) noi da nhan, hoac don GAN CHAC voi hoi thoai co so da tra > 0. Khong co thi cat cau, dat cau trung tinh len dau, goi nguoi. Cau hoi / dieu kien ('khi/neu bac da chuyen') / 'da ... chua' khong tinh.",
+    "customerPaid": [
+      "\\b(tien coc|tien|khoan coc|khoan|coc|ck|chuyen khoan)\\b[^.!?\\n]{0,20}\\b(da|vua) (duoc )?(chuyen|gui|thanh toan|ck|coc|tra)\\b(?![^.!?\\n]{0,15}\\b(chua|khong|ko)\\b)",
+      "\\b(minh|bac|anh|chi|ban|khach|quy khach|co|chu)\\s+(da|vua)\\s+(chuyen khoan|chuyen tien|chuyen coc|ck|coc|thanh toan|tra tien)\\b(?![^.!?\\n]{0,15}\\b(chua|khong|ko)\\b)"
+    ]
   },
   "contact": {
     "_doc": "Luot chot don: he thong gui phieu dat hang (hoac goi nguoi) — bot khong tu xin SDT/dia chi/ten.",
@@ -66,7 +71,10 @@
     "contact": "(so dien thoai|sdt|dia chi|ten nguoi nhan|ten,|ho ten)",
     "formNote": "Dạ hệ thống sẽ gửi phiếu đặt hàng để {khach} tự điền và kiểm tra thông tin nhận hàng ạ.",
     "formNoteMarker": "phieu dat hang|bao .{0,20}chot",
-    "personNote": "Dạ để em báo {tenNguoiPhuTrach} chốt đơn với {khach} ngay ạ."
+    "personNote": "Dạ để em báo {tenNguoiPhuTrach} chốt đơn với {khach} ngay ạ.",
+    "_formPromiseDoc": "05/10/2026 (phieu Desk 'the dat hang khong di khi khach chot hoac giuc'): KHONG HUA CAI KHONG GUI. Cau HUA phieu dat hang ('em gui phieu ben duoi', 'he thong se gui phieu', 'form dat hang duoi day') chi duoc giu khi landing DA tra link phieu cho chinh luot nay (xet SAU khi goi order.formLink). Khong co phieu → cat cau hua; khach dang chot du mon ma phieu bi chan / shop chot qua nguoi → `personNote` + goi nguoi; chua du mon va cat xong khong con gi → `askItem`. Cau nhac phieu DA gui ('phieu em da gui phia tren') khong tinh. Nganh ghi de `askItem` bang tu bien the cua nganh (vd size).",
+    "formPromise": "((?<!da )(?<!vua )\\b(gui|gui kem|gui lai|gui ngay)\\b[^.!?\\n]{0,30}\\b(phieu|form|link dat)(?! (bao hanh|giam gia|qua tang))|\\b(phieu|form)( dat( hang| don)?| order)?\\b[^.!?\\n]{0,30}\\b(ben duoi|duoi day|phia duoi|gui kem|kem theo|ngay sau day))",
+    "askItem": "Dạ {khach} cho em xin mẫu và phân loại {khach} chọn để em gửi phiếu đặt hàng nhé ạ."
   },
   "deposit": {
     "_doc": "So tien / % trong ngu canh COC chi duoc noi khi nguoi truc / chinh sach / ho so shop (tiLeCoc) / khach / tien coc he thong tinh da neu dung so do. Cat CAU chua so khong nguon, chuyen nguoi.",
@@ -88,8 +96,13 @@
     "orderItemNote": "Dạ mẫu này là hàng order nên khi kho đã đi mua thì bên em không hỗ trợ đổi trả nữa, {khach} cân nhắc kỹ size trước khi đặt giúp em nhé ạ.",
     "noPolicyNote": "Phần đổi size để em kiểm tra chính sách rồi báo {khach} ngay ạ.",
     "done": "da (duoc |dc )?(doi (sang |qua |lai |thanh )|chuyen |cap nhat |sua )(?!y\\b)(?:[a-z]{1,6} ){0,3}?(sang |qua |lai |tren )?(size|don|giay|mau|san pham|hang|mon)|doi (sang |qua )(size|mau)[^.,!?\\n]{0,24}(roi a|roi nhe|roi bac|xong roi|xong a)",
+    "affirm": "^\\s*(da\\s+|vang\\s+)*(dung|dung roi|dung vay|chuan|chuan roi|vang|co|duoc|ok)\\b[^.!?\\n]{0,12}[.!]*\\s*$",
+    "_affirmDoc": "05/10/2026 (phieu Desk 'agent thay transcript tho'): CAU DAU cua cau tra loi chi la cau 'Dạ đúng rồi ạ' / 'Dạ được ạ' cho khach dang hoi chinh sach doi (policyWords trong tin khach) = hua dung dieu khach hoi (cau hoi co the trich lai chinh loi bia cua bot luot truoc) → xu ly nhu cau hua.",
     "doneNote": "Dạ em báo {tenNguoiPhuTrach} đổi size trên đơn giúp {khach} ngay ạ.",
-    "_doneDoc": "25/09/2026: 'doi' chi la dong tu khi di kem sang/qua/lai/thanh — 'Dạ đôi Boston size 42' (đôi = pair, mat dau thanh doi) tung bi sua thanh cau 'đã đổi size'."
+    "_doneDoc": "25/09/2026: 'doi' chi la dong tu khi di kem sang/qua/lai/thanh — 'Dạ đôi Boston size 42' (đôi = pair, mat dau thanh doi) tung bi sua thanh cau 'đã đổi size'.",
+    "_affirmedDoc": "05/10/2026 (phieu Desk 31/08, soat lai): cach noi KHANG DINH 'đổi <thu> được (ạ/nhé…)' cung la hua doi. Soi tren cau CO DAU (đổi ≠ đôi). {doiTuong} = cac tu trong affirmedObjects (tang 1: thu doi duoc o moi nganh; nganh noi them tu cua nganh, vd 'size'). Cau HOI ('… được không', '… được chứ', dau ?) va cau TU CHOI ('không/chưa đổi … được') khong phai loi hua.",
+    "affirmed": "(?<!(?:không|ko|chưa|chẳng|không thể|k)\\s)(?<!\\p{L})đổi\\s+(?:sang\\s+|qua\\s+|lại\\s+)?(?:{doiTuong})(?:\\s+[\\p{L}\\d/]+){0,3}?\\s+(?:được|đc|dc)(?!\\p{L})(?!\\s+(?:không|ko|k|chứ|hả|hông|hok|sao|nào|chưa|hay|hem)(?!\\p{L}))(?!\\s*\\?)",
+    "affirmedObjects": ["trả", "hàng", "lại", "loại khác", "mẫu khác", "sản phẩm khác", "màu khác"]
   },
   "photos": {
     "_doc": "Khach xin them anh: khong ai chup ca — gui LINK trang san pham (ung vien tu tra kho / mau he thong dang noi), cat cau hua chup/gui anh.",
@@ -177,5 +190,135 @@
     "lineText": "• {ten}{soMau}: {link}",
     "groupText": "{Khach} xem các mẫu và chọn giúp em tại: {link}",
     "filterText": "{Khach} xem đủ các mẫu còn hàng tại: {link}"
+  },
+  "daiTu": {
+    "_doc": "05/10/2026 (phieu Desk 'khach da co don', ca 'Cho anh hoi hang co san hay hang dat'): LUAT NGON NGU CHUNG — bo dau thi dai tu 'anh' trung 'ảnh'. Chu 'anh' go KHONG DAU la dai tu (doi thanh `replacement` truoc khi doc mau xin anh), TRU KHI: chu theo sau chac chan ve anh (photoAfter, moi kieu go); hoac tin go hoan toan khong dau va dung sau dong tu xin/xem/them/chup/co (askBefore) voi chu theo sau hop (askAfter), hay sau 'gui' (sendBefore) voi chu theo sau la mau/sp (sendAfter). Dai tu dung ngay truoc chu 'ảnh/hình' co dau (photoNext, chay tren cau goc) thi bo han ('Gửi anh ảnh với' = xin anh). Go dung 'ảnh' co dau khong bao gio bi dong toi. Nganh them chu cua nganh (vd ten loai hang) bang cach ghi de trong nganh/<id>/cong-soat.json.",
+    "word": "anh",
+    "replacement": "minh",
+    "photoAfter": "^\\s*(that(?!\\s+(su|la|ra|long|thich|muon|can|dep|qua|ra))|chi tiet|mat sau|phia sau|mat truoc|thuc te|goc|tem|nhan|real|full|day du|ro (net|hon))\\b",
+    "askBefore": "(^|\\s)(xin|xem|them|chup|co)\\s*$",
+    "askAfter": "^\\s*($|[?.!]|(mau|nay|do|kia|khac|nao|nua|voi|nhe|nha|di|a|ah|shop|sop|ban|sp|san pham|duoc|dc|ko|khong|k)\\b)",
+    "sendBefore": "(^|\\s)gui\\s*$",
+    "sendAfter": "^\\s*(mau|sp|san pham|nay|do|kia)\\b",
+    "photoNext": "^\\s*(ảnh|hình|hinh)(?!\\p{L})"
+  },
+  "orderedItem": {
+    "_doc": "05/10/2026 (phieu Desk 'khach da co don bot ban lai', ca ma + size da dat): LUOI CUOI — cau tra loi (moi tang) bao HET dung MA + size cua mon trong DON DANG CHAY gan chac voi hoi thoai (het vi chinh don cua khach da giu) → thay menh de bang `replacement`, bo menh de/cau goi y mau thay the ngay sau. Chi khop theo MA (hoac cau tro 'mau nay' khi mau dang noi toi chinh la ma trong don), KHONG theo ten (nhieu ma khac mau trung ten). Menh de nhac ma khac / size khac thi giu nguyen. Khach da noi ro MUA THEM (dong tu mua + them, sau luc tao don) thi giu nguyen (bao het la dung). Nganh noi them cau tro rieng (vd 'doi nay') trong nganh/<id>/cong-soat.json.",
+    "outOfStock": [
+      "\\bhet (hang|roi|mat|size|mau|sach|nguon)\\b",
+      "\\b(da |vua )?het\\s*$",
+      "\\b(khong|ko|k) con (hang|size|mau|san)\\b",
+      "\\bhet\\b[^.!?\\n]{0,12}\\b(roi|a|nhe|nha)\\b",
+      "\\b(tam )?(het|chay) hang\\b"
+    ],
+    "deictic": [
+      "\\b(mau|san pham|sp|mon|cai|hang) (nay|do|kia)\\b"
+    ],
+    "alternative": "\\b(tham khao|thay the|thay vao|goi y|mau khac|ma khac|doi sang|chuyen sang|lay mau|xem them|co the xem|hoac)\\b",
+    "mentionsVariant": "\\b(size|sz|co|bien the)\\s*[0-9a-z]",
+    "buysMore": "\\b(mua|lay|dat|chot|order)\\s+(them|tiep|nua)\\b(?!\\s*\\d+\\s*(k|nghin|ngan|trieu|tr)\\b)(?!\\s*\\d{1,3}[.,]\\d{3})|\\bdat (them )?don moi\\b|\\bthem (mot|1) (don|cai|chiec|doi|bo|mon)\\b",
+    "replacement": "Dạ mẫu {ten} ({ma}) size {size} {khach} đã đặt trong đơn {maDon} rồi ạ, đơn đang ở bước {giaiDoan}.",
+    "stageLabels": {
+      "cho_thanh_toan": "chờ thanh toán",
+      "dang_xu_ly": "đang xử lý",
+      "can_lien_he": "chờ {shop} liên hệ lại",
+      "dang_giao": "đang giao"
+    }
+  },
+  "photoClaim": {
+    "_doc": "05/10/2026 (phieu Desk 'khang dinh dung la mau tu anh khach gui' + 'bot xac nhan mau thay khach'): NHAN MAU TU ANH KHACH CHI LA PHONG DOAN. Khi co anh khach trong cuoc (luot nay hoac nua gio gan day), cau KHANG DINH anh khach CHINH LA hang shop ('dung la / chinh la mau ... ben em', 'dung mau', 'giong het') → sua thanh 'nhin giong' (rewrite, chay tren cau GOC co dau) hoac cat cau, roi xin khach tu xac nhan tren anh mau cua shop. THA: cau hoi ('co dung mau ... khong a?'), cau ro dat ('chua chac dung mau'), ma khach TU GO hoac ma IN TREN ANH (doc duoc chu), cau nguoi truc da noi. Nganh noi them tu cua nganh (vd 'doi') trong nganh/<id>/cong-soat.json.",
+    "claims": [
+      "\\b(dung la|chinh la|chinh xac la)\\b[^.!?\\n]{0,60}\\b(ben em|shop|em dang co|nha em|cua hang|ben minh)\\b",
+      "\\b(dung la|chinh la|chinh xac la) (mau|loai|cai|mon|san pham) (nay|do|trong anh|trong hinh)\\b",
+      "\\b(dung|chuan) mau( sac)?\\b",
+      "\\bdung chuan\\b",
+      "\\b(dung|chuan|giong) (nhu|voi) (anh|hinh)\\b",
+      "\\b(giong|y) het\\b|\\by chang\\b|\\bgiong y\\b"
+    ],
+    "hedgeBefore": "\\b(khong|ko|k|chua|chua chac|co the|neu|co phai|xem|kiem tra|xac nhan|so|hoi|se|gui|giao|chon)\\b[^.!?,]{0,15}$",
+    "question": "\\?\\s*$|\\b(khong|ko|chua|phai khong|dung khong)\\s*(a|ah|nhi|nhe|nha|vay|shop)?\\s*[.!]*\\s*$|\\bco (dung|phai)\\b",
+    "rewrite": {
+      "([Đđ]úng|[Cc]hính xác|[Cc]hính) là (mẫu|loại|sản phẩm)": "nhìn giống $2",
+      "(?<!\\p{L})[Đđ]úng mẫu(?!\\p{L})": "giống mẫu"
+    },
+    "confirmAsked": "\\b(xac nhan|co phai|co dung|so (lai|giup|voi|thu)|dung (mon|mau|loai|cai) (minh|ban|anh|chi|bac|em|khach) (can|thich|muon|hoi|tim))\\b",
+    "confirmCards": "{Khach} xem giúp {shop} ảnh mẫu bên {shop} gửi kèm, đúng món {khach} cần thì {shop} kiểm tra và báo lại ngay ạ.",
+    "confirmNoCards": "{Khach} xác nhận giúp {shop} đây có đúng món {khach} cần không, để {shop} kiểm tra lại chính xác rồi báo {khach} ạ."
+  },
+  "pushClose": {
+    "_doc": "05/10/2026 (phieu Desk 'cong chong thuc ep chot cat oan cau tra loi dung'): khach CHUA co dau hieu mua thi bot khong moi chot. Chi cat MENH DE moi chot that ('chot lay khong a', 'em len don nhe'); MENH DE DIEU KIEN giai thich quy trinh ('bac chot thi em dat', 'khi bac coc ...') giu nguyen. Dau hieu mua: y dinh / tin hieu chot cua bo dinh tuyen va mo hinh (ma) + `buySignal` tren loi khach gan day (luoi). Cat sach (cau chi toan loi moi chot) thi GIU NGUYEN cau goc va goi nguoi — KHONG BAO GIO phat cau tien khach thay cau tra loi. Nganh noi them / ghi de trong nganh/<id>/cong-soat.json.",
+    "push": [
+      "\\bchot (lay|luon|di|don|nhe|nha|khong|ko|giup|mau|cai|mon)\\b",
+      "\\b(lay|mua) (mau|ban|cai|mon|san pham|sp) (nay|do) (khong|ko|nhe|nha|luon|a)\\b",
+      "\\bdat luon (nhe|nha|khong|ko|a)\\b",
+      "\\b(em|ben em|shop) (len|lam|tao|chot) don\\b",
+      "\\blen don (nhe|nha|luon|khong|ko|cho)\\b"
+    ],
+    "condition": "\\b(chot|dat|lay|dong y|ok|oke|coc|chuyen khoan|ck|thanh toan)\\b[^.,!?\\n]{0,15}\\b(thi|la|xong|roi)\\s+(em|ben em|shop|nha em|minh)\\b|\\b(khi|neu|sau khi|truoc khi|luc)\\b[^.,!?\\n]{0,30}\\b(chot|dat|lay|coc|chuyen|len don)\\b",
+    "buySignal": "\\b(lay|mua|dat hang|dat luon|dat cho|dat truoc|chot|ship|giao|gui cho|coc|chuyen khoan|ck|dia chi|so dien thoai|sdt|thanh toan|van chuyen|bao lau|may ngay|may hom|khi nao (co|ve)|con hang|con \\d+)\\b",
+    "handoffReason": "bot_moi_chot_khi_khach_chua_co_y_mua"
+  },
+  "photoAgain": {
+    "_doc": "05/10/2026 (phieu Desk 'khach gui anh roi hoi, bot van xin anh' — Desk v29 image_ack_fix): khach DA gui anh trong cua so tuoi (15 phut, luot nay hoac tin truoc trong hoi thoai) ma cau bot lai XIN ANH chung chung → thay CAU xin anh bang cau thua nhan da nhan anh + xin TEN / MA. THA: xin anh MON KHAC (nhan, tem, hop — 'other', nganh noi them), cau da noi da nhan anh. Moi mau chay tren CAU GOC CO DAU (co 'iu'): 'anh' dai tu khong phai 'ảnh'. Khong dat \b sat chu co dau.",
+    "asks": [
+      "\\bxin\\b[^.!?\\n]{0,30}(ảnh|hình(?! thức))",
+      "\\b(gửi|gởi|chụp)\\b[^.!?\\n]{0,12}\\b(giúp|cho|lại)\\s+(em|shop|mình|bên em|cửa hàng)\\b[^.!?\\n]{0,30}(ảnh|hình(?! thức))",
+      "\\b(gửi|gởi|chụp)\\b[^.!?\\n]{0,10}(ảnh|hình)[^.!?\\n]{0,30}\\b(cho|giúp)\\s+(em|shop|bên em)\\b"
+    ],
+    "other": [
+      "(ảnh|hình)[^.!?\\n]{0,20}(nhãn|tem|hộp|bao bì|vỏ hộp|mã vạch)"
+    ],
+    "acknowledged": "(nhận được (ảnh|hình)|đã nhận (ảnh|hình)|em thấy (ảnh|hình)|xem (ảnh|hình) (rồi|của))",
+    "replacement": "Dạ {shop} nhận được ảnh rồi mà chưa nhận ra chắc sản phẩm ạ, {khach} cho {shop} xin tên hoặc mã sản phẩm (hoặc ảnh chụp rõ nhãn / hộp) để {shop} kiểm tra giúp nhé."
+  },
+  "priceStory": {
+    "_doc": "05/10/2026 (phieu Desk 'bot bia ly do doi gia va cai gia khach'): he thong KHONG luu lich su gia (khong co gia cu, ngay doi gia), nen MOI cau giai thich VI SAO gia doi ('vua cap nhat gia', 'gia dot truoc', 'web chua kip cap nhat', 'het chuong trinh giam gia', 'do ti gia') la BIA → cat cau, them `reply`, goi nguoi (`storyReason`). Mau nao nguoi truc / chinh sach / ho so shop cung noi thi mau do co nguon, khong cat. Khach DANG DOI CHIEU gia (`contest`, tren tin khach) va neu MOT SO TIEN ('1250', '1250k', '1.250.000', '1tr25') ma cau bot noi SO KHAC → bo cau co so khac, them `reply`, goi nguoi (`contestReason`) — chay SAU luat chung cu / tien (cau co gia sai so voi du lieu da duoc doi ve gia du lieu). So tran (khong don vi) cua khach chi tinh la nghin dong khi ngay truoc no la tu chi gia (`bareLead`). So dinh chu ('IE0841') la ma, khong phai tien. Tat ca tren chu da bo dau.",
+    "story": [
+      "\\b(vua|moi|da|vua moi|moi vua)\\s+(duoc\\s+)?(cap nhat|dieu chinh|thay doi|tang|nang)\\s+(lai\\s+)?gia\\b",
+      "\\bgia\\b[^.!?\\n]{0,25}\\b(vua|moi|da)\\s+(duoc\\s+)?(cap nhat|dieu chinh|thay doi|tang|len|nang)\\b",
+      "\\bgia\\s+(cu|dot truoc|dot cu|truoc day|luc truoc|hom truoc|tuan truoc|thang truoc|lan truoc|ngay truoc)\\b",
+      "\\bdot\\s+gia\\s+(cu|truoc|moi)\\b",
+      "\\b(web|website|trang|he thong|app|fanpage|page)\\b[^.!?\\n]{0,25}\\b(chua|cham|khong|ko)\\s+(kip\\s+)?(cap nhat|update|sua|doi)\\b",
+      "\\b(het|qua|ket thuc|da het|vua het)\\s+(dot\\s+|chuong trinh\\s+|thoi gian\\s+|han\\s+)?(sale|giam gia|khuyen mai|uu dai|flash sale)\\b",
+      "\\bgia\\s+(nhap|von|goc)\\b[^.!?\\n]{0,15}\\b(tang|len|cao hon)\\b",
+      "\\b(do|vi|theo)\\s+(ti|ty)\\s+gia\\b"
+    ],
+    "contest": "\\b(gia|web|website|trang|app|san|anh|hinh|niem yet)\\b[^.!?\\n]{0,40}\\bma\\b|\\btren\\s+(web|website|trang|app|san|fanpage|page|shopee|lazada|tiktok)\\b|\\b(web|website|trang|app)\\s+(ghi|de|bao|hien|niem yet|dang|co|thi|la)\\b|\\bsao\\s+(lai\\s+|gia\\s+)?(khac|dat|cao|chenh|lech|mac)\\b|\\b(dat|cao|mac|chenh|lech)\\s+hon\\b|\\b(khac|chenh|lech)\\s+gia\\b|\\b(gia|bao gia)\\s+khac\\b|\\b(anh|hinh)\\s+(chup|man hinh)\\b",
+    "bareLead": "\\b(gia|tien|web|website|trang|ghi|de|la|chi|con|co|ban|niem yet)\\s*(la|chi|co|con|ghi|de)?\\s*:?\\s*$",
+    "reply": "Dạ để {shop} kiểm tra lại giá chính xác rồi báo {khach} ngay ạ.",
+    "storyReason": "bia_ly_do_doi_gia",
+    "contestReason": "khach_doi_chieu_gia"
+  },
+  "bargain": {
+    "_doc": "05/10/2026 (phieu Desk 'khach mac ca kieu viet tat'): KHACH XIN BOT GIA — ke ca cau rat ngan chi co SO TIEN + 'duoc khong' ('1tr dc kh a', '1tr2 duoc ko': so tien doc bang CUNG bo doc tien cua cong, `amountAsk` la phan dung NGAY SAU so tien) hoac cum xin bot (`ask`). Hoi CHUONG TRINH sale ('giam bao nhieu %', 'dang sale khong', 'co giam gia khong') KHONG phai mac ca (`notBargain`, xet truoc). Sua nhap theo LUA CHON MAC CA cua shop (ho so `banHang.macCa`, tang 3): cau HOI NGUOC khach muon gia bao nhieu (`askTarget`) luon bo; cau HUA BOT / nhan so tien khach dua (`promise`) bo tru khi shop chon 'giam toi da'; shop 'khong giam' / 'qua tang' → cau gia niem yet (`reply`, mau dang sale thi `replySale`) dat len dau neu nhap chua noi (`refusal`); shop CHUA KHAI → khong hua, cau `replyUnset`, goi nguoi (`unsetReason`). Tat ca tren chu da bo dau; khong con so cua shop nao.",
+    "ask": [
+      "\\b(bot|giam)\\s+((gia|them|chut|ti|xiu|it|nua)\\s+)*(cho|duoc|dc|di|xuong|nhe|nha|khong|ko|kh|k|hong|ha|chut|ti|xiu|it|nua|them)\\b",
+      "\\bbot\\s+\\d",
+      "\\bmac\\s+ca\\b",
+      "\\bthuong\\s+luong\\b",
+      "\\bfix\\s+(gia|nhe|them|ti|chut|xiu|it|di)\\b",
+      "\\bgia\\s+(sinh vien|hssv|hoc sinh|ban be|nguoi quen|quen|than|tot hon|mem hon|yeu thuong)\\b",
+      "\\b(de|tinh|lay|ban|bot)\\s+(re|mem)\\s+(hon|chut|ti|xiu|it|nua)\\b"
+    ],
+    "amountAsk": "\\s*(thi\\s+)?(dc|duoc|ok|oke|okie|okay)\\s*(khong|ko|kh|k|hong|hem|hok|hk|kg|ha|a|\\?)(?![a-z])",
+    "notBargain": [
+      "\\b(giam|sale|khuyen mai|km)\\s+(bao nhieu|may|nhieu)\\b",
+      "\\b(co|dang|con)\\s+(giam gia|sale|khuyen mai|uu dai|chuong trinh( giam gia| khuyen mai)?)\\s*(khong|ko|kh|k|chua|hong|ha|a|\\?|$)"
+    ],
+    "promise": [
+      "(?<!\\b(khong|ko|k|kh|chua|hong|hem|dang|da)\\s(the\\s)?)\\b(giam|bot|tru)\\s+(cho|them|duoc|luon|ngay|nhe|nha|di|xuong)\\b",
+      "(?<!\\b(khong|ko|k|kh|chua|hong|hem|dang|da|duoc)\\s(the\\s)?)\\b(giam|bot)\\s+\\d"
+    ],
+    "askTarget": [
+      "\\b(muon|mong|tra|de nghi|dinh|can)\\s+(muc\\s+)?gia\\s+(bao nhieu|nao|the nao|sao)\\b",
+      "\\b(gia|muc gia)\\s+(bao nhieu|nao)\\s+(thi|la)\\s+(lay|chot|hop ly|ok|duoc|vua)\\b",
+      "\\b(muon|tinh|dinh)\\s+(tra|lay)\\s+(bao nhieu|gia nao|muc nao)\\b"
+    ],
+    "refusal": "\\b(khong|ko|k|kh|chua|hong)\\s+(the\\s+)?(giam|bot)\\b|\\bgia\\s+niem\\s+yet\\b|\\bban\\s+(dung|theo)\\s+gia\\b",
+    "reply": "Dạ nhà {shop} bán theo giá niêm yết nên không giảm thêm được {khach} ạ.",
+    "replySale": "Dạ nhà {shop} bán theo giá niêm yết nên không giảm thêm được ạ, mẫu này đang sale rồi {khach} ạ.",
+    "replyUnset": "Dạ giá trên web là giá {shop} đang bán ạ, phần giảm giá {shop} xin phép để {tenNguoiPhuTrach} trả lời {khach} nhé.",
+    "reason": "mac_ca",
+    "unsetReason": "mac_ca_chua_khai"
   }
 }

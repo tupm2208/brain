@@ -4,7 +4,7 @@
 
   var KINDS = [
     ["meta-webhook","Webhook"],["tin-den","Tin đến"],["meta-chuyen","Chuyển Meta"],
-    ["meta-retry","Thử lại"],["goi-landing","→ Landing"],["license","License"],
+    ["meta-retry","Thử lại"],["meta-xoa","Xoá dữ liệu Meta"],["goi-landing","→ Landing"],["license","License"],
     ["viet-bai","Viết bài"],["admin","Admin"],["http","HTTP"]
   ];
   var activeKinds = {};

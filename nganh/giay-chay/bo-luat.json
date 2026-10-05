@@ -29,15 +29,6 @@
       "columbia",
       "wilson"
     ],
-    "knownBrandsNotCarried": [
-      "salomon",
-      "brooks",
-      "new balance",
-      "saucony",
-      "skechers",
-      "converse",
-      "vans"
-    ],
     "categories": [
       "giay chay",
       "giay tap",
@@ -294,10 +285,6 @@
       "kind": "no_unsourced_numbers"
     },
     {
-      "kind": "brand_not_carried_needs_catalog",
-      "minItems": 200
-    },
-    {
       "kind": "require_source_for_claims",
       "topics": [
         "đổi trả",
@@ -321,7 +308,6 @@
     "ask_slot": "{khach} cho {shop} xin {truc} với ạ.",
     "handoff": "{shop} nhờ nhân viên kiểm lại rồi trả lời {khach} ngay ạ.",
     "offline": "{shop} đang kiểm lại hàng, {shop} nhắn lại {khach} ngay ạ.",
-    "brand_not_carried": "Dạ {shop} chưa kinh doanh hàng {hang} ạ.",
     "out_of_stock": "Mẫu này hiện {shop} hết {truc} {khach} hỏi rồi ạ.",
     "in_stock": "Còn {ton} đôi {truc} {size}, giá {gia} ạ.",
     "in_stock_range": "Còn {ton} đôi {truc} {size}, giá từ {gia} đến {giacao} ạ.",

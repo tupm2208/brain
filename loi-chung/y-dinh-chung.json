@@ -316,7 +316,7 @@
     "nudge": "^(ban oi|b oi|shop oi|e oi|em oi|alo|\\?+|\\.{2,})",
     "pageAsked": "(\\?|chu a|a nhi|nhi\\s*$|khong a|k a|ko a|dung khong|dc khong|(^|\\s)(ko|khong|k|chua)\\s*$)",
     "shortAnswerToPage": "^(da |dạ )?(vang|vâng|ok|oke|okie|ko|khong|k|co|có|rồi|roi)( e| em| a| ạ| shop| b| bạn| anh| chị)?\\s*[.!]?$",
-    "bareAck": "^(da |dạ |a |à |u |ừ |uhm |ok(e|ie|ay)?[, ]*)?(vang|vâng|ok|oke|okie|okay|duoc|được|dung roi|đúng rồi|dung r|đúng r|chuan|chuẩn|rồi|roi|uh|ừ|ừm|uhm|ok bac|ok bác)( e| em| a| ạ| shop| b| bạn| anh| chị| bác| nhé| nha| nhe| ban)*\\s*[.!~]*$",
+    "bareAck": "^(da |dạ |a |à |u |ừ |uhm |ok(e|ie|ay)?[, ]*)?(vang|vâng|ok|oke|okie|okay|duoc|được|dung roi|đúng rồi|dung r|đúng r|chuan|chuẩn|rồi|roi|uh|ừ|ừm|uhm|ok bac|ok bác|nhan duoc roi|nhận được rồi|nhan duoc|nhận được|nhan dc roi|nhận đc rồi|nhan dc|nhận đc)( e| em| a| ạ| shop| b| bạn| anh| chị| bác| nhé| nha| nhe| ban)*\\s*[.!~]*$",
     "thanks": "(cam on|thanks|tks)",
     "pageSaidPaid": "(nhan duoc thong tin thanh toan|bien lai chuyen khoan|e nhan roi|em nhan roi|da nhan duoc (tien|ck|chuyen khoan)|nhan duoc anh chuyen khoan)",
     "customerReceiptImage": "\\[ảnh: biên lai|\\[anh: bien lai",
@@ -332,6 +332,16 @@
     "returnExchangeReal": "\\b(muon|cho|xin|can|de) (minh |em |toi |tui )?(doi (size|hang|sang|lai|cai|mau|qua|giay|\\d)|tra lai|tra hang|hoan (tien|hang)|doi\\s*$)|\\btra lai\\b|\\b(nhan|mua|dat) (hang|giay|duoc)[^.]{0,40}\\b(bi|loi|hong|sai|rach|bung|khong vua|chat|rong)\\b|\\b(hang|giay) (bi|loi|hong|sai)\\b",
     "_policyDoc": "25/09/2026 (kb2-08): policyQuestionForm = cau HOI ve chinh sach → policy_question (agent + cong cu chinh_sach); returnExchangeReal = doi/tra THAT (hang trong tay) → nguoi that. Cau doi size cua DON da dat (thuc-the.orderTalk) khong phai return thật: di nhanh don.",
     "impatience": "\\b(tra loi )?(cham|lau) (qua|the|vay|ghe)\\b|\\bsao (lau|cham) (the|vay)\\b|\\b(co|ban) (ban |con )?(khong|ko|k) thi (bao|noi)\\b|\\bcho (lau|mai)\\b|\\bkhong (ai )?(tra loi|rep)\\b|\\bcó ai không\\b",
-    "_impatienceDoc": "25/09/2026 (kb2-15): khach giuc / buc vi cham — KHONG phai khieu nai hang: agent xin loi ngan (kich-ban-chung hoiLai.xinLoiCho) roi tra loi viec."
+    "_impatienceDoc": "25/09/2026 (kb2-15): khach giuc / buc vi cham — KHONG phai khieu nai hang: agent xin loi ngan (kich-ban-chung hoiLai.xinLoiCho) roi tra loi viec.",
+    "_productRejectionDoc": "05/10/2026 (phieu Desk 'bot xac nhan mau thay khach', anh chot 15/09): KHACH PHAN BAC mau/mau bot vua dua ('khong phai mau nay', 'sai mau', 'mau nay chu') TRUOC KHI CO HANG la dau hieu bot da nhan sai — khong phai cau hoi can tran an. Lan 1: cau trung tinh + goi nguoi (kich ban product_rejected). Lan 2 (da phan bac mot lan va page da tra loi): them DUNG BOT hoi thoai do cho toi khi nguoi truc xac nhan (kich ban product_rejected_again, landing giu trang thai). Da NHAN HANG (afterReceipt, hoac don dang giao / da giao) thi van la khieu nai. Nganh noi them danh tu cua nganh (vd 'doi').",
+    "productRejection": [
+      "\\b(khong|ko|k|kp|dau|chang|hong) phai (la )?(mau|cai|loai|mon|ma|san pham|sp)\\b(?! (order|dat|san|co san))",
+      "\\bco phai (mau|cai|loai|mon|ma) (nay|do|kia) dau\\b",
+      "\\b(khong|ko|k|chang|hong) (dung|giong) (mau|cai|loai|mon|anh|hinh|ma)\\b",
+      "\\b(sai|nham|lech) (mau|ma|loai|mon)\\b",
+      "\\b(mau|cai|loai|mon) nay chu\\b",
+      "\\b(mau|cai|loai|mon) khac (ma|chu)\\b"
+    ],
+    "afterReceipt": "\\b(nhan (duoc )?hang|nhan duoc|da nhan|hang (ve|toi|den)|giao (toi|den|roi|sai|nham)|gui (sai|nham)|mo (hop|ra)|ship (toi|den)|boc (hop|ra)|khi nhan|luc nhan)\\b"
   }
 }

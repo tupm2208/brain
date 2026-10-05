@@ -14,7 +14,7 @@
  */
 import type { ConversationId, TenantId, ToolOutput } from "@sp/contract";
 import {
-  ConversationLedger, DialogueFrameBuilder, EpisodeTracker, emptyState,
+  ConversationLedger, DialogueFrameBuilder, EpisodeTracker, PHOTO_FRESH_MS, PHOTO_LOOK_BACK_MS, emptyState, photoIsFresh, sessionStartIndex, turnAnchorMs,
   type ConversationState, type DialogueConfig, type DialogueFrame, type FrameLexicon, type LedgerTexts,
   type ProductRef, type Turn
 } from "@sp/brain";
@@ -23,21 +23,41 @@ import type { HistoryLine } from "../agent/sales-agent";
 type RecentOutput = ToolOutput<"conversation.recent">;
 type RecentLine = RecentOutput["tin"][number];
 
-/** Authors the landing writes for the bot's own sentences. */
-export const BOT_AUTHORS: ReadonlySet<string> = new Set(["bo-nao"]);
+/**
+ * Authors the landing writes for the page's AUTOMATIC sentences: the bot's own, and (05/10/2026) the order
+ * notices the landing sends by itself (`don-hang`) — neither is a person on duty, so neither makes the bot yield.
+ */
+export const BOT_AUTHORS: ReadonlySet<string> = new Set(["bo-nao", "don-hang"]);
 /** A product a PERSON on the page sent within this window is the product in focus (Desk P1d). */
 export const HUMAN_PRODUCT_WINDOW_MS = 30 * 60 * 1000;
-/** Placeholder the transcript shows for a customer photo the bot has not recognised. */
-/** How far back a photo sent just before the customer's words still counts as this turn's photo. */
-export const BURST_PHOTO_WINDOW_MS = 30 * 60 * 1000;
+/**
+ * How far back a photo sent just before the customer's words still counts as this turn's photo: the ONE
+ * freshness of a photo (`PHOTO_FRESH_MS`, 05/10/2026) — the reader drops anything older anyway, and a photo
+ * in the turn that nobody reads made every rule believe "the customer just sent a photo".
+ */
+export const BURST_PHOTO_WINDOW_MS = PHOTO_FRESH_MS;
 /**
  * How far back a photo the customer sent keeps its address in the transcript (02/10/2026), so an agent
  * that sees photos can open it again (`xem_anh`) — "cứ đoán đi" one message after the photo. At most
  * `LOOK_BACK_LINES` earlier photo messages.
  */
-export const LOOK_BACK_MS = 30 * 60 * 1000;
+export const LOOK_BACK_MS = PHOTO_LOOK_BACK_MS;
 export const LOOK_BACK_LINES = 3;
+/** Placeholder the transcript shows for a customer photo the bot has not recognised. */
 const IMAGE_PLACEHOLDER = "[khách gửi ảnh]";
+/** Author the landing writes on a line the CHANNEL itself put in the thread (Meta's notices). */
+export const CHANNEL_AUTHOR = "meta";
+/** `loaiMeta` of Meta's "X đã trả lời về một bài viết / story" line (landing `META_POST_REPLY`). */
+export const CHANNEL_POST_REPLY = "tra-loi-bai-viet";
+
+/** What a channel line tells the models, as a system note on the customer line next to it. */
+function channelNote(m: RecentLine): string {
+  if (m.loaiMeta === CHANNEL_POST_REPLY) {
+    const link = /https?:\/\/[^\s)]+/i.exec(m.chu)?.[0] ?? "";
+    return `Khách bấm "Trả lời" vào một bài viết / story của page${link !== "" ? ` (${link})` : ""}: ảnh và câu hỏi của khách quanh dòng này nói về món trong bài đó, KHÔNG phải món cũ trong sổ hội thoại — chưa nhận ra món thì hỏi khách, không đoán.`;
+  }
+  return `Dòng hệ thống của kênh, không phải page trả lời: "${m.chu.replace(/\s+/g, " ").trim().slice(0, 200)}".`;
+}
 
 export interface FocusedProduct extends ProductRef {
   by: "reply_to" | "human_page";
@@ -67,6 +87,20 @@ export interface TurnContext {
   dienThoaiDaCho: boolean;
   /** Codes whose product card the landing sent within six hours (Giai đoạn 7). */
   theDaGui: string[];
+  /**
+   * 05/10/2026 (phiếu Desk ảnh / phiên): when the current session began — the first line after the last
+   * silence of six hours (`sessionStartIndex`); "" when no line has a time. Before it is history.
+   */
+  sessionStartAt: string;
+  /** The turn is measured from this moment (the message being answered; `turnAnchorMs`), ISO. */
+  anchorAt: string;
+  /**
+   * The customer sent a photo within the fresh window, by the THREAD (this turn's or an earlier line, read or
+   * not) — the evidence a draft or a folded photo never left in the memory (Desk `customerImageEvidence`).
+   */
+  photoEvidence: boolean;
+  /** Photos of the customer's burst left out because they are older than the fresh window (for the dossier). */
+  stalePhotos: number;
 }
 
 export interface TurnContextInput {
@@ -108,7 +142,17 @@ export class TurnContextBuilder {
     const message = input.message;
     const text = String(message.chu ?? "");
     const at = String(message.luc || input.now.toISOString());
-    const lines = [...input.recent.tin];
+    // 05/10/2026 (phiếu Desk "khách bấm Trả lời vào bài viết / story"): a CHANNEL line (Meta's own, `boi: "meta"`)
+    // is never a page turn — the burst, its photos and the frame read straight through it. What it says rides on
+    // the customer line right after it (or the last one) as a system note.
+    const lines: RecentLine[] = [];
+    const channelNotes = new Map<RecentLine, string[]>();
+    let pendingNotes: string[] = [];
+    for (const m of input.recent.tin) {
+      if (m.chieu === "di" && m.boi === CHANNEL_AUTHOR) { pendingNotes.push(channelNote(m)); continue; }
+      lines.push(m);
+      if (m.chieu === "den" && pendingNotes.length > 0) { channelNotes.set(m, pendingNotes); pendingNotes = []; }
+    }
     // The message being answered is usually already the last line of the thread; make sure it is
     // there exactly once, so the transcript ends with the customer's words.
     const last = lines.at(-1);
@@ -118,14 +162,19 @@ export class TurnContextBuilder {
     if (!present) {
       lines.push({ maTin: String(message.maTin ?? ""), chieu: "den", boi: "khach", chu: text, soAnh: Number(message.soAnh ?? 0), luc: at, ...(message.anh?.length ? { anh: message.anh } : {}), ...(message.traLoiTin ? { traLoiTin: message.traLoiTin } : {}) });
     }
+    if (pendingNotes.length > 0) channelNotes.set(lines.at(-1)!, [...(channelNotes.get(lines.at(-1)!) ?? []), ...pendingNotes]);
 
-    const who = (m: RecentLine): HistoryLine["who"] => m.chieu === "den" ? "khach" : BOT_AUTHORS.has(m.boi) ? "bot" : m.boi === "" ? "khong_ro" : "nguoi";
+    // "meta" (05/10/2026): a line the channel itself wrote ("Bạn đang phản hồi bình luận…") is nobody's words.
+    const who = (m: RecentLine): HistoryLine["who"] => m.chieu === "den" ? "khach" : BOT_AUTHORS.has(m.boi) ? "bot" : m.boi === "" || m.boi === "meta" ? "khong_ro" : "nguoi";
     const history: HistoryLine[] = lines.map((m) => {
       const label = m.maTin ? labels[m.maTin] : undefined;
       const shown = m.chu.trim() !== "" ? m.chu : label ?? (m.chieu === "den" && m.soAnh > 0 ? IMAGE_PLACEHOLDER : m.chu);
       return { who: who(m), text: shown, images: m.chieu === "den" ? m.soAnh : 0, at: m.luc };
     });
     const turns: Turn[] = lines.map((m) => ({ role: m.chieu === "den" ? "customer" : "shop", text: m.chu, at: m.luc, imageCount: m.chieu === "den" ? m.soAnh : 0 }));
+    // 05/10/2026: ONE session and ONE "now" for every rule of the turn (conversation-state.ts).
+    const anchorMs = turnAnchorMs(message.luc, lines.at(-1)?.luc, nowMs);
+    const sessionStart = sessionStartIndex(lines.map((m) => m.luc));
 
     // Burst: customer messages after the page's last REAL sentence, joined (Desk `collectBurstText`).
     const burst: string[] = [];
@@ -174,12 +223,16 @@ export class TurnContextBuilder {
     // (`gop_vao_tin_sau`) before its reading was saved, so the photo belongs to THIS turn. Only photos
     // in the burst (no page line since), recent, and not yet labelled — a labelled one is already
     // in the transcript as words.
+    // A photo older than the fresh window is history (05/10/2026, Desk: dropped and counted for the dossier).
+    let stalePhotos = 0;
     if (photos.length === 0 && replyTo === "") {
-      const latestAt = Date.parse(lines.at(-1)?.luc ?? "") || nowMs;
       for (let i = lines.length - 2; i >= 0 && photos.length < 3; i -= 1) {
         const m = lines[i]!;
         if (m.chieu === "di") break;
-        if (latestAt - (Date.parse(m.luc) || 0) > BURST_PHOTO_WINDOW_MS) break;
+        if (!photoIsFresh(m.luc, anchorMs, BURST_PHOTO_WINDOW_MS)) {
+          if (!(m.maTin && labels[m.maTin])) stalePhotos += own(m).length;
+          break;
+        }
         if (m.maTin && labels[m.maTin]) continue;
         photos = [...own(m), ...photos].slice(-3);
       }
@@ -199,16 +252,18 @@ export class TurnContextBuilder {
       }
     }
 
+    lines.forEach((m, i) => { const notes = channelNotes.get(m); if (notes !== undefined) history[i]!.note = notes.join(" "); });
     const lastLine = history.at(-1);
     if (lastLine !== undefined) {
-      if (replyNote !== "") lastLine.note = replyNote;
+      if (replyNote !== "") lastLine.note = [lastLine.note ?? "", replyNote].filter((n) => n !== "").join(" ");
       if (photos.length > 0) lastLine.imageUrls = photos.slice(0, 3).map((p) => p.url);
     }
     // Earlier photos of the last half hour keep their address (02/10/2026): the agent may look again.
     for (let i = lines.length - 2, kept = 0; i >= 0 && kept < LOOK_BACK_LINES; i -= 1) {
       const m = lines[i]!;
       if (m.chieu !== "den") continue;
-      if (nowMs - (Date.parse(m.luc) || 0) > LOOK_BACK_MS) break;
+      const sentAt = Date.parse(m.luc);
+      if (!Number.isFinite(sentAt) || anchorMs - sentAt > LOOK_BACK_MS) break;
       // A burst photo already shown on the last line is not repeated.
       const urls = own(m).map((p) => p.url).filter((u) => !(lastLine?.imageUrls ?? []).includes(u)).slice(0, 3);
       if (urls.length === 0) continue;
@@ -217,13 +272,21 @@ export class TurnContextBuilder {
     }
 
     const focusFromState: ProductRef | null = state.episode?.focus ? { code: state.episode.focus.code, name: state.episode.focus.name } : state.focusItemCode ? { code: state.focusItemCode } : null;
-    const frame = this.frames.build({ message: text, turns: turns.slice(0, -1), lexicon, focusedProduct: focusedProduct ?? focusFromState });
+    // 05/10/2026 (phiếu Desk ảnh / phiên): the frame is what the page JUST said — a page line of an earlier
+    // session is history, never "the question the customer is answering" nor the item "cái này" points at.
+    const frameTurns = turns.slice(Math.min(sessionStart, Math.max(0, turns.length - 1)), -1);
+    const frame = this.frames.build({ message: text, turns: frameTurns, lexicon, focusedProduct: focusedProduct ?? focusFromState });
+    // The thread's own photo evidence: a customer line with a photo within the fresh window, read or not.
+    const photoEvidence = photos.length > 0 || lines.some((m) => m.chieu === "den" && (m.soAnh > 0 || (m.anh ?? []).length > 0) && Number.isFinite(Date.parse(m.luc)) && photoIsFresh(m.luc, anchorMs));
 
     return {
       history, turns, burstText, replyNote, focusedProduct, frame, state, photos,
       daChaoAi: input.recent.hoiThoai?.daChaoAi === true,
       dienThoaiDaCho: input.recent.hoiThoai?.dienThoaiDaCho === true,
-      theDaGui: [...(input.recent.hoiThoai?.theDaGui ?? [])]
+      theDaGui: [...(input.recent.hoiThoai?.theDaGui ?? [])],
+      sessionStartAt: lines[sessionStart]?.luc ?? "",
+      anchorAt: new Date(anchorMs).toISOString(),
+      photoEvidence, stalePhotos
     };
   }
 

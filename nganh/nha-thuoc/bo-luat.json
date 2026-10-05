@@ -24,10 +24,6 @@
       "gsk",
       "pymepharco"
     ],
-    "knownBrandsNotCarried": [
-      "bayer",
-      "abbott"
-    ],
     "categories": [
       "thuoc ho",
       "vitamin",
@@ -226,10 +222,6 @@
       "kind": "no_unsourced_numbers"
     },
     {
-      "kind": "brand_not_carried_needs_catalog",
-      "minItems": 100
-    },
-    {
       "kind": "forbidden_phrases"
     },
     {
@@ -248,7 +240,6 @@
     "ask_slot": "{khach} cho {shop} xin {truc} ạ.",
     "handoff": "{shop} chuyển dược sĩ trả lời {khach} ngay ạ.",
     "offline": "{shop} đang kiểm lại hàng, {shop} nhắn lại {khach} ngay ạ.",
-    "brand_not_carried": "Dạ {shop} không có hàng {hang} ạ.",
     "out_of_stock": "Hiện {shop} hết {nhan_hamluong} này rồi ạ.",
     "in_stock": "Còn {ton} hộp {hamluong}, giá {gia} ạ.",
     "in_stock_range": "Còn {ton} hộp {hamluong}, giá từ {gia} đến {giacao} ạ.",

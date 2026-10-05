@@ -9,13 +9,21 @@
     "\\b(?:size|sz|co|so)\\s*(2[3-9]\\d|3[01]\\d|2[3-9][.,]5)(?!\\d)"
   ],
   "sizeBarePatterns": [
-    "\\b(?:size|sz|co)\\s*(2[2-9]|3[0-2])(?![\\d.,/]|\\s*(?:cm|mm|kg|km|k\\b|tr\\b|trieu|nghin|%|tuoi))"
+    "\\b(?:size|sz|co)\\s*(2[2-9]|3[0-2])(?![\\d.,/]|\\s*(?:cm|mm|kg|km|k\\b|tr\\b|trieu|nghin|%|tuoi))",
+    "^\\s*((?:2[2-9]|3[0-2])(?:\\.5)?)\\s*(?:nhe|nha|a|ah|nhe shop|nha shop|shop|sop|e|em|b|ban|ak)?\\s*[.!]*\\s*$"
   ],
   "apparelSizePatterns": [
     "\\ba\\s*\\/\\s*(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))",
-    "\\ba(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))"
+    "\\ba(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))",
+    "\\b(?:size|sz)\\s*a\\s+(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))",
+    "\\bquan\\b(?!\\s*\\d)[^.?!\\n]{0,40}?\\b(?:size|sz)\\s*(6[0-9]|7\\d|8\\d|9\\d)\\b(?!\\s*(kg|ky|kilo|tuoi|nghin|ngan|trieu|k\\b|cm|m\\b|mm|ngo|ngach|so|duong|pho|phong|toa|tang|lo|khu))"
   ],
   "apparelSizePrefix": "A/",
+  "_docSizeSystem": "05/10/2026 (phieu Desk 26/09 'kho ghi size theo he rieng tung hang'): size khach noi KEM HE (US / UK, ca viet dinh '9us', ca 'US nu 7'), nhom ten: he, so, nu | nam. Bo nao doc ra 'US 9' / 'UK 7.5' / 'US W 7'; landing quy theo bang size cua CHINH hang mon do. So tran khong ghi he KHONG doc o day (landing hoi lai). apparelSizePatterns 05/10: 'size a 92', 'quan ... size 88' (phieu 01/09).",
+  "sizeSystemPatterns": [
+    "\\b(?<he>us|uk)\\s*(?:(?<nu>nu|w|women)|(?<nam>nam|m|men))?\\s*(?<so>(?:[3-9]|1[0-6])(?:[.,]5)?)(?![\\d.,/]|\\s*(?:k\\b|tr\\b|trieu|nghin|ngan|tram|%))",
+    "(?<![\\d.,])(?<so>(?:[3-9]|1[0-6])(?:[.,]5)?)\\s*(?<he>us|uk)\\b(?:\\s*(?:(?<nu>nu|women)|(?<nam>nam|men))\\b)?"
+  ],
   "bareTag": {
     "range": "^(2[2-9]|3[0-2])(\\.5)?$",
     "maxTem": 29.5,
@@ -28,6 +36,62 @@
     "kidsLine": "(\\b(k|c|i|j|el k|el c|cf c|cf k|kids?|infant|junior|youth)\\b\\s*$|\\b(kids?|infant|junior|youth)\\b)",
     "adultMin": 35,
     "historyDepth": 8
+  },
+  "hoSoTuVan": {
+    "_doc": "05/10/2026 (phieu Desk nhom NHU CAU / TU VAN 03/09 + 06/09): HO SO TU VAN cua nganh — tang 1 (packages/brain engine/consult-profile.ts) chi hoi cac cau chon hang cua mot nhu cau khi khach CHUA goi dich danh mau va nhu cau thuoc nhom CHUYEN MON; moi thong tin hoi toi da MOT lan trong phien; nhu cau PHO THONG thi goi y theo nhom pho thong, khong hoi ho so. Moi bieu thuc chay tren chu DA BO DAU, chu thuong. `nhom[].kieu`: chuyen-mon (can ho so, nhac o dau trong phien cung THANG pho thong) | pho-thong (tra kho theo `mucDich`). `nhomHang`: nhan nhom hang cua landing — tu doi thuong lay tu cham-diem.json nhomHang.biDanh, KHONG khai lai. `truong[]`: `doc` = khach da cho (chu khop la dieu khach noi), `hoi` = mot CAU HOI ve truong nay (de biet page da hoi chua, va cong soat cat cau hoi lai), `batBuoc`=false thi chi hoi khi tien, `tuPhanTich` = khoa needBrief cua LLM#1, `maTran` = truc ma tran cua line-dna.json. `suyRa[]`: chu khach noi (khi, tru dau hieu nguoc) → coi nhu da biet truong (`maTran` = dai cua ma tran). `boTruoc`: bo size + so tien truoc khi doc (\"500k\" la tien, \"size 42\" khong phai cu ly).",
+    "soTinDoc": 12,
+    "boTruoc": "\\b(size|sz|eu)\\s*\\d{2}(\\s*[12]\\s*\\/?\\s*3|[.,]5)?\\b|\\b(gia|ship|coc|phi|tien|freeship|bot|giam|tam gia|ngan sach)\\b\\s*[^0-9\\n]{0,6}\\d[\\d.,]*\\s*(k|tr|trieu|nghin|ngan|d|dong|vnd)?\\b|(?<![\\d.,])\\d{3,}[\\d.,]*\\s*(k|nghin|ngan|d|dong|vnd)\\b|(?<![\\d.,])\\d+([.,]\\d+)?\\s*(tr|trieu|cu)\\b",
+    "hoiNhuCau": "(chay bo|chay) hay (la )?(di choi|di lam|di hoc|di hang ngay|di thuong)|(di choi|di lam|di hoc|di hang ngay) hay (chay|tap|choi the thao)|dung de (chay|di|tap|lam gi|choi)[^.?!]{0,30}(hay|\\?)|muc dich (gi|nao|su dung)|nhu cau (cua [a-z]+ )?(la gi|the nao|ra sao|nhu nao|gi)|mua de (lam gi|chay|di|tap)|dung vao (viec|muc dich) (gi|nao)|lay (de )?(chay|di) (bo )?hay",
+    "nhom": [
+      {
+        "id": "chay-bo",
+        "ten": "giày chạy bộ",
+        "kieu": "chuyen-mon",
+        "khi": "(?<!ban )\\bchay\\b|\\brunning\\b|\\bmarathon\\b|\\bjog(ging)?\\b|\\bpace\\b|(?<![\\d.,])\\d{1,2}([.,]\\d)?\\s*(km|k)(?![a-z\\d])",
+        "truong": [
+          { "id": "cuLy", "ten": "cự ly hay chạy / mục tiêu (5K, 10K, half, full…)", "tuPhanTich": "distance", "maTran": "distance",
+            "doc": "(?<![\\d.,])\\d{1,2}([.,]\\d{1,3})?\\s*(km|k|cay so|cay)(?![a-z\\d])|\\b(half|full|ban)?\\s*marathon\\b|\\b(hm|fm|ultra)\\b|chay dai|long ?run",
+            "hoi": "(chay|tap)\\s+(bao nhieu|may|bao xa)\\s*(km|k\\b|cay)|cu ly\\s+(bao nhieu|nao|bao xa|thuong|hay|chay|may|khoang|tam|muc tieu)|chay\\s+(cu ly|quang duong)\\s+(nao|bao)|bao nhieu\\s*(km|cay so)|(5|10)\\s*k[^.?!]{0,30}hay[^.?!]{0,30}(21|42|half|hm|full|fm|marathon)[^.!]{0,30}\\?" },
+          { "id": "tocDo", "ten": "tốc độ (pace bao nhiêu phút/km)", "tuPhanTich": "pace", "maTran": "pace",
+            "doc": "pace[^0-9\\n]{0,10}\\d{1,2}(\\s*[.,:'h]\\s*\\d{1,2})?|toc do[^0-9\\n]{0,10}\\d{1,2}(\\s*[.,:'h]\\s*\\d{1,2})?|(?<![\\d.,:])(?<!(luc|gio)\\s)\\d{1,2}\\s*[:']\\s*\\d{2}(?!\\s*(k|sang|chieu|toi|trua|am|pm|h)\\b)|(?<![\\d.,])\\d{1,2}([.,]\\d)?\\s*(phut|p)\\s*(\\d{1,2}\\s*)?(\\/|tren|mot|1|moi)\\s*(km|cay)",
+            "hoi": "pace\\s*(cua [a-z]+\\s*)?(bao nhieu|khoang bao|tam bao|the nao|ra sao|nhu nao|may|tam may|khoang may)|toc do\\s*(chay\\s*)?(cua [a-z]+\\s*)?(bao nhieu|the nao|ra sao|nhu nao|khoang bao|tam bao|may)|chay\\s*(nhanh|cham)\\s*(hay|khong|ko|k\\b)|(may|bao nhieu)\\s*phut\\s*(\\/|mot|1|tren)?\\s*km" },
+          { "id": "kinhNghiem", "ten": "chạy lâu chưa", "batBuoc": false,
+            "doc": "moi (chay|tap|bat dau)|chua chay|chay (duoc )?(lau|\\d+ (nam|thang))|(\\d+|vai|may) (nam|thang) (chay|roi)|chay lau roi|chay deu",
+            "hoi": "chay (lau|duoc bao lau|bao lau)\\s*(chua|roi|chua a)|(moi|da) (bat dau )?chay (lau )?(chua|hay)|kinh nghiem chay" }
+        ],
+        "suyRa": [
+          { "id": "chay-nhe", "khi": "(nhe nhang|nhe thoi|chay nhe|chay cham|cham thoi|cham cham|chay thoi|\\d\\s*(?:km|k)\\s*thoi|the duc|thu gian|giu suc khoe|ren luyen suc khoe|giam can|buoi sang|sang som|di bo|hoi phuc|chay dao|dao bo|chay choi|cho khoe|vua chay vua di)", "tru": "(pace|tempo|\\bgiai\\b|\\bdua\\b|thi dau|\\bsub\\s*\\d|chay nhanh|toc do|interval|bien toc|\\bhm\\b|\\bfm\\b|half|marathon|(?<![\\d.,])(?:[6-9]|[1-9]\\d{1,2})\\s*km(?![a-z\\d])|(?<![\\d.,])(?:10|15|21|42)\\s*k(?![a-z\\d]))",
+            "dat": {
+              "tocDo": { "noi": "chạy nhẹ / thể dục (khoảng 6–9 phút/km)", "maTran": "p7plus" },
+              "cuLy": { "noi": "chạy nhẹ / thể dục", "maTran": "easy" }
+            } }
+        ]
+      },
+      {
+        "id": "giay-san",
+        "ten": "giày sân (tennis / pickleball / padel)",
+        "kieu": "chuyen-mon",
+        "nhomHang": ["tennis"],
+        "truong": [
+          { "id": "matSan", "ten": "mặt sân (sân cứng hay đất nện)", "tuPhanTich": "surface",
+            "doc": "san (cung|dat|dat nen|co|trong nha|xi mang|be tong|tong hop)|dat nen|\\bclay\\b|hard ?court|trong nha|\\bindoor\\b",
+            "hoi": "(san|mat san)\\s*(cung|gi|nao)[^.?!]{0,25}(hay|\\?)|choi (tren )?san (gi|nao)|dat nen hay|hay (san )?dat nen|san cung hay" }
+        ]
+      },
+      {
+        "id": "mon-khac",
+        "ten": "giày môn thể thao chuyên (bóng đá, bóng rổ, golf)",
+        "kieu": "chuyen-mon",
+        "nhomHang": ["bóng đá", "bóng rổ", "golf"]
+      },
+      {
+        "id": "pho-thong",
+        "ten": "đi học / đi làm / đi chơi / đa năng",
+        "kieu": "pho-thong",
+        "khi": "\\b(di hoc|di lam|di choi|da nang|the duc|hang ngay|di dao|dao pho|thoi trang|phoi do|di du lich|di bo)\\b",
+        "mucDich": "di_hoc_di_choi_da_nang"
+      }
+    ]
   },
   "needs": ["daily", "tempo", "race", "marathon", "half marathon", "easy run", "long run", "running", "chay", "tennis", "pickleball", "pickeball", "di bo", "tap gym"],
   "footForms": {

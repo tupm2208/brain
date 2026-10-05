@@ -68,6 +68,18 @@ export class MetaGraphClient {
     return token ? { ok: true, value: token } : { ok: false, message: "Meta khong tra token nguoi dung." };
   }
 
+  /**
+   * The person's APP-SCOPED id (`/me?fields=id` with their user token) — the id Meta later names in
+   * the data deletion and deauthorize callbacks. Read at login so those callbacks can be traced to
+   * the pages; the caller keeps only a keyed hash of it (`MetaAppUserBook.keyOf`).
+   */
+  async appScopedUserId(userToken: string): Promise<GraphResult<string>> {
+    const r = await this.call("GET", "me?fields=id", userToken);
+    if (!r.ok) return r;
+    const id = String(r.value["id"] ?? "").trim();
+    return id ? { ok: true, value: id } : { ok: false, message: "Meta khong tra id nguoi dung." };
+  }
+
   /** The pages a user manages, each with ITS page token (`/me/accounts`). */
   async pagesOfUser(userToken: string): Promise<GraphResult<{ id: string; name: string; token: string }[]>> {
     const r = await this.call("GET", "me/accounts?fields=id,name,access_token&limit=100", userToken);

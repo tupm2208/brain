@@ -17,6 +17,8 @@
     ]
   },
   "askedOther": ["\\?\\s*$", "(khong a|ko a|k a|khong|ko)\\s*$"],
+  "_askedReferenceDoc": "05/10/2026 (phieu Desk 'vai tro anh khach gui'): mau cau PAGE vua xin XEM mon khach DANG DUNG / nhan cua no de do bien the → anh khach gui tiep la THAM CHIEU, khong phai hang muon mua (buoc doc anh khong tra kho, ghi chu dan agent khong chao ban). Tang 1 de TRONG: mon nao la 'tham chieu' la chuyen cua NGANH (nha thuoc: anh hop thuoc dang dung co the chinh la mon can mua lai) — nganh noi them trong nganh/<id>/khung-hoi-thoai.json.",
+  "askedReference": [],
   "ack": "^(da |dạ |a |à |u |ừ |uh |uhm |ok(e|ie|ay)?[, ]*)?(vang|vâng|ok|oke|okie|okay|duoc|được|dung|đúng|dung roi|đúng rồi|dung r|đúng r|chuan|chuẩn|roi|rồi|uh|ừ|ừm|uhm|co|có|lay|lấy|chot|chốt|ok bac|ok bác|đúng r bác|dung r bac|yes)( e| em| a| ạ| shop| b| bạn| anh| chị| bác| nhé| nha| nhe| ban| ban oi| luon| luôn| di| đi)*\\s*[.!~]*$",
   "deny": "^(k|ko|khong|không|thoi|thôi|k can|ko can|không cần|de sau|để sau|chua|chưa)( e| em| a| ạ| shop| b| bạn| anh| chị| nhé| nha| nhe| dau| đâu)*\\s*[.!~]*$",
   "refer": "(doi nay|mau nay|cai nay|mau do|doi do|cai do|mau kia|doi kia|2 mau|hai mau|ca 2|ca hai|mau (trang|den|xanh|do|tim|hong|xam|be|vang|cam|nau)( |$))",
